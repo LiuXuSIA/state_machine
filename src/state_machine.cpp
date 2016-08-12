@@ -6,7 +6,6 @@
 */
 #include "ros/ros.h"
 #include "state_machine/Attitude.h"
-#include "state_machine/Setpoint.h"		/* to send 4 setpoints -libn */
 #include "state_machine/State.h"
 #include <geometry_msgs/PoseStamped.h>  /* message type of /mavros/local_position/pose (P.S. It is included in dir: /opt/ros/indigo/share/geometry_msgs/msg) -libn */
 #include "state_machine/ActuatorControl.h" /* add actuator_control output */
@@ -26,37 +25,30 @@ static const int TAKEOFF  = 5;	/* TODO! for future use. -libn <Aug 11, 2016 9:54
 // current positon state, init state is takeoff and go to setpoint_A
 int current_pos_state = POS_A;
 
-// position setpoint to publish
-geometry_msgs::PoseStamped setpoint_pub;
-
-// pulisher: used to publish local_pos_setpoint -libn
-ros::Publisher local_pos_setpoint_pub;
-
-state_machine::Setpoint setpoint_A;
-state_machine::Setpoint setpoint_B;
-state_machine::Setpoint setpoint_C;
-state_machine::Setpoint setpoint_D;
-void printSetpointACallback(const state_machine::Setpoint::ConstPtr& msg)
+geometry_msgs::PoseStamped setpoint_A;
+geometry_msgs::PoseStamped setpoint_B;
+geometry_msgs::PoseStamped setpoint_C;
+geometry_msgs::PoseStamped setpoint_D;
+void printSetpointACallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
 //    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
     setpoint_A = *msg;
 }
-void printSetpointBCallback(const state_machine::Setpoint::ConstPtr& msg)
+void printSetpointBCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
 //    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
     setpoint_B = *msg;
 }
-void printSetpointCCallback(const state_machine::Setpoint::ConstPtr& msg)
+void printSetpointCCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
 //    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
     setpoint_C = *msg;
 }
-void printSetpointDCallback(const state_machine::Setpoint::ConstPtr& msg)
+void printSetpointDCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
 //    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
     setpoint_D = *msg;
 }
-
 
 // local position msg callback function
 geometry_msgs::PoseStamped current_pos;
@@ -89,7 +81,7 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "state_machine");
 
 	ros::NodeHandle nh;
-/*
+
 //	ros::Subscriber ATT_sub = nh.subscribe("mavros/attitude", 10 ,printATTCallback);
 //	ros::Subscriber STATE_sub = nh.subscribe("mavros/state", 10 ,printSTATECallback);
 
@@ -98,13 +90,6 @@ int main(int argc, char **argv)
 //	pose.pose.position.y = 0;
 //	pose.pose.position.z = 2;
 //	ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
-
-//	state_machine::ActuatorControl output;
-//	//output.				//TODO!!
-//	//output.controls[1] = 0;
-//	ros::Publisher acturtor_pub = nh.advertise<state_machine::ActuatorControl>("mavros/actuator_control", 10);
-
-*/
 
 	/* Step 1: receive 4 setpoints. -libn <Aug 10, 2016 2:57:25 PM> */
 	ros::Subscriber setpoint_A_sub = nh.subscribe("Setpoint_A", 100 ,printSetpointACallback);
@@ -118,17 +103,6 @@ int main(int argc, char **argv)
 	// get pixhawk's local position
 	ros::Subscriber local_pos_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose", 10, pos_cb);
 
-	/* publish local_pos_setpoint -libn <Aug 11, 2016 10:05:05 AM> */
-	ros::Publisher local_pos_setpoint_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
-	//send a few setpoints before starting  --> for safety
-	for(int i = 100; ros::ok() && i > 0; --i){
-		setpoint_pub.pose.position.x = setpoint_A.x;			// set expected position
-		setpoint_pub.pose.position.y = setpoint_A.y;			// set expected position
-		setpoint_pub.pose.position.z = setpoint_A.z;			// set expected position
-		local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos A (desired position)
-		ros::spinOnce();
-		rate.sleep();
-	}
 
     ros::Time landing_last_request = ros::Time::now();
 
@@ -150,10 +124,10 @@ int main(int argc, char **argv)
             ROS_INFO("AUTO TAKEOFF!");
         }
 
-		ROS_INFO("setpoint_A received: [%f] [%f] [%f]",setpoint_A.x, setpoint_A.y, setpoint_A.z);
-		ROS_INFO("setpoint_B received: [%f] [%f] [%f]",setpoint_B.x, setpoint_B.y, setpoint_B.z);
-		ROS_INFO("setpoint_C received: [%f] [%f] [%f]",setpoint_C.x, setpoint_C.y, setpoint_C.z);
-		ROS_INFO("setpoint_D received: [%f] [%f] [%f]",setpoint_D.x, setpoint_D.y, setpoint_D.z);
+		ROS_INFO("setpoint_A received: [%f] [%f] [%f]",setpoint_A.pose.position.x, setpoint_A.pose.position.y, setpoint_A.pose.position.z);
+		ROS_INFO("setpoint_B received: [%f] [%f] [%f]",setpoint_B.pose.position.x, setpoint_B.pose.position.y, setpoint_B.pose.position.z);
+		ROS_INFO("setpoint_C received: [%f] [%f] [%f]",setpoint_C.pose.position.x, setpoint_C.pose.position.y, setpoint_C.pose.position.z);
+		ROS_INFO("setpoint_D received: [%f] [%f] [%f]",setpoint_D.pose.position.x, setpoint_D.pose.position.y, setpoint_D.pose.position.z);
 
 		// auto task off
         if( current_state.mode == "AUTO.TAKEOFF"){
@@ -195,53 +169,47 @@ void state_machine_func(void)
     		break;
 
         case POS_A:
-        	setpoint_pub.pose.position.x = setpoint_A.x;			// set expected position
-        	setpoint_pub.pose.position.y = setpoint_A.y;			// set expected position
-        	setpoint_pub.pose.position.z = setpoint_A.z;			// set expected position
+//        	setpoint_pub = setpoint_A;			// set expected position
+//        	setpoint_pub.pose.position.x = setpoint_A.x;			// set expected position
+//        	setpoint_pub.pose.position.y = setpoint_A.y;			// set expected position
+//        	setpoint_pub.pose.position.z = setpoint_A.z;			// set expected position
 //        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos A (desired position) //problem!! TODO! -20160811
+//        	local_pos_sub.publish(pose);
 //        	local_pos_setpoint_pub.publish(pose_a);      // first publish pos A (desired position)
-            if((abs(current_pos.pose.position.x - setpoint_A.x) < 0.2) &&      // switch to next state
-               (abs(current_pos.pose.position.y - setpoint_A.y) < 0.2) &&
-               (abs(current_pos.pose.position.z - setpoint_A.z) < 0.2))
+            if((abs(current_pos.pose.position.x - setpoint_A.pose.position.x) < 0.2) &&      // switch to next state
+               (abs(current_pos.pose.position.y - setpoint_A.pose.position.y) < 0.2) &&
+               (abs(current_pos.pose.position.z - setpoint_A.pose.position.z) < 0.2))
                {
                     current_pos_state = POS_B; // current_pos_state++;
                }
             break;
         case POS_B:
-        	setpoint_pub.pose.position.x = setpoint_B.x;			// set expected position
-        	setpoint_pub.pose.position.y = setpoint_B.y;			// set expected position
-        	setpoint_pub.pose.position.z = setpoint_B.z;			// set expected position
+//        	setpoint_pub = setpoint_B;			// set expected position
 //        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos B (desired position)
-//            local_pos_pub.publish(pose_b);      // first publish pos B (desired position)
-            if((abs(current_pos.pose.position.x - setpoint_B.x) < 0.2) &&      // switch to next state
-               (abs(current_pos.pose.position.y - setpoint_B.y) < 0.2) &&
-               (abs(current_pos.pose.position.z - setpoint_B.z) < 0.2))
+//        	local_pos_sub.publish(pose);
+            if((abs(current_pos.pose.position.x - setpoint_B.pose.position.x) < 0.2) &&      // switch to next state
+               (abs(current_pos.pose.position.y - setpoint_B.pose.position.y) < 0.2) &&
+               (abs(current_pos.pose.position.z - setpoint_B.pose.position.z) < 0.2))
                {
             	current_pos_state = POS_C; // current_pos_state++;
                }
             break;
         case POS_C:
-        	setpoint_pub.pose.position.x = setpoint_C.x;			// set expected position
-        	setpoint_pub.pose.position.y = setpoint_C.y;			// set expected position
-        	setpoint_pub.pose.position.z = setpoint_C.z;			// set expected position
-//        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos A (desired position)
-//            local_pos_pub.publish(pose_a);      // first publish pos C (desired position)
-			if((abs(current_pos.pose.position.x - setpoint_C.x) < 0.2) &&      // switch to next state
-			   (abs(current_pos.pose.position.y - setpoint_C.y) < 0.2) &&
-			   (abs(current_pos.pose.position.z - setpoint_C.z) < 0.2))
+//        	setpoint_pub = setpoint_C;			// set expected position
+//        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos C (desired position)
+			if((abs(current_pos.pose.position.x - setpoint_C.pose.position.x) < 0.2) &&      // switch to next state
+			   (abs(current_pos.pose.position.y - setpoint_C.pose.position.y) < 0.2) &&
+			   (abs(current_pos.pose.position.z - setpoint_C.pose.position.z) < 0.2))
 			   {
 					current_pos_state = POS_D; // current_pos_state++;
 			   }
 			break;
         case POS_D:
-        	setpoint_pub.pose.position.x = setpoint_D.x;			// set expected position
-        	setpoint_pub.pose.position.y = setpoint_D.y;			// set expected position
-        	setpoint_pub.pose.position.z = setpoint_D.z;			// set expected position
-//        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos A (desired position)
-//            local_pos_pub.publish(pose_a);      // first publish pos D (desired position)
-			if((abs(current_pos.pose.position.x - setpoint_D.x) < 0.2) &&      // switch to next state
-			   (abs(current_pos.pose.position.y - setpoint_D.y) < 0.2) &&
-			   (abs(current_pos.pose.position.z - setpoint_D.z) < 0.2))
+//        	setpoint_pub = setpoint_D;			// set expected position
+//        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos D (desired position)
+			if((abs(current_pos.pose.position.x - setpoint_D.pose.position.x) < 0.2) &&      // switch to next state
+			   (abs(current_pos.pose.position.y - setpoint_D.pose.position.y) < 0.2) &&
+			   (abs(current_pos.pose.position.z - setpoint_D.pose.position.z) < 0.2))
 			   {
 				current_pos_state = LAND; // current_pos_state++;
 			   }
