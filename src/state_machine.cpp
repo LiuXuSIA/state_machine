@@ -62,6 +62,11 @@ void state_cb(const state_machine::State::ConstPtr& msg){
     current_state = *msg;
 }
 
+// position setpoint to publish
+geometry_msgs::PoseStamped setpoint_pub;
+// pulisher: used to publish local_pos_setpoint -libn
+ros::Publisher local_pos_setpoint_pub;
+
 /*
 void printATTCallback(const state_machine::Attitude::ConstPtr& msg)
 {
@@ -82,15 +87,6 @@ int main(int argc, char **argv)
 
 	ros::NodeHandle nh;
 
-//	ros::Subscriber ATT_sub = nh.subscribe("mavros/attitude", 10 ,printATTCallback);
-//	ros::Subscriber STATE_sub = nh.subscribe("mavros/state", 10 ,printSTATECallback);
-
-//	geometry_msgs::PoseStamped pose;
-//	pose.pose.position.x = 0;
-//	pose.pose.position.y = 0;
-//	pose.pose.position.z = 2;
-//	ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
-
 	/* Step 1: receive 4 setpoints. -libn <Aug 10, 2016 2:57:25 PM> */
 	ros::Subscriber setpoint_A_sub = nh.subscribe("Setpoint_A", 100 ,printSetpointACallback);
 	ros::Subscriber setpoint_B_sub = nh.subscribe("Setpoint_B", 100 ,printSetpointBCallback);
@@ -100,15 +96,38 @@ int main(int argc, char **argv)
 
 	ros::Rate rate(10);		/* 10Hz. -libn <Aug 11, 2016 9:28:08 AM> */
 
+	// get pixhawk's status
+	ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state", 10, state_cb);
+
 	// get pixhawk's local position
 	ros::Subscriber local_pos_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose", 10, pos_cb);
 
+	/* publish local_pos_setpoint -libn <Aug 11, 2016 10:05:05 AM> */
+	local_pos_setpoint_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
 
-    ros::Time landing_last_request = ros::Time::now();
+	ros::Time landing_last_request = ros::Time::now();
 
     // takeoff and land service
     // ros::ServiceClient takeoff_client = nh.serviceClient<state_machine::CommandTOL>("mavros/cmd/takeoff");
     ros::ServiceClient land_client = nh.serviceClient<state_machine::CommandTOL>("mavros/cmd/land");
+
+    // wait for FCU connection
+	while(ros::ok() && !current_state.connected){
+		ros::spinOnce();
+		rate.sleep();
+	}
+
+    setpoint_pub.pose.position.x = 0;
+    setpoint_pub.pose.position.y = 0;
+    setpoint_pub.pose.position.z = 3;
+
+	//send a few setpoints before starting  --> for safety
+    ROS_INFO("sending 100 desired_poses. Wait for a while.");
+	for(int i = 100; ros::ok() && i > 0; --i){
+		local_pos_setpoint_pub.publish(setpoint_pub);
+		ros::spinOnce();
+		rate.sleep();
+	}
 
     // takeoff and landing
     // mavros_msgs::CommandTOL takeoff_cmd;
@@ -163,19 +182,14 @@ int main(int argc, char **argv)
 // task state machine
 void state_machine_func(void)
 {
-    switch(current_pos_state){
+	switch(current_pos_state){
 
     	case TAKEOFF:	/* Not used! just in case.  -libn <Aug 11, 2016 9:56:44 AM> */
     		break;
 
         case POS_A:
-//        	setpoint_pub = setpoint_A;			// set expected position
-//        	setpoint_pub.pose.position.x = setpoint_A.x;			// set expected position
-//        	setpoint_pub.pose.position.y = setpoint_A.y;			// set expected position
-//        	setpoint_pub.pose.position.z = setpoint_A.z;			// set expected position
-//        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos A (desired position) //problem!! TODO! -20160811
-//        	local_pos_sub.publish(pose);
-//        	local_pos_setpoint_pub.publish(pose_a);      // first publish pos A (desired position)
+            setpoint_pub = setpoint_A;			// set expected position
+        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos A (desired position)
             if((abs(current_pos.pose.position.x - setpoint_A.pose.position.x) < 0.2) &&      // switch to next state
                (abs(current_pos.pose.position.y - setpoint_A.pose.position.y) < 0.2) &&
                (abs(current_pos.pose.position.z - setpoint_A.pose.position.z) < 0.2))
@@ -184,9 +198,8 @@ void state_machine_func(void)
                }
             break;
         case POS_B:
-//        	setpoint_pub = setpoint_B;			// set expected position
-//        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos B (desired position)
-//        	local_pos_sub.publish(pose);
+            setpoint_pub = setpoint_B;			// set expected position
+        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos B (desired position)
             if((abs(current_pos.pose.position.x - setpoint_B.pose.position.x) < 0.2) &&      // switch to next state
                (abs(current_pos.pose.position.y - setpoint_B.pose.position.y) < 0.2) &&
                (abs(current_pos.pose.position.z - setpoint_B.pose.position.z) < 0.2))
@@ -195,8 +208,8 @@ void state_machine_func(void)
                }
             break;
         case POS_C:
-//        	setpoint_pub = setpoint_C;			// set expected position
-//        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos C (desired position)
+            setpoint_pub = setpoint_C;			// set expected position
+        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos C (desired position)
 			if((abs(current_pos.pose.position.x - setpoint_C.pose.position.x) < 0.2) &&      // switch to next state
 			   (abs(current_pos.pose.position.y - setpoint_C.pose.position.y) < 0.2) &&
 			   (abs(current_pos.pose.position.z - setpoint_C.pose.position.z) < 0.2))
@@ -205,8 +218,8 @@ void state_machine_func(void)
 			   }
 			break;
         case POS_D:
-//        	setpoint_pub = setpoint_D;			// set expected position
-//        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos D (desired position)
+            setpoint_pub = setpoint_D;			// set expected position
+        	local_pos_setpoint_pub.publish(setpoint_pub);      // publish pos D (desired position)
 			if((abs(current_pos.pose.position.x - setpoint_D.pose.position.x) < 0.2) &&      // switch to next state
 			   (abs(current_pos.pose.position.y - setpoint_D.pose.position.y) < 0.2) &&
 			   (abs(current_pos.pose.position.z - setpoint_D.pose.position.z) < 0.2))
