@@ -12,6 +12,7 @@ catkin_make
 ```
 
 # How to use
+## run state_machine nodes
 ```
 roscore
 ```
@@ -24,7 +25,11 @@ source ${HOME}/state_machine_ws/devel/setup.bash
 rosrun state_machine state_machine
 ```
 
-# How to connect to pix
+## run mavros node
+### How to connect to pix
 https://github.com/SIA-UAVGP/mavros
+
+# Get the topic's messages
+rqt_graph
 
 
