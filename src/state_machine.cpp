@@ -1,6 +1,6 @@
 /**
 * @file     : state_machine.cpp
-* @brief    :
+* @brief    : state_machine.
 * @author   : libn
 * @time     : Aug 11, 2016 9:45:22 AM
 */
@@ -37,26 +37,6 @@ geometry_msgs::PoseStamped setpoint_A;
 geometry_msgs::PoseStamped setpoint_B;
 geometry_msgs::PoseStamped setpoint_C;
 geometry_msgs::PoseStamped setpoint_D;
-//void printSetpointACallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
-//{
-////    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
-//    setpoint_A = *msg;
-//}
-//void printSetpointBCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
-//{
-////    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
-//    setpoint_B = *msg;
-//}
-//void printSetpointCCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
-//{
-////    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
-//    setpoint_C = *msg;
-//}
-//void printSetpointDCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
-//{
-////    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
-//    setpoint_D = *msg;
-//}
 
 // local position msg callback function
 geometry_msgs::PoseStamped current_pos;
@@ -75,20 +55,6 @@ geometry_msgs::PoseStamped setpoint_pub;
 // pulisher: used to publish local_pos_setpoint -libn
 ros::Publisher local_pos_setpoint_pub;
 
-/*
-void printATTCallback(const state_machine::Attitude::ConstPtr& msg)
-{
-	ROS_INFO("I heard:[%f] [%f] [%f]",msg->roll, msg->pitch, msg->yaw);
-}
-
-
-void printSTATECallback(const state_machine::State::ConstPtr& msg)
-{
-	printf("I heard:[%d] [%d] [%d]\n",msg->connected, msg->armed, msg->guided);	
-	//printf("I heard:[%d] [%d] [%d] [%s]\n",msg->connected, msg->armed, msg->guided, msg->mode);
-	//ROS_INFO("I heard:[%d] [%d] [%d] [%s]",msg->connected, msg->armed, msg->guided, msg->mode);
-}
-*/
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "state_machine");
