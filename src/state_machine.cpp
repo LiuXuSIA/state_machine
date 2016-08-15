@@ -76,6 +76,7 @@ geometry_msgs::PoseStamped setpoint_pub;
 // pulisher: used to publish local_pos_setpoint -libn
 ros::Publisher local_pos_setpoint_pub;
 
+int count;	/* to reduce display freq. -libn <Aug 15, 2016 10:02:32 PM> */
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "state_machine");
@@ -139,8 +140,6 @@ int main(int argc, char **argv)
             ROS_INFO("AUTO TAKEOFF!");
         }
 
-        ROS_INFO("setpoint_indexed received: index: [%d] pos: [%f] [%f] [%f]",setpoint_indexed.index,setpoint_indexed.x,setpoint_indexed.y,setpoint_indexed.z);
-
         /* get 4 setpoints:A,B,C,D. -libn <Aug 15, 2016 9:55:15 AM> */
         switch(setpoint_indexed.index)
         {
@@ -168,12 +167,6 @@ int main(int argc, char **argv)
         		ROS_INFO("setpoint index error!");
         		break;
         }
-        ROS_INFO("setpoint_indexed received: index: [%d]; pos: [%f], [%f], [%f]",setpoint_indexed.index,setpoint_indexed.x,setpoint_indexed.y,setpoint_indexed.z);
-
-		ROS_INFO("setpoint_A received: [%f] [%f] [%f]",setpoint_A.pose.position.x, setpoint_A.pose.position.y, setpoint_A.pose.position.z);
-		ROS_INFO("setpoint_B received: [%f] [%f] [%f]",setpoint_B.pose.position.x, setpoint_B.pose.position.y, setpoint_B.pose.position.z);
-		ROS_INFO("setpoint_C received: [%f] [%f] [%f]",setpoint_C.pose.position.x, setpoint_C.pose.position.y, setpoint_C.pose.position.z);
-		ROS_INFO("setpoint_D received: [%f] [%f] [%f]",setpoint_D.pose.position.x, setpoint_D.pose.position.y, setpoint_D.pose.position.z);
 
 
 		/* get 10 drawing board's letter and position. -libn <Aug 15, 2016 11:09:44 AM> */
@@ -243,12 +236,6 @@ int main(int argc, char **argv)
 				ROS_INFO("setpoint index error!");
 				break;
 		}
-		ROS_INFO("drawing board located: num: [%d]; pos: [%f], [%f], [%f]",board.num,board.x,board.y,board.z);
-		ROS_INFO("1st drawing board located: num: [%d]; pos: [%f], [%f], [%f]",board_1.num,board_1.x,board_1.y,board_1.z);
-		ROS_INFO("2nd drawing board located: num: [%d]; pos: [%f], [%f], [%f]",board_2.num,board_2.x,board_2.y,board_2.z);
-		ROS_INFO("3rd drawing board located: num: [%d]; pos: [%f], [%f], [%f]",board_3.num,board_3.x,board_3.y,board_3.z);
-		ROS_INFO("4th drawing board located: num: [%d]; pos: [%f], [%f], [%f]",board_4.num,board_4.x,board_4.y,board_4.z);
-		ROS_INFO("5th drawing board located: num: [%d]; pos: [%f], [%f], [%f]",board_5.num,board_5.x,board_5.y,board_5.z);
 
 		// auto task off
         if( current_state.mode == "AUTO.TAKEOFF"){
@@ -256,6 +243,13 @@ int main(int argc, char **argv)
         }
 
         state_machine_func();	/* Run state_machine. -libn <Aug 11, 2016 10:01:12 AM> */
+
+    	count++;
+    	if(count >= 20)
+    	{
+    		count = 0;
+    		ROS_INFO("current_pos_state: %d",current_pos_state);
+    	}
 
         // landing
         if(current_pos_state == LAND){
@@ -332,4 +326,5 @@ void state_machine_func(void)
         case LAND:
             break;
     }
+
 }

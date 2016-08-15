@@ -44,7 +44,7 @@ void printSetpointDCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
 void printATTCallback(const state_machine::Attitude::ConstPtr& msg)
 {
-//	ROS_INFO("I heard:[%f] [%f] [%f]",msg->roll, msg->pitch, msg->yaw);
+	ROS_INFO("I heard:[%f] [%f] [%f]",msg->roll, msg->pitch, msg->yaw);
 }
 
 
