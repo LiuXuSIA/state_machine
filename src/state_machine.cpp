@@ -11,6 +11,7 @@
 #include "state_machine/ActuatorControl.h" /* add actuator_control output */
 #include <stdio.h>
 #include <state_machine/CommandTOL.h>	/* head file for takeoff&land-command service -libn */
+#include "state_machine/Setpoint.h"
 
 void state_machine_func(void);
 
@@ -25,30 +26,37 @@ static const int TAKEOFF  = 5;	/* TODO! for future use. -libn <Aug 11, 2016 9:54
 // current positon state, init state is takeoff and go to setpoint_A
 int current_pos_state = POS_A;
 
+state_machine::Setpoint setpoint_indexed;
+void printSetpointIndexedCallback(const state_machine::Setpoint::ConstPtr& msg)
+{
+//    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
+	setpoint_indexed = *msg;
+}
+
 geometry_msgs::PoseStamped setpoint_A;
 geometry_msgs::PoseStamped setpoint_B;
 geometry_msgs::PoseStamped setpoint_C;
 geometry_msgs::PoseStamped setpoint_D;
-void printSetpointACallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
-{
-//    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
-    setpoint_A = *msg;
-}
-void printSetpointBCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
-{
-//    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
-    setpoint_B = *msg;
-}
-void printSetpointCCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
-{
-//    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
-    setpoint_C = *msg;
-}
-void printSetpointDCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
-{
-//    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
-    setpoint_D = *msg;
-}
+//void printSetpointACallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+//{
+////    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
+//    setpoint_A = *msg;
+//}
+//void printSetpointBCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+//{
+////    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
+//    setpoint_B = *msg;
+//}
+//void printSetpointCCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+//{
+////    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
+//    setpoint_C = *msg;
+//}
+//void printSetpointDCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+//{
+////    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
+//    setpoint_D = *msg;
+//}
 
 // local position msg callback function
 geometry_msgs::PoseStamped current_pos;
@@ -87,11 +95,9 @@ int main(int argc, char **argv)
 
 	ros::NodeHandle nh;
 
-	/* Step 1: receive 4 setpoints. -libn <Aug 10, 2016 2:57:25 PM> */
-	ros::Subscriber setpoint_A_sub = nh.subscribe("Setpoint_A", 100 ,printSetpointACallback);
-	ros::Subscriber setpoint_B_sub = nh.subscribe("Setpoint_B", 100 ,printSetpointBCallback);
-	ros::Subscriber setpoint_C_sub = nh.subscribe("Setpoint_C", 100 ,printSetpointCCallback);
-	ros::Subscriber setpoint_D_sub = nh.subscribe("Setpoint_D", 100 ,printSetpointDCallback);
+	/* receive indexed setpoint. -libn <Aug 15, 2016 9:08:05 AM> */
+	ros::Subscriber setpoint_Indexed_sub = nh.subscribe("Setpoint_Indexed", 100 ,printSetpointIndexedCallback);
+
 	ROS_INFO("setpoints suscribe start!");
 
 	ros::Rate rate(10);		/* 10Hz. -libn <Aug 11, 2016 9:28:08 AM> */
@@ -142,6 +148,37 @@ int main(int argc, char **argv)
         if( current_state.mode == "AUTO.TAKEOFF"){
             ROS_INFO("AUTO TAKEOFF!");
         }
+
+        ROS_INFO("setpoint_indexed received: index: [%d] pos: [%f] [%f] [%f]",setpoint_indexed.index,setpoint_indexed.x,setpoint_indexed.y,setpoint_indexed.z);
+
+        /* get 4 setpoints:A,B,C,D. -libn <Aug 15, 2016 9:55:15 AM> */
+        switch(setpoint_indexed.index)
+        {
+        	case 1:
+        		setpoint_A.pose.position.x = setpoint_indexed.x;
+				setpoint_A.pose.position.y = setpoint_indexed.y;
+				setpoint_A.pose.position.z = setpoint_indexed.z;
+				break;
+        	case 2:
+        		setpoint_B.pose.position.x = setpoint_indexed.x;
+				setpoint_B.pose.position.y = setpoint_indexed.y;
+				setpoint_B.pose.position.z = setpoint_indexed.z;
+				break;
+        	case 3:
+        		setpoint_C.pose.position.x = setpoint_indexed.x;
+				setpoint_C.pose.position.y = setpoint_indexed.y;
+				setpoint_C.pose.position.z = setpoint_indexed.z;
+				break;
+        	case 4:
+        		setpoint_D.pose.position.x = setpoint_indexed.x;
+				setpoint_D.pose.position.y = setpoint_indexed.y;
+				setpoint_D.pose.position.z = setpoint_indexed.z;
+				break;
+        	default:
+        		ROS_INFO("setpoint index error!");
+        		break;
+        }
+        ROS_INFO("setpoint_indexed received: index: [%d]; pos: [%f], [%f], [%f]",setpoint_indexed.index,setpoint_indexed.x,setpoint_indexed.y,setpoint_indexed.z);
 
 		ROS_INFO("setpoint_A received: [%f] [%f] [%f]",setpoint_A.pose.position.x, setpoint_A.pose.position.y, setpoint_A.pose.position.z);
 		ROS_INFO("setpoint_B received: [%f] [%f] [%f]",setpoint_B.pose.position.x, setpoint_B.pose.position.y, setpoint_B.pose.position.z);

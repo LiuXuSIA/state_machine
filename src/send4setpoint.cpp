@@ -10,6 +10,7 @@
 #include "state_machine/ActuatorControl.h" /* add actuator_control output */
 #include <stdio.h>
 #include <math.h>
+#include "state_machine/Setpoint.h"
 
 int main(int argc, char **argv)
 {
@@ -17,17 +18,14 @@ int main(int argc, char **argv)
 
     ros::NodeHandle nh;
 
-	/* send 4 setpoint positon -libn <Aug 10, 2016 2:16:47 PM> */
-    geometry_msgs::PoseStamped setpoint;
-	ros::Publisher setpoint_A_pub = nh.advertise<geometry_msgs::PoseStamped>("Setpoint_A", 10);
-	ros::Publisher setpoint_B_pub = nh.advertise<geometry_msgs::PoseStamped>("Setpoint_B", 10);
-	ros::Publisher setpoint_C_pub = nh.advertise<geometry_msgs::PoseStamped>("Setpoint_C", 10);
-	ros::Publisher setpoint_D_pub = nh.advertise<geometry_msgs::PoseStamped>("Setpoint_D", 10);
+    /* send indexed setpoint. -libn <Aug 15, 2016 9:00:02 AM> */
+    state_machine::Setpoint setpoint_indexed;
+    ros::Publisher setpoint_indexed_pub = nh.advertise<state_machine::Setpoint>("Setpoint_Indexed", 10);
 
-	setpoint.pose.position.x = 0.1f;
-	setpoint.pose.position.y = 0.2f;
-	setpoint.pose.position.z = 0.3f;
-
+    setpoint_indexed.index = 1;	/* 1st setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
+    setpoint_indexed.x = 0.1f;
+    setpoint_indexed.y = 0.1f;
+    setpoint_indexed.z = 0.1f;
 
 	ros::Rate loop_rate(10);
 
@@ -37,26 +35,36 @@ int main(int argc, char **argv)
 	{
 		for(i=1;i<180;i++)
 		{
-			// send 4 setpoints -libn
-			setpoint.pose.position.x = sin(i*M_PI/180);
-			setpoint.pose.position.y = sin((i+30)*M_PI/180);
-			setpoint.pose.position.z = sin((i+60)*M_PI/180);
-			setpoint_A_pub.publish(setpoint);
-			setpoint.pose.position.x = sin(i*M_PI/180)+1;
-			setpoint.pose.position.y = sin((i+30)*M_PI/180)+1;
-			setpoint.pose.position.z = sin((i+60)*M_PI/180)+1;
-			setpoint_B_pub.publish(setpoint);
-			setpoint.pose.position.x = sin(i*M_PI/180)+2;
-			setpoint.pose.position.y = sin((i+30)*M_PI/180)+2;
-			setpoint.pose.position.z = sin((i+60)*M_PI/180)+2;
-			setpoint_C_pub.publish(setpoint);
-			setpoint.pose.position.x = sin(i*M_PI/180)+3;
-			setpoint.pose.position.y = sin((i+30)*M_PI/180)+3;
-			setpoint.pose.position.z = sin((i+60)*M_PI/180)+3;
-			setpoint_D_pub.publish(setpoint);
+		    setpoint_indexed.index = 1;	/* 1st setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
+		    setpoint_indexed.x = 0.1f;
+		    setpoint_indexed.y = 0.1f;
+		    setpoint_indexed.z = 0.1f;
+		    setpoint_indexed_pub.publish(setpoint_indexed);
+		    ros::spinOnce();
+		    loop_rate.sleep();
 
+		    setpoint_indexed.index = 2;	/* 2ed setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
+			setpoint_indexed.x = 0.2f;
+			setpoint_indexed.y = 0.2f;
+			setpoint_indexed.z = 0.2f;
+			setpoint_indexed_pub.publish(setpoint_indexed);
 			ros::spinOnce();
+			loop_rate.sleep();
 
+			setpoint_indexed.index = 3;	/* 3rd setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
+			setpoint_indexed.x = 0.3f;
+			setpoint_indexed.y = 0.3f;
+			setpoint_indexed.z = 0.3f;
+			setpoint_indexed_pub.publish(setpoint_indexed);
+			ros::spinOnce();
+			loop_rate.sleep();
+
+			setpoint_indexed.index = 4;	/* 4th setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
+			setpoint_indexed.x = 0.4f;
+			setpoint_indexed.y = 0.4f;
+			setpoint_indexed.z = 0.4f;
+			setpoint_indexed_pub.publish(setpoint_indexed);
+			ros::spinOnce();
 			loop_rate.sleep();
 
 		}
