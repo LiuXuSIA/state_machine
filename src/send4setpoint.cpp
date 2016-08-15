@@ -29,45 +29,40 @@ int main(int argc, char **argv)
 
 	ros::Rate loop_rate(10);
 
-	int i;
-
 	while(ros::ok())
 	{
-		for(i=1;i<180;i++)
-		{
-		    setpoint_indexed.index = 1;	/* 1st setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
-		    setpoint_indexed.x = 0.1f;
-		    setpoint_indexed.y = 0.1f;
-		    setpoint_indexed.z = 0.1f;
-		    setpoint_indexed_pub.publish(setpoint_indexed);
-		    ros::spinOnce();
-		    loop_rate.sleep();
+		setpoint_indexed.index = 1;	/* 1st setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
+		setpoint_indexed.x = 0.1f;
+		setpoint_indexed.y = 0.1f;
+		setpoint_indexed.z = 0.1f;
+		setpoint_indexed_pub.publish(setpoint_indexed);
+		ros::spinOnce();
+		loop_rate.sleep();
 
-		    setpoint_indexed.index = 2;	/* 2ed setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
-			setpoint_indexed.x = 0.2f;
-			setpoint_indexed.y = 0.2f;
-			setpoint_indexed.z = 0.2f;
-			setpoint_indexed_pub.publish(setpoint_indexed);
-			ros::spinOnce();
-			loop_rate.sleep();
+		setpoint_indexed.index = 2;	/* 2ed setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
+		setpoint_indexed.x = 0.2f;
+		setpoint_indexed.y = 0.2f;
+		setpoint_indexed.z = 0.2f;
+		setpoint_indexed_pub.publish(setpoint_indexed);
+		ros::spinOnce();
+		loop_rate.sleep();
 
-			setpoint_indexed.index = 3;	/* 3rd setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
-			setpoint_indexed.x = 0.3f;
-			setpoint_indexed.y = 0.3f;
-			setpoint_indexed.z = 0.3f;
-			setpoint_indexed_pub.publish(setpoint_indexed);
-			ros::spinOnce();
-			loop_rate.sleep();
+		setpoint_indexed.index = 3;	/* 3rd setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
+		setpoint_indexed.x = 0.3f;
+		setpoint_indexed.y = 0.3f;
+		setpoint_indexed.z = 0.3f;
+		setpoint_indexed_pub.publish(setpoint_indexed);
+		ros::spinOnce();
+		loop_rate.sleep();
 
-			setpoint_indexed.index = 4;	/* 4th setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
-			setpoint_indexed.x = 0.4f;
-			setpoint_indexed.y = 0.4f;
-			setpoint_indexed.z = 0.4f;
-			setpoint_indexed_pub.publish(setpoint_indexed);
-			ros::spinOnce();
-			loop_rate.sleep();
+		setpoint_indexed.index = 4;	/* 4th setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
+		setpoint_indexed.x = 0.4f;
+		setpoint_indexed.y = 0.4f;
+		setpoint_indexed.z = 0.4f;
+		setpoint_indexed_pub.publish(setpoint_indexed);
+		ros::spinOnce();
+		loop_rate.sleep();
 
-		}
 
 	}
 

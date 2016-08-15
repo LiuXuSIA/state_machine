@@ -1,6 +1,6 @@
 /**
 * @file     : state_machine.cpp
-* @brief    : state_machine.
+* @brief    : state_machine: 1) get 4 setpoints; 2) takeoff; 3) get 10 drawing boards' positions; 4) land.
 * @author   : libn
 * @time     : Aug 11, 2016 9:45:22 AM
 */
@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <state_machine/CommandTOL.h>	/* head file for takeoff&land-command service -libn */
 #include "state_machine/Setpoint.h"
+#include "state_machine/DrawingBoard.h"
 
 void state_machine_func(void);
 
@@ -33,10 +34,30 @@ void printSetpointIndexedCallback(const state_machine::Setpoint::ConstPtr& msg)
 	setpoint_indexed = *msg;
 }
 
+state_machine::DrawingBoard board;
+void DrawingBoardCallback(const state_machine::DrawingBoard::ConstPtr& msg)
+{
+//    ROS_INFO("I heard: [%f] [%f] [%f]",msg->x, msg->y, msg->z);
+	board = *msg;
+}
+
+/* 4 setpoints. -libn <Aug 15, 2016 11:04:14 AM> */
 geometry_msgs::PoseStamped setpoint_A;
 geometry_msgs::PoseStamped setpoint_B;
 geometry_msgs::PoseStamped setpoint_C;
 geometry_msgs::PoseStamped setpoint_D;
+
+/* 10 drawing board position. -libn <Aug 15, 2016 11:20:52 AM> */
+state_machine::DrawingBoard board_1;
+state_machine::DrawingBoard board_2;
+state_machine::DrawingBoard board_3;
+state_machine::DrawingBoard board_4;
+state_machine::DrawingBoard board_5;
+state_machine::DrawingBoard board_6;
+state_machine::DrawingBoard board_7;
+state_machine::DrawingBoard board_8;
+state_machine::DrawingBoard board_9;
+state_machine::DrawingBoard board_0;
 
 // local position msg callback function
 geometry_msgs::PoseStamped current_pos;
@@ -61,10 +82,13 @@ int main(int argc, char **argv)
 
 	ros::NodeHandle nh;
 
+	ROS_INFO("setpoints suscribe start!");
+
 	/* receive indexed setpoint. -libn <Aug 15, 2016 9:08:05 AM> */
 	ros::Subscriber setpoint_Indexed_sub = nh.subscribe("Setpoint_Indexed", 100 ,printSetpointIndexedCallback);
 
-	ROS_INFO("setpoints suscribe start!");
+	/* receive 10 drawing board position. -libn <Aug 15, 2016 11:06:00 AM> */
+	ros::Subscriber drawingboard_Indexed_sub = nh.subscribe("DrawingBoard_Position", 100 ,DrawingBoardCallback);
 
 	ros::Rate rate(10);		/* 10Hz. -libn <Aug 11, 2016 9:28:08 AM> */
 
@@ -150,6 +174,81 @@ int main(int argc, char **argv)
 		ROS_INFO("setpoint_B received: [%f] [%f] [%f]",setpoint_B.pose.position.x, setpoint_B.pose.position.y, setpoint_B.pose.position.z);
 		ROS_INFO("setpoint_C received: [%f] [%f] [%f]",setpoint_C.pose.position.x, setpoint_C.pose.position.y, setpoint_C.pose.position.z);
 		ROS_INFO("setpoint_D received: [%f] [%f] [%f]",setpoint_D.pose.position.x, setpoint_D.pose.position.y, setpoint_D.pose.position.z);
+
+
+		/* get 10 drawing board's letter and position. -libn <Aug 15, 2016 11:09:44 AM> */
+		switch(board.num)
+		{
+			case 0:
+				board_0.num = 0;
+				board_0.x = board.x;
+				board_0.y = board.y;
+				board_0.z = board.z;
+				break;
+			case 1:
+				board_1.num = 1;
+				board_1.x = board.x;
+				board_1.y = board.y;
+				board_1.z = board.z;
+				break;
+			case 2:
+				board_2.num = 2;
+				board_2.x = board.x;
+				board_2.y = board.y;
+				board_2.z = board.z;
+				break;
+			case 3:
+				board_3.num = 3;
+				board_3.x = board.x;
+				board_3.y = board.y;
+				board_3.z = board.z;
+				break;
+			case 4:
+				board_4.num = 4;
+				board_4.x = board.x;
+				board_4.y = board.y;
+				board_4.z = board.z;
+				break;
+			case 5:
+				board_5.num = 5;
+				board_5.x = board.x;
+				board_5.y = board.y;
+				board_5.z = board.z;
+				break;
+			case 6:
+				board_6.num = 6;
+				board_6.x = board.x;
+				board_6.y = board.y;
+				board_6.z = board.z;
+				break;
+			case 7:
+				board_7.num = 7;
+				board_7.x = board.x;
+				board_7.y = board.y;
+				board_7.z = board.z;
+				break;
+			case 8:
+				board_8.num = 8;
+				board_8.x = board.x;
+				board_8.y = board.y;
+				board_8.z = board.z;
+				break;
+			case 9:
+				board_9.num = 9;
+				board_9.x = board.x;
+				board_9.y = board.y;
+				board_9.z = board.z;
+				break;
+			default:
+				ROS_INFO("setpoint index error!");
+				break;
+		}
+		ROS_INFO("drawing board located: num: [%d]; pos: [%f], [%f], [%f]",board.num,board.x,board.y,board.z);
+		ROS_INFO("1st drawing board located: num: [%d]; pos: [%f], [%f], [%f]",board_1.num,board_1.x,board_1.y,board_1.z);
+		ROS_INFO("2nd drawing board located: num: [%d]; pos: [%f], [%f], [%f]",board_2.num,board_2.x,board_2.y,board_2.z);
+		ROS_INFO("3rd drawing board located: num: [%d]; pos: [%f], [%f], [%f]",board_3.num,board_3.x,board_3.y,board_3.z);
+		ROS_INFO("4th drawing board located: num: [%d]; pos: [%f], [%f], [%f]",board_4.num,board_4.x,board_4.y,board_4.z);
+		ROS_INFO("5th drawing board located: num: [%d]; pos: [%f], [%f], [%f]",board_5.num,board_5.x,board_5.y,board_5.z);
 
 		// auto task off
         if( current_state.mode == "AUTO.TAKEOFF"){
