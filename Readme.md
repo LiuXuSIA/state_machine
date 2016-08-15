@@ -22,6 +22,10 @@ rosrun state_machine send4setpoint
 ```
 ```
 source ${HOME}/state_machine_ws/devel/setup.bash
+rosrun state_machine send10picture_position
+```
+```
+source ${HOME}/state_machine_ws/devel/setup.bash
 rosrun state_machine state_machine
 ```
 
