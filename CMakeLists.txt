@@ -14,6 +14,7 @@ add_message_files(
   FILES
   Attitude.msg
   State.msg
+  Setpoint.msg
   ActuatorControl.msg
 )
 
