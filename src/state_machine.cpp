@@ -14,6 +14,14 @@
 #include "state_machine/Setpoint.h"
 #include "state_machine/DrawingBoard.h"
 
+#define switch_mode 0	/* 1:real uav;0:simulation. -libn Aug 25, 2016 */
+#if switch_mode == 0
+/* added for simulation -start. -libn Aug 25, 2016 */
+#include <state_machine/CommandBool.h>
+#include <state_machine/SetMode.h>
+/* added for simulation -stop. -libn Aug 25, 2016 */
+#endif
+
 void state_machine_func(void);
 
 // state machine's states
@@ -85,6 +93,15 @@ int main(int argc, char **argv)
 
 	ROS_INFO("setpoints suscribe start!");
 
+	#if switch_mode == 0
+	/* added for simulation -start. -libn Aug 25, 2016 */
+	ros::ServiceClient arming_client = nh.serviceClient<state_machine::CommandBool>
+	("mavros/cmd/arming");
+	ros::ServiceClient set_mode_client = nh.serviceClient<state_machine::SetMode>
+	("mavros/set_mode");
+	/* added for simulation -stop. -libn Aug 25, 2016 */
+	# endif
+
 	/* receive indexed setpoint. -libn <Aug 15, 2016 9:08:05 AM> */
 	ros::Subscriber setpoint_Indexed_sub = nh.subscribe("Setpoint_Indexed", 100 ,printSetpointIndexedCallback);
 
@@ -102,7 +119,11 @@ int main(int argc, char **argv)
 	/* publish local_pos_setpoint -libn <Aug 11, 2016 10:05:05 AM> */
 	local_pos_setpoint_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
 
+	#if switch_mode == 0
+	ros::Time last_request = ros::Time::now();
+	#else
 	ros::Time landing_last_request = ros::Time::now();
+	#endif
 
     // takeoff and land service
     // ros::ServiceClient takeoff_client = nh.serviceClient<state_machine::CommandTOL>("mavros/cmd/takeoff");
@@ -126,19 +147,54 @@ int main(int argc, char **argv)
 		rate.sleep();
 	}
 
+	# if switch_mode == 0
+	/* added for simulation -start. -libn Aug 25, 2016 */
+	state_machine::SetMode offb_set_mode;
+	offb_set_mode.request.custom_mode = "OFFBOARD";
+	state_machine::CommandBool arm_cmd;
+	arm_cmd.request.value = true;
+	/* added for simulation -stop. -libn Aug 25, 2016 */
+	#else
     // takeoff and landing
     // mavros_msgs::CommandTOL takeoff_cmd;
     // takeoff_cmd.request.min_pitch = -1.0;
     state_machine::CommandTOL landing_cmd;
     landing_cmd.request.min_pitch = 1.0;
+	# endif
 
 	while(ros::ok())
 	{
+		# if switch_mode == 0
+		/* added for simulation -start. -libn Aug 25, 2016 */
+		if( current_state.mode != "OFFBOARD" && (ros::Time::now() - last_request > ros::Duration(5.0)))
+		{
+			if( set_mode_client.call(offb_set_mode) &&
+			offb_set_mode.response.success){
+			ROS_INFO("Offboard enabled");
+		}
+			last_request = ros::Time::now();
+		}
+		else
+		{
+			if( !current_state.armed && (ros::Time::now() - last_request > ros::Duration(5.0)))
+			{
+				if( arming_client.call(arm_cmd) && arm_cmd.response.success)
+				{
+					ROS_INFO("Vehicle armed");
+				}
+				last_request = ros::Time::now();
+			}
+		}
+		/* added for simulation -stop. -libn Aug 25, 2016 */
+		# endif
+
+		# if switch_mode == 1
 		/* TODO	takeoff */
         // auto task off
         if( current_state.mode == "AUTO.TAKEOFF"){
             ROS_INFO("AUTO TAKEOFF!");
         }
+		# endif
 
         /* get 4 setpoints:A,B,C,D. -libn <Aug 15, 2016 9:55:15 AM> */
         switch(setpoint_indexed.index)
@@ -237,10 +293,12 @@ int main(int argc, char **argv)
 				break;
 		}
 
+		# if switch_mode == 1
 		// auto task off
         if( current_state.mode == "AUTO.TAKEOFF"){
             ROS_INFO("AUTO TAKEOFF!");
         }
+		#endif
 
         state_machine_func();	/* Run state_machine. -libn <Aug 11, 2016 10:01:12 AM> */
 
@@ -251,6 +309,7 @@ int main(int argc, char **argv)
     		ROS_INFO("current_pos_state: %d",current_pos_state);
     	}
 
+		#if switch_mode == 1
         // landing
         if(current_pos_state == LAND){
 
@@ -263,6 +322,7 @@ int main(int argc, char **argv)
             landing_last_request = ros::Time::now();
             }
         }
+		#endif
 
 		ros::spinOnce();	/* refresh data subscriber. -libn <Aug 11, 2016 9:28:33 AM> */
 		rate.sleep();
