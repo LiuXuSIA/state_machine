@@ -7,10 +7,10 @@
 
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <state_machine/CommandBool.h>
-#include <state_machine/SetMode.h>
-#include <state_machine/State.h>
-#include <state_machine/CommandTOL.h>
+#include "state_machine/CommandBool.h"
+#include "state_machine/SetMode.h"
+#include "state_machine/State.h"
+#include "state_machine/CommandTOL.h"
 
 state_machine::State current_state;
 void state_cb(const state_machine::State::ConstPtr& msg){
@@ -50,6 +50,10 @@ int main(int argc, char **argv)
     pose.pose.position.x = 0;
     pose.pose.position.y = 0;
     pose.pose.position.z = 2;
+    pose.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
+	pose.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
+	pose.pose.orientation.z = 0.707;
+	pose.pose.orientation.w = 0.707;		/* set yaw* = 90 degree(default in simulation). -libn */
 
     //send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){
