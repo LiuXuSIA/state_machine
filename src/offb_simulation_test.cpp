@@ -19,7 +19,8 @@ static const int POS_A = 1;
 static const int POS_B = 2;
 static const int POS_C = 3;
 static const int POS_D = 4;
-static const int LAND  = 5;
+static const int POS_H = 5;
+static const int LAND  = 6;
 static const int TAKEOFF  = 0;	/* TODO! for future use. -libn */
 // current positon state, init state is takeoff and go to setpoint_A
 int current_pos_state = POS_A;
@@ -47,6 +48,7 @@ geometry_msgs::PoseStamped setpoint_A;
 geometry_msgs::PoseStamped setpoint_B;
 geometry_msgs::PoseStamped setpoint_C;
 geometry_msgs::PoseStamped setpoint_D;
+geometry_msgs::PoseStamped setpoint_H;	/* home position == setpoint_A. -libn */
 
 geometry_msgs::PoseStamped pose_pub;
 
@@ -152,6 +154,9 @@ int main(int argc, char **argv)
 				setpoint_A.pose.position.x = setpoint_indexed.x;
 				setpoint_A.pose.position.y = setpoint_indexed.y;
 				setpoint_A.pose.position.z = setpoint_indexed.z;
+				setpoint_H.pose.position.x = setpoint_indexed.x;
+				setpoint_H.pose.position.y = setpoint_indexed.y;
+				setpoint_H.pose.position.z = setpoint_indexed.z;
 				break;
 			case 2:
 				setpoint_B.pose.position.x = setpoint_indexed.x;
@@ -184,11 +189,13 @@ int main(int argc, char **argv)
 					"setpoint_A:%5.3f %5.3f %5.3f \n"
 					"setpoint_B:%5.3f %5.3f %5.3f \n"
 					"setpoint_C:%5.3f %5.3f %5.3f \n"
-					"setpoint_D:%5.3f %5.3f %5.3f",
+					"setpoint_D:%5.3f %5.3f %5.3f \n"
+					"setpoint_H:%5.3f %5.3f %5.3f",
 					setpoint_A.pose.position.x,setpoint_A.pose.position.y,setpoint_A.pose.position.z,
 					setpoint_B.pose.position.x,setpoint_B.pose.position.y,setpoint_B.pose.position.z,
 					setpoint_C.pose.position.x,setpoint_C.pose.position.y,setpoint_C.pose.position.z,
-					setpoint_D.pose.position.x,setpoint_D.pose.position.y,setpoint_D.pose.position.z);
+					setpoint_D.pose.position.x,setpoint_D.pose.position.y,setpoint_D.pose.position.z,
+					setpoint_H.pose.position.x,setpoint_H.pose.position.y,setpoint_H.pose.position.z);
 			ROS_INFO("current position: %5.3f %5.3f %5.3f",current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
 			ROS_INFO("position*: %5.3f %5.3f %5.3f\n",pose_pub.pose.position.x,pose_pub.pose.position.y,pose_pub.pose.position.z);
 			ROS_INFO("current_pos_state: %d",current_pos_state);
@@ -251,6 +258,17 @@ void state_machine_func(void)
 			if((abs(current_pos.pose.position.x - setpoint_D.pose.position.x) < 0.2) &&      // switch to next state
 			   (abs(current_pos.pose.position.y - setpoint_D.pose.position.y) < 0.2) &&
 			   (abs(current_pos.pose.position.z - setpoint_D.pose.position.z) < 0.2))
+			   {
+				current_pos_state = POS_H; // current_pos_state++;
+			   }
+			break;
+        case POS_H:
+			pose_pub.pose.position.x = setpoint_H.pose.position.x;
+			pose_pub.pose.position.y = setpoint_H.pose.position.y;
+			pose_pub.pose.position.z = setpoint_H.pose.position.z;
+			if((abs(current_pos.pose.position.x - setpoint_H.pose.position.x) < 0.2) &&      // switch to next state
+			   (abs(current_pos.pose.position.y - setpoint_H.pose.position.y) < 0.2) &&
+			   (abs(current_pos.pose.position.z - setpoint_H.pose.position.z) < 0.2))
 			   {
 				current_pos_state = LAND; // current_pos_state++;
 			   }
