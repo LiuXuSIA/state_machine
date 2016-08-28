@@ -33,9 +33,9 @@ int main(int argc, char **argv)
 	{
 
 		board.num = 0;
-		board.x = 0.10f;
-		board.y = 0.10f;
-		board.z = 0.10f;
+		board.x = 3.10f;
+		board.y = 3.10f;
+		board.z = 3.10f;
 		board.valid = true;
 		DrawingBoard_Position_pub.publish(board);
 		ros::spinOnce();
