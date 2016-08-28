@@ -26,7 +26,7 @@ rosrun state_machine send10picture_position
 ```
 ```
 source ${HOME}/state_machine_ws/devel/setup.bash
-rosrun state_machine state_machine
+rosrun state_machine offb_simulation_test
 ```
 
 ## run mavros node
