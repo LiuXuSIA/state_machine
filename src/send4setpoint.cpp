@@ -23,42 +23,42 @@ int main(int argc, char **argv)
     ros::Publisher setpoint_indexed_pub = nh.advertise<state_machine::Setpoint>("Setpoint_Indexed", 10);
 
     setpoint_indexed.index = 1;	/* 1st setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
-    setpoint_indexed.x = 2.1f;
-    setpoint_indexed.y = 2.1f;
-    setpoint_indexed.z = 2.1f;
+    setpoint_indexed.x = 0.0f;
+    setpoint_indexed.y = 0.0f;	/* ROS coordinate frame: NWU(North/West/Up) -libn */
+    setpoint_indexed.z = 2.0f;
 
 	ros::Rate loop_rate(10);
 
 	while(ros::ok())
 	{
 		setpoint_indexed.index = 1;	/* 1st setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
-		setpoint_indexed.x = 4.1f;
-		setpoint_indexed.y = 4.1f;
-		setpoint_indexed.z = 4.1f;
+		setpoint_indexed.x = 0.0f;
+		setpoint_indexed.y = 0.0f;	/* ROS coordinate frame: NWU(North/West/Up) -libn */
+		setpoint_indexed.z = 2.0f;
 		setpoint_indexed_pub.publish(setpoint_indexed);
 		ros::spinOnce();
 		loop_rate.sleep();
 
 		setpoint_indexed.index = 2;	/* 2ed setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
-		setpoint_indexed.x = 6.2f;
-		setpoint_indexed.y = 6.2f;
-		setpoint_indexed.z = 6.2f;
+		setpoint_indexed.x = 0.0f;
+		setpoint_indexed.y = 2.0f;
+		setpoint_indexed.z = 2.0f;
 		setpoint_indexed_pub.publish(setpoint_indexed);
 		ros::spinOnce();
 		loop_rate.sleep();
 
 		setpoint_indexed.index = 3;	/* 3rd setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
-		setpoint_indexed.x = 8.3f;
-		setpoint_indexed.y = 8.3f;
-		setpoint_indexed.z = 8.3f;
+		setpoint_indexed.x = -2.0f;
+		setpoint_indexed.y = 2.0f;
+		setpoint_indexed.z = 2.0f;
 		setpoint_indexed_pub.publish(setpoint_indexed);
 		ros::spinOnce();
 		loop_rate.sleep();
 
 		setpoint_indexed.index = 4;	/* 4th setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
-		setpoint_indexed.x = 10.4f;
-		setpoint_indexed.y = 10.4f;
-		setpoint_indexed.z = 10.4f;
+		setpoint_indexed.x = -2.0f;
+		setpoint_indexed.y = 0.0f;
+		setpoint_indexed.z = 2.0f;
 		setpoint_indexed_pub.publish(setpoint_indexed);
 		ros::spinOnce();
 		loop_rate.sleep();

@@ -33,9 +33,10 @@ int main(int argc, char **argv)
 	{
 
 		board.num = 0;
-		board.x = 0.10f;
-		board.y = 0.10f;
-		board.z = 0.10f;
+		board.x = 3.10f;
+		board.y = 3.10f;
+		board.z = 3.10f;
+		board.valid = true;
 		DrawingBoard_Position_pub.publish(board);
 		ros::spinOnce();
 		loop_rate.sleep();
@@ -44,6 +45,7 @@ int main(int argc, char **argv)
 		board.x = 0.1f;
 		board.y = 0.1f;
 		board.z = 0.1f;
+		board.valid = true;
 		DrawingBoard_Position_pub.publish(board);
 		ros::spinOnce();
 		loop_rate.sleep();
@@ -52,6 +54,7 @@ int main(int argc, char **argv)
 		board.x = 0.2f;
 		board.y = 0.2f;
 		board.z = 0.2f;
+		board.valid = true;
 		DrawingBoard_Position_pub.publish(board);
 		ros::spinOnce();
 		loop_rate.sleep();
@@ -60,6 +63,7 @@ int main(int argc, char **argv)
 		board.x = 0.3f;
 		board.y = 0.3f;
 		board.z = 0.3f;
+		board.valid = true;
 		DrawingBoard_Position_pub.publish(board);
 		ros::spinOnce();
 		loop_rate.sleep();
@@ -68,6 +72,7 @@ int main(int argc, char **argv)
 		board.x = 0.4f;
 		board.y = 0.4f;
 		board.z = 0.4f;
+		board.valid = true;
 		DrawingBoard_Position_pub.publish(board);
 		ros::spinOnce();
 		loop_rate.sleep();
@@ -76,6 +81,7 @@ int main(int argc, char **argv)
 		board.x = 0.5f;
 		board.y = 0.5f;
 		board.z = 0.5f;
+		board.valid = true;
 		DrawingBoard_Position_pub.publish(board);
 		ros::spinOnce();
 		loop_rate.sleep();
@@ -84,6 +90,7 @@ int main(int argc, char **argv)
 		board.x = 0.6f;
 		board.y = 0.6f;
 		board.z = 0.6f;
+		board.valid = true;
 		DrawingBoard_Position_pub.publish(board);
 		ros::spinOnce();
 		loop_rate.sleep();
@@ -92,6 +99,7 @@ int main(int argc, char **argv)
 		board.x = 0.7f;
 		board.y = 0.7f;
 		board.z = 0.7f;
+		board.valid = true;
 		DrawingBoard_Position_pub.publish(board);
 		ros::spinOnce();
 		loop_rate.sleep();
@@ -100,6 +108,7 @@ int main(int argc, char **argv)
 		board.x = 0.8f;
 		board.y = 0.8f;
 		board.z = 0.8f;
+		board.valid = true;
 		DrawingBoard_Position_pub.publish(board);
 		ros::spinOnce();
 		loop_rate.sleep();
@@ -108,6 +117,7 @@ int main(int argc, char **argv)
 		board.x = 0.9f;
 		board.y = 0.9f;
 		board.z = 0.9f;
+		board.valid = true;
 		DrawingBoard_Position_pub.publish(board);
 		ros::spinOnce();
 		loop_rate.sleep();
