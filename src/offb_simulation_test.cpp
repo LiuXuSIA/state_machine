@@ -15,7 +15,8 @@
 #include <state_machine/DrawingBoard.h>
 
 /* switch environment between real flight and simulation(0: simulation;1: real flight). -libn */
-#define environment_switch 0	/* 0: simulation;1: real flight. -libn */
+#define environment_switch 1	/* 0: simulation;1: real flight. -libn */
+
 
 void state_machine_func(void);
 /* mission state. -libn */
