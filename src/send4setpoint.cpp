@@ -24,22 +24,22 @@ int main(int argc, char **argv)
 
     setpoint_indexed.index = 1;	/* 1st setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
     setpoint_indexed.x = 0.0f;
-    setpoint_indexed.y = 0.0f;	/* ROS coordinate frame: NWU(North/West/Up) -libn */
+    setpoint_indexed.y = 2.0f;	/* ROS coordinate frame: NWU(North/West/Up) -libn */
     setpoint_indexed.z = 2.0f;
 
 	ros::Rate loop_rate(10);
 
 	while(ros::ok())
 	{
-		setpoint_indexed.index = 1;	/* 1st setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
+		setpoint_indexed.index = 1;	/* 1st setpoint(A). -libn <Aug 15, 2016 9:01:21 AM> */
 		setpoint_indexed.x = 0.0f;
-		setpoint_indexed.y = 0.0f;	/* ROS coordinate frame: NWU(North/West/Up) -libn */
+		setpoint_indexed.y = 2.0f;	/* ROS coordinate frame: NWU(North/West/Up) -libn */
 		setpoint_indexed.z = 2.0f;
 		setpoint_indexed_pub.publish(setpoint_indexed);
 		ros::spinOnce();
 		loop_rate.sleep();
 
-		setpoint_indexed.index = 2;	/* 2ed setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
+		setpoint_indexed.index = 2;	/* 2ed setpoint(B). -libn <Aug 15, 2016 9:01:21 AM> */
 		setpoint_indexed.x = 0.0f;
 		setpoint_indexed.y = 2.0f;
 		setpoint_indexed.z = 2.0f;
@@ -47,7 +47,7 @@ int main(int argc, char **argv)
 		ros::spinOnce();
 		loop_rate.sleep();
 
-		setpoint_indexed.index = 3;	/* 3rd setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
+		setpoint_indexed.index = 3;	/* 3rd setpoint(C). -libn <Aug 15, 2016 9:01:21 AM> */
 		setpoint_indexed.x = -2.0f;
 		setpoint_indexed.y = 2.0f;
 		setpoint_indexed.z = 2.0f;
@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 		ros::spinOnce();
 		loop_rate.sleep();
 
-		setpoint_indexed.index = 4;	/* 4th setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
+		setpoint_indexed.index = 4;	/* 4th setpoint(D). -libn <Aug 15, 2016 9:01:21 AM> */
 		setpoint_indexed.x = -2.0f;
 		setpoint_indexed.y = 0.0f;
 		setpoint_indexed.z = 2.0f;
