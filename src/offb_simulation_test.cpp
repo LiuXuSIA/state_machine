@@ -66,7 +66,7 @@ geometry_msgs::PoseStamped setpoint_A;
 geometry_msgs::PoseStamped setpoint_B;
 geometry_msgs::PoseStamped setpoint_C;
 geometry_msgs::PoseStamped setpoint_D;
-geometry_msgs::PoseStamped setpoint_H;	/* home position == setpoint_A. -libn */
+geometry_msgs::PoseStamped setpoint_H;	/* home position. -libn */
 
 geometry_msgs::PoseStamped pose_pub;
 
@@ -133,6 +133,10 @@ int main(int argc, char **argv)
 	pose_pub.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
 	pose_pub.pose.orientation.z = 0.707;
 	pose_pub.pose.orientation.w = 0.707;		/* set yaw* = 90 degree(default in simulation). -libn */
+
+	setpoint_H.pose.position.x = 0.0f;
+	setpoint_H.pose.position.y = 0.0f;
+	setpoint_H.pose.position.z = 2.0f;
 
 	board_0.valid = false;	/* used to check if the positon of the board is valid. -libn */
 	board_1.valid = false;
@@ -205,9 +209,6 @@ int main(int argc, char **argv)
 				setpoint_A.pose.position.x = setpoint_indexed.x;
 				setpoint_A.pose.position.y = setpoint_indexed.y;
 				setpoint_A.pose.position.z = setpoint_indexed.z;
-				setpoint_H.pose.position.x = setpoint_indexed.x;
-				setpoint_H.pose.position.y = setpoint_indexed.y;
-				setpoint_H.pose.position.z = setpoint_indexed.z;
 				break;
 			case 2:
 				setpoint_B.pose.position.x = setpoint_indexed.x;
@@ -375,6 +376,11 @@ void state_machine_func(void)
         	}
             break;
         case mission_point_A:
+        	if(loop > 5)
+			{
+				current_mission_state = mission_stop; // current_mission_state++;
+				break;
+			}
         	pose_pub.pose.position.x = setpoint_A.pose.position.x;
 			pose_pub.pose.position.y = setpoint_A.pose.position.y;
 			pose_pub.pose.position.z = setpoint_A.pose.position.z;
@@ -385,10 +391,6 @@ void state_machine_func(void)
             	current_mission_state = mission_point_A_hover_recognize; // current_mission_state++;
             	mission_last_time = ros::Time::now();
             }
-            if(loop > 5)
-			{
-				current_mission_state = mission_stop; // current_mission_state++;
-			}
             loop_timer_t = ros::Time::now();
             break;
         case mission_point_A_hover_recognize:
