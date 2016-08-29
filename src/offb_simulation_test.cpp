@@ -14,6 +14,9 @@
 #include "state_machine/Setpoint.h"
 #include "state_machine/DrawingBoard.h"
 
+/* switch environment between real flight and simulation(0: simulation;1: real flight). -libn */
+#define environment_switch 0	/* 0: simulation;1: real flight. -libn */
+
 void state_machine_func(void);
 /* mission state. -libn */
 static const int takeoff = 0;
@@ -188,6 +191,14 @@ int main(int argc, char **argv)
             }
 
         }
+
+        /* for real flight. -libn */
+		#if switch_mode == 1
+        // auto task off
+		if( current_state.mode == "AUTO.TAKEOFF"){
+			ROS_INFO("AUTO TAKEOFF!");
+		}
+		#endif
 
 		// landing
 		if(current_state.armed && current_mission_state == land)	/* set landing mode until uav stopped. -libn */
