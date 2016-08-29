@@ -5,7 +5,7 @@
 * @time     : Aug 12, 2016 2:16:06 PM
 */
 #include "ros/ros.h"
-#include "state_machine/Attitude.h"
+#include <state_machine/Attitude.h>
 #include <geometry_msgs/PoseStamped.h>  /* message type of /mavros/local_position/pose (P.S. It is included in dir: /opt/ros/indigo/share/geometry_msgs/msg) -libn */
 #include <stdio.h>
 

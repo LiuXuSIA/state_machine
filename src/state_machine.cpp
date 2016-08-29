@@ -5,14 +5,14 @@
 * @time     : Aug 11, 2016 9:45:22 AM
 */
 #include "ros/ros.h"
-#include "state_machine/Attitude.h"
-#include "state_machine/State.h"
+#include <state_machine/Attitude.h>
+#include <state_machine/State.h>
 #include <geometry_msgs/PoseStamped.h>  /* message type of /mavros/local_position/pose (P.S. It is included in dir: /opt/ros/indigo/share/geometry_msgs/msg) -libn */
-#include "state_machine/ActuatorControl.h" /* add actuator_control output */
+#include <state_machine/ActuatorControl.h> /* add actuator_control output */
 #include <stdio.h>
 #include <state_machine/CommandTOL.h>	/* head file for takeoff&land-command service -libn */
-#include "state_machine/Setpoint.h"
-#include "state_machine/DrawingBoard.h"
+#include <state_machine/Setpoint.h>
+#include <state_machine/DrawingBoard.h>
 
 #define switch_mode 0	/* 1:real uav;0:simulation. -libn Aug 25, 2016 */
 #if switch_mode == 0

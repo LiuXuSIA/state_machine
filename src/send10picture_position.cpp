@@ -5,12 +5,12 @@
 * @time     : Aug 15, 2016 10:38:53 AM
 */
 #include "ros/ros.h"
-#include "state_machine/State.h"
+#include <state_machine/State.h>
 #include <geometry_msgs/PoseStamped.h>  /* message type of /mavros/local_position/pose (P.S. It is included in dir: /opt/ros/indigo/share/geometry_msgs/msg) -libn */
-#include "state_machine/ActuatorControl.h" /* add actuator_control output */
+#include <state_machine/ActuatorControl.h> /* add actuator_control output */
 #include <stdio.h>
 #include <math.h>
-#include "state_machine/DrawingBoard.h"
+#include <state_machine/DrawingBoard.h>
 
 int main(int argc, char **argv)
 {
