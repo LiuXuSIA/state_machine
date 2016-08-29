@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-	<node name = "state_machine" pkg="state_machine" type="state_machine"/>
+	<node name = "offb_simulation_test" pkg="state_machine" type="offb_simulation_test"/>
 	<node name = "send4setpoint" pkg="state_machine" type="send4setpoint"/>
 	<node name = "send10picture_position" pkg="state_machine" type="send10picture_position"/>
 </launch>
