@@ -7,12 +7,12 @@
 
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
-#include "state_machine/CommandBool.h"
-#include "state_machine/SetMode.h"
-#include "state_machine/State.h"
-#include "state_machine/CommandTOL.h"
-#include "state_machine/Setpoint.h"
-#include "state_machine/DrawingBoard.h"
+#include <state_machine/CommandBool.h>
+#include <state_machine/SetMode.h>
+#include <state_machine/State.h>
+#include <state_machine/CommandTOL.h>
+#include <state_machine/Setpoint.h>
+#include <state_machine/DrawingBoard.h>
 
 void state_machine_func(void);
 /* mission state. -libn */
