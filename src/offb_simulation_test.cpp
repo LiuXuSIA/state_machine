@@ -160,17 +160,20 @@ int main(int argc, char **argv)
         rate.sleep();
     }
 
+    #if environment_switch == 0
     state_machine::SetMode offb_set_mode;
     offb_set_mode.request.custom_mode = "OFFBOARD";
 
     state_machine::CommandBool arm_cmd;
     arm_cmd.request.value = true;
+	#endif
 
     ros::Time last_request = ros::Time::now();
     ros::Time last_show_request = ros::Time::now();
     loop_timer_t = ros::Time::now();
 
     while(ros::ok()){
+		#if environment_switch == 0
         if( current_state.mode != "OFFBOARD" && current_state.mode != "AUTO.LAND" &&	/* set offboard mode for the first time. -libn */
           (ros::Time::now() - last_request > ros::Duration(5.0)))
         {
@@ -192,17 +195,18 @@ int main(int argc, char **argv)
             }
 
         }
-
-        /* for real flight. -libn */
-		#if switch_mode == 1
-        // auto task off
-		if( current_state.mode == "AUTO.TAKEOFF"){
-			ROS_INFO("AUTO TAKEOFF!");
-		}
 		#endif
 
+        /* for real flight. -libn */
+//		#if environment_switch == 1
+        // auto task off
+//		if( current_state.mode == "AUTO.TAKEOFF"){
+//			ROS_INFO("AUTO TAKEOFF!");
+//		}
+//		#endif
+
 		// landing
-		if(current_state.armed && current_mission_state == land)	/* set landing mode until uav stopped. -libn */
+		if(current_state.armed && current_mission_state == land)	/* set landing mode until uav stops. -libn */
 		{
 			if(current_state.mode != "AUTO.LAND" && (ros::Time::now() - last_request > ros::Duration(5.0)))
 			{
@@ -280,9 +284,27 @@ int main(int argc, char **argv)
 				break;
 		}
 
-		if(current_state.mode == "OFFBOARD" && current_state.armed)
+//		#if environment_switch == 0
+//		if(current_state.mode == "OFFBOARD" && current_state.armed)
+//		#else
+		if(current_state.armed)
 		{
 			ROS_INFO("state machine started!");
+			if(current_state.mode == "OFFBOARD")
+			{
+				ROS_INFO("current_state.mode = OFFBOARD!!!!");
+			}
+			else
+			{
+				if( current_state.mode == "AUTO.TAKEOFF")
+				{
+					ROS_INFO("current_state.mode = AUTO TAKEOFF!!!!");
+				}
+				else
+				{
+					ROS_INFO("current_state.mode = Unknown!!!!");
+				}
+			}
 			state_machine_func();
 
 			/* mission timer(5 loops). -libn */
@@ -301,6 +323,7 @@ int main(int argc, char **argv)
 
 			}
 		}
+//		#endif
 
 		/* mission state display. -libn */
 		if(current_state.mode == "OFFBOARD"
