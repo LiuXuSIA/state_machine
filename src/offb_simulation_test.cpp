@@ -14,10 +14,6 @@
 #include <state_machine/Setpoint.h>
 #include <state_machine/DrawingBoard.h>
 
-/* switch environment between real flight and simulation(0: simulation;1: real flight). -libn */
-#define environment_switch 1	/* 0: simulation;1: real flight. -libn */
-
-
 void state_machine_func(void);
 /* mission state. -libn */
 static const int takeoff = 0;
@@ -48,8 +44,12 @@ ros::Time mission_timer_t;	/* timer to control the whole mission. -libn */
 ros::Time loop_timer_t;	/* timer to control subtask. -libn */
 
 state_machine::State current_state;
+state_machine::State last_state;
+state_machine::State last_state_display;
 void state_cb(const state_machine::State::ConstPtr& msg){
-    current_state = *msg;
+	last_state_display.mode = current_state.mode;
+	last_state_display.armed = current_state.armed;
+	current_state = *msg;
 }
 
 state_machine::Setpoint setpoint_indexed;
@@ -140,7 +140,7 @@ int main(int argc, char **argv)
 
 	setpoint_H.pose.position.x = 0.0f;
 	setpoint_H.pose.position.y = 0.0f;
-	setpoint_H.pose.position.z = 2.0f;
+	setpoint_H.pose.position.z = 5.0f;
 
 	board_0.valid = false;	/* used to check if the positon of the board is valid. -libn */
 	board_1.valid = false;
@@ -160,50 +160,39 @@ int main(int argc, char **argv)
         rate.sleep();
     }
 
-    #if environment_switch == 0
-    state_machine::SetMode offb_set_mode;
-    offb_set_mode.request.custom_mode = "OFFBOARD";
-
-    state_machine::CommandBool arm_cmd;
-    arm_cmd.request.value = true;
-	#endif
-
     ros::Time last_request = ros::Time::now();
     ros::Time last_show_request = ros::Time::now();
+    mission_timer_t = ros::Time::now();
     loop_timer_t = ros::Time::now();
+    last_state_display = current_state;
+    last_state.mode = current_state.mode;
+    last_state.armed = current_state.armed;
+    ROS_INFO("current_state.mode = %s",current_state.mode.c_str());
+    ROS_INFO("armed status: %d",current_state.armed);
 
     while(ros::ok()){
-		#if environment_switch == 0
-        if( current_state.mode != "OFFBOARD" && current_state.mode != "AUTO.LAND" &&	/* set offboard mode for the first time. -libn */
-          (ros::Time::now() - last_request > ros::Duration(5.0)))
-        {
-            if( set_mode_client.call(offb_set_mode) &&
-                offb_set_mode.response.success){
-                ROS_INFO("Offboard enabled");
-            }
-            last_request = ros::Time::now();
-        } else {
-            if( !current_state.armed && current_state.mode != "AUTO.LAND" &&	/* set armed for the first time. -libn */
-                (ros::Time::now() - last_request > ros::Duration(5.0))){
-                if( arming_client.call(arm_cmd) &&
-                    arm_cmd.response.success){
-                    ROS_INFO("Vehicle armed");
-                    loop_timer_t = ros::Time::now();
-                    mission_timer_t = ros::Time::now();
-                }
-                last_request = ros::Time::now();
-            }
+    	/* mode switch display(Once). -libn */
+    	if(current_state.mode == "MANUAL" && last_state.mode != "MANUAL")
+    	{
+    		last_state.mode = "MANUAL";
+    		ROS_INFO("switch to mode: MANUAL");
+    	}
+    	if(current_state.mode == "POSCTL" && last_state.mode != "POSCTL")
+    	{
+    		last_state.mode = "POSCTL";
+    		ROS_INFO("switch to mode: POSCTL");
+    	}
+    	if(current_state.mode == "OFFBOARD" && last_state.mode != "OFFBOARD")
+    	{
+    		last_state.mode = "OFFBOARD";
+    		ROS_INFO("switch to mode: OFFBOARD");
+    	}
+    	if(current_state.armed && !last_state.armed)
+    	 		{
 
-        }
-		#endif
-
-        /* for real flight. -libn */
-//		#if environment_switch == 1
-        // auto task off
-//		if( current_state.mode == "AUTO.TAKEOFF"){
-//			ROS_INFO("AUTO TAKEOFF!");
-//		}
-//		#endif
+    		last_state.armed = current_state.armed;
+    		ROS_INFO("UAV armed!");
+    	}
 
 		// landing
 		if(current_state.armed && current_mission_state == land)	/* set landing mode until uav stops. -libn */
@@ -215,6 +204,82 @@ int main(int argc, char **argv)
 					ROS_INFO("AUTO LANDING!");
 				}
 				last_request = ros::Time::now();
+			}
+		}
+
+		/* mission state display. -libn */
+		if(current_state.mode == "OFFBOARD" && current_state.armed)	/* set message display delay(0.5s). -libn */
+		{
+			ROS_INFO("now I am in OFFBOARD and armed mode!");	/* state machine! -libn */
+
+			state_machine_func();
+
+//			/* mission timer(5 loops). -libn */
+//			if(ros::Time::now() - mission_timer_t > ros::Duration(100.0))
+//			{
+//				current_mission_state = mission_home;	/* mission timeout. -libn */
+//				ROS_INFO("mission time out!");
+//			}
+//			/* subtask timer(1 loop). -libn */
+//			if(current_mission_state >= mission_point_A && ros::Time::now() - loop_timer_t > ros::Duration(10.0))
+//			{
+//				loop++;
+//				ROS_INFO("loop timeout");
+//				current_mission_state = mission_point_A;	/* loop timeout, forced to switch to next loop. -libn */
+//				/* TODO: mission failure recorded(using switch/case). -libn */
+//
+//			}
+
+			ROS_INFO("current loop: %d",loop);
+			ROS_INFO("current_mission_state: %d",current_mission_state);
+			ROS_INFO("position*: %5.3f %5.3f %5.3f",pose_pub.pose.position.x,pose_pub.pose.position.y,pose_pub.pose.position.z);
+			ROS_INFO("current position: %5.3f %5.3f %5.3f",current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
+//			ROS_INFO("mission_timer_t = %.3f",mission_timer_t);
+//			ROS_INFO("loop_timer_t = %.3f",loop_timer_t);
+			ROS_INFO("setpoint_received:\n"
+					"setpoint_A:%5.3f %5.3f %5.3f \n"
+					"setpoint_B:%5.3f %5.3f %5.3f \n"
+					"setpoint_C:%5.3f %5.3f %5.3f \n"
+					"setpoint_D:%5.3f %5.3f %5.3f \n"
+					"setpoint_H:%5.3f %5.3f %5.3f",
+					setpoint_A.pose.position.x,setpoint_A.pose.position.y,setpoint_A.pose.position.z,
+					setpoint_B.pose.position.x,setpoint_B.pose.position.y,setpoint_B.pose.position.z,
+					setpoint_C.pose.position.x,setpoint_C.pose.position.y,setpoint_C.pose.position.z,
+					setpoint_D.pose.position.x,setpoint_D.pose.position.y,setpoint_D.pose.position.z,
+					setpoint_H.pose.position.x,setpoint_H.pose.position.y,setpoint_H.pose.position.z);
+
+			ROS_INFO("board_position_received:\n"
+					"board0: %d %5.3f %5.3f %5.3f \n"
+					"board1: %d %5.3f %5.3f %5.3f \n"
+					"board2: %d %5.3f %5.3f %5.3f \n"
+					"board3: %d %5.3f %5.3f %5.3f \n"
+					"board4: %d %5.3f %5.3f %5.3f \n"
+					"board5: %d %5.3f %5.3f %5.3f \n"
+					"board6: %d %5.3f %5.3f %5.3f \n"
+					"board7: %d %5.3f %5.3f %5.3f \n"
+					"board8: %d %5.3f %5.3f %5.3f \n"
+					"board9: %d %5.3f %5.3f %5.3f \n",
+					board_0.valid,board_0.x,board_0.y,board_0.z,
+					board_1.valid,board_1.x,board_1.y,board_1.z,
+					board_2.valid,board_2.x,board_2.y,board_2.z,
+					board_3.valid,board_3.x,board_3.y,board_3.z,
+					board_4.valid,board_4.x,board_4.y,board_4.z,
+					board_5.valid,board_5.x,board_5.y,board_5.z,
+					board_6.valid,board_6.x,board_6.y,board_6.z,
+					board_7.valid,board_7.x,board_7.y,board_7.z,
+					board_8.valid,board_8.x,board_8.y,board_8.z,
+					board_9.valid,board_9.x,board_9.y,board_9.z);
+
+		}
+		else
+		{
+			if(current_state.mode != last_state_display.mode || last_state_display.armed != current_state.armed)
+			{
+				ROS_INFO("current_state.mode = %s",current_state.mode.c_str());
+				ROS_INFO("last_state_display.mode = %s",last_state_display.mode.c_str());
+				ROS_INFO("armed status: %d\n",current_state.armed);
+				last_state_display.armed = current_state.armed;
+				last_state_display.mode = current_state.mode;
 			}
 		}
 
@@ -282,96 +347,6 @@ int main(int argc, char **argv)
 			default:
 				ROS_INFO("board index error!");
 				break;
-		}
-
-//		#if environment_switch == 0
-//		if(current_state.mode == "OFFBOARD" && current_state.armed)
-//		#else
-		if(current_state.armed)
-		{
-			ROS_INFO("state machine started!");
-			if(current_state.mode == "OFFBOARD")
-			{
-				ROS_INFO("current_state.mode = OFFBOARD!!!!");
-			}
-			else
-			{
-				if( current_state.mode == "AUTO.TAKEOFF")
-				{
-					ROS_INFO("current_state.mode = AUTO TAKEOFF!!!!");
-				}
-				else
-				{
-					ROS_INFO("current_state.mode = Unknown!!!!");
-				}
-			}
-			state_machine_func();
-
-			/* mission timer(5 loops). -libn */
-			if(ros::Time::now() - mission_timer_t > ros::Duration(100.0))
-			{
-				current_mission_state = mission_home;	/* mission timeout. -libn */
-				ROS_INFO("mission time out!");
-			}
-			/* subtask timer(1 loop). -libn */
-			if(current_mission_state >= mission_point_A && ros::Time::now() - loop_timer_t > ros::Duration(10.0))
-			{
-				loop++;
-				ROS_INFO("loop timeout");
-				current_mission_state = mission_point_A;	/* loop timeout, forced to switch to next loop. -libn */
-				/* TODO: mission failure recorded(using switch/case). -libn */
-
-			}
-		}
-//		#endif
-
-		/* mission state display. -libn */
-		if(current_state.mode == "OFFBOARD"
-				&& current_state.armed
-//				&& ros::Time::now() - last_show_request > ros::Duration(0.5)
-		)	/* set message display delay(0.5s). -libn */
-		{
-			ROS_INFO("current loop: %d",loop);
-			ROS_INFO("current_mission_state: %d",current_mission_state);
-			ROS_INFO("position*: %5.3f %5.3f %5.3f",pose_pub.pose.position.x,pose_pub.pose.position.y,pose_pub.pose.position.z);
-			ROS_INFO("current position: %5.3f %5.3f %5.3f",current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
-			ROS_INFO("mission_timer_t = %.3f",mission_timer_t);
-			ROS_INFO("loop_timer_t = %.3f",loop_timer_t);
-//			ROS_INFO("setpoint_received:\n"
-//					"setpoint_A:%5.3f %5.3f %5.3f \n"
-//					"setpoint_B:%5.3f %5.3f %5.3f \n"
-//					"setpoint_C:%5.3f %5.3f %5.3f \n"
-//					"setpoint_D:%5.3f %5.3f %5.3f \n"
-//					"setpoint_H:%5.3f %5.3f %5.3f",
-//					setpoint_A.pose.position.x,setpoint_A.pose.position.y,setpoint_A.pose.position.z,
-//					setpoint_B.pose.position.x,setpoint_B.pose.position.y,setpoint_B.pose.position.z,
-//					setpoint_C.pose.position.x,setpoint_C.pose.position.y,setpoint_C.pose.position.z,
-//					setpoint_D.pose.position.x,setpoint_D.pose.position.y,setpoint_D.pose.position.z,
-//					setpoint_H.pose.position.x,setpoint_H.pose.position.y,setpoint_H.pose.position.z);
-
-//			ROS_INFO("board_position_received:\n"
-//					"board0: %d %5.3f %5.3f %5.3f \n"
-//					"board1: %d %5.3f %5.3f %5.3f \n"
-//					"board2: %d %5.3f %5.3f %5.3f \n"
-//					"board3: %d %5.3f %5.3f %5.3f \n"
-//					"board4: %d %5.3f %5.3f %5.3f \n"
-//					"board5: %d %5.3f %5.3f %5.3f \n"
-//					"board6: %d %5.3f %5.3f %5.3f \n"
-//					"board7: %d %5.3f %5.3f %5.3f \n"
-//					"board8: %d %5.3f %5.3f %5.3f \n"
-//					"board9: %d %5.3f %5.3f %5.3f \n",
-//					board_0.valid,board_0.x,board_0.y,board_0.z,
-//					board_1.valid,board_1.x,board_1.y,board_1.z,
-//					board_2.valid,board_2.x,board_2.y,board_2.z,
-//					board_3.valid,board_3.x,board_3.y,board_3.z,
-//					board_4.valid,board_4.x,board_4.y,board_4.z,
-//					board_5.valid,board_5.x,board_5.y,board_5.z,
-//					board_6.valid,board_6.x,board_6.y,board_6.z,
-//					board_7.valid,board_7.x,board_7.y,board_7.z,
-//					board_8.valid,board_8.x,board_8.y,board_8.z,
-//					board_9.valid,board_9.x,board_9.y,board_9.z);
-			ROS_INFO("");
-			last_show_request = ros::Time::now();
 		}
 
         local_pos_pub.publish(pose_pub);
