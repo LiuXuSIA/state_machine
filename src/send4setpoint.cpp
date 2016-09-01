@@ -33,7 +33,7 @@ int main(int argc, char **argv)
 	{
 		setpoint_indexed.index = 1;	/* 1st setpoint(A). -libn <Aug 15, 2016 9:01:21 AM> */
 		setpoint_indexed.x = 0.0f;
-		setpoint_indexed.y = 2.0f;	/* ROS coordinate frame: NWU(North/West/Up) -libn */
+		setpoint_indexed.y = 4.0f;	/* ROS coordinate frame: NWU(North/West/Up) -libn */
 		setpoint_indexed.z = 5.0f;
 		setpoint_indexed_pub.publish(setpoint_indexed);
 		ros::spinOnce();

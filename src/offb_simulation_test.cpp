@@ -280,6 +280,7 @@ int main(int argc, char **argv)
 				ROS_INFO("armed status: %d\n",current_state.armed);
 				last_state_display.armed = current_state.armed;
 				last_state_display.mode = current_state.mode;
+				ROS_INFO("current position: %5.3f %5.3f %5.3f", current_pos.pose.position.x, 	  	current_pos.pose.position.y, current_pos.pose.position.z);
 			}
 		}
 
