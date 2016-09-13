@@ -408,30 +408,38 @@ void state_machine_func(void)
         	pose_pub.pose.position.x = setpoint_A.pose.position.x;
 			pose_pub.pose.position.y = setpoint_A.pose.position.y;
 			pose_pub.pose.position.z = setpoint_A.pose.position.z;
-			if(!display_screen_num_recognized)
-			{
-				/* TODO: to recognize the number. -libn */
-				display_screen_num_recognized = true;	/* number recognized. -libn */
-
-
-				if(loop == 1 && (ros::Time::now() - mission_last_time > ros::Duration(50)))	/* wait 50 seconds at most for the first time. -libn */
-				{
-					current_mission_state = mission_search; // current_mission_state++;
-					/* TODO: failure recorded. -libn */
-				}
-				else
-				{
-					if(loop!= 1 && ros::Time::now() - mission_last_time > ros::Duration(10))	/* wait 10 seconds at most for recognition. -libn */
-					{
-						current_mission_state = mission_search; // current_mission_state++;
-						/* TODO: failure recorded. -libn */
-					}
-				}
-			}
-			else
+//			if(!display_screen_num_recognized)
+//			{
+//				/* TODO: to recognize the number. -libn */
+//				display_screen_num_recognized = true;	/* number recognized. -libn */
+//
+//
+//				if(loop == 1 && (ros::Time::now() - mission_last_time > ros::Duration(50)))	/* wait 50 seconds at most for the first time. -libn */
+//				{
+//					current_mission_state = mission_search; // current_mission_state++;
+//					/* TODO: failure recorded. -libn */
+//				}
+//				else
+//				{
+//					if(loop!= 1 && ros::Time::now() - mission_last_time > ros::Duration(10))	/* wait 10 seconds at most for recognition. -libn */
+//					{
+//						current_mission_state = mission_search; // current_mission_state++;
+//						/* TODO: failure recorded. -libn */
+//					}
+//				}
+//			}
+//			else
+//			{
+//				current_mission_state = mission_search; // current_mission_state++;
+//			}
+			//time delay added(just for test! --delete it directly!)
+			if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 2 seconds. -libn */
 			{
 				current_mission_state = mission_search; // current_mission_state++;
 			}
+
+
+
 			break;
         case mission_search:
         	if(board_0.valid)
