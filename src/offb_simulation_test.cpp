@@ -364,8 +364,8 @@ void state_machine_func(void)
 	switch(current_mission_state)
 	{
 		case takeoff:
-			pose_pub.pose.position.x = setpoint_H.pose.position.x;
-			pose_pub.pose.position.y = setpoint_H.pose.position.y;
+			pose_pub.pose.position.x = current_pos.pose.position.x;
+			pose_pub.pose.position.y = current_pos.pose.position.y;
 			pose_pub.pose.position.z = setpoint_H.pose.position.z;
 			if((abs(current_pos.pose.position.x - setpoint_H.pose.position.x) < 0.2) &&      // switch to next state
 			   (abs(current_pos.pose.position.y - setpoint_H.pose.position.y) < 0.2) &&
@@ -378,10 +378,10 @@ void state_machine_func(void)
     		break;
 
         case takeoff_hover:
-        	pose_pub.pose.position.x = setpoint_H.pose.position.x;
-        	pose_pub.pose.position.y = setpoint_H.pose.position.y;
+        	pose_pub.pose.position.x = current_pos.pose.position.x;
+        	pose_pub.pose.position.y = current_pos.pose.position.y;
         	pose_pub.pose.position.z = setpoint_H.pose.position.z;
-        	if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 2 seconds. -libn */
+        	if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
         	{
         		current_mission_state = mission_point_A; // current_mission_state++;
         	}
@@ -433,7 +433,7 @@ void state_machine_func(void)
 //				current_mission_state = mission_search; // current_mission_state++;
 //			}
 			//time delay added(just for test! --delete it directly!)
-			if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 2 seconds. -libn */
+			if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
 			{
 				current_mission_state = mission_search; // current_mission_state++;
 			}
@@ -498,7 +498,7 @@ void state_machine_func(void)
         	pose_pub.pose.position.x = board_0.x;	/* TODO:switch to different board positions. -libn */
 			pose_pub.pose.position.y = board_0.y;
 			pose_pub.pose.position.z = board_0.z;
-        	if(ros::Time::now() - mission_last_time > ros::Duration(1))	/* hover for 1 seconds. -libn */
+        	if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
         	{
         		current_mission_state = mission_operate_spray; // current_mission_state++;
         		mission_last_time = ros::Time::now();
