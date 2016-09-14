@@ -138,9 +138,9 @@ int main(int argc, char **argv)
 	pose_pub.pose.orientation.z = 0.707;
 	pose_pub.pose.orientation.w = 0.707;		/* set yaw* = 90 degree(default in simulation). -libn */
 
-	setpoint_H.pose.position.x = 0.0f;
+	setpoint_H.pose.position.x = 0.0f;	/* pose(x,y) is not used, just for safe. -libn */
 	setpoint_H.pose.position.y = 0.0f;
-	setpoint_H.pose.position.z = 5.0f;
+	setpoint_H.pose.position.z = 3.0f;
 
 	board_0.valid = false;	/* used to check if the positon of the board is valid. -libn */
 	board_1.valid = false;
@@ -367,13 +367,15 @@ void state_machine_func(void)
 			pose_pub.pose.position.x = current_pos.pose.position.x;
 			pose_pub.pose.position.y = current_pos.pose.position.y;
 			pose_pub.pose.position.z = setpoint_H.pose.position.z;
-			if((abs(current_pos.pose.position.x - setpoint_H.pose.position.x) < 0.2) &&      // switch to next state
-			   (abs(current_pos.pose.position.y - setpoint_H.pose.position.y) < 0.2) &&
+			if((abs(current_pos.pose.position.x - current_pos.pose.position.x) < 0.2) &&      // switch to next state
+			   (abs(current_pos.pose.position.y - current_pos.pose.position.y) < 0.2) &&
 			   (abs(current_pos.pose.position.z - setpoint_H.pose.position.z) < 0.2))
 			   {
 					current_mission_state = takeoff_hover; // current_mission_state++;
 					mission_last_time = ros::Time::now();
 					mission_timer_t = ros::Time::now();
+					setpoint_H.pose.position.x = current_pos.pose.position.x;
+					setpoint_H.pose.position.y = current_pos.pose.position.y;
 			   }
     		break;
 
@@ -383,7 +385,8 @@ void state_machine_func(void)
         	pose_pub.pose.position.z = setpoint_H.pose.position.z;
         	if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
         	{
-        		current_mission_state = mission_point_A; // current_mission_state++;
+        		current_mission_state = mission_home; // current_mission_state++;
+        		mission_last_time = ros::Time::now();
         	}
             break;
         case mission_point_A:
