@@ -7,6 +7,7 @@
 
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TwistStamped.h>			/* local velocity setpoint. -libn */
 #include <state_machine/CommandBool.h>
 #include <state_machine/SetMode.h>
 #include <state_machine/State.h>
@@ -73,6 +74,7 @@ geometry_msgs::PoseStamped setpoint_D;
 geometry_msgs::PoseStamped setpoint_H;	/* home position. -libn */
 
 geometry_msgs::PoseStamped pose_pub;
+geometry_msgs::TwistStamped vel_pub;	/* velocity setpoint to be published. -libn */
 
 state_machine::DrawingBoard board;
 void DrawingBoardCallback(const state_machine::DrawingBoard::ConstPtr& msg)
@@ -101,6 +103,11 @@ int main(int argc, char **argv)
             ("mavros/state", 10, state_cb);
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
             ("mavros/setpoint_position/local", 10);
+
+    /* Velocity setpoint. -libn */
+    ros::Publisher local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>
+                ("/mavros/setpoint_velocity/cmd_vel", 10);
+
     ros::ServiceClient arming_client = nh.serviceClient<state_machine::CommandBool>
             ("mavros/cmd/arming");
     ros::ServiceClient set_mode_client = nh.serviceClient<state_machine::SetMode>
@@ -350,7 +357,15 @@ int main(int argc, char **argv)
 				break;
 		}
 
-        local_pos_pub.publish(pose_pub);
+        if(current_mission_state == takeoff)
+        {
+        	local_vel_pub.publish(vel_pub);
+        }
+        else
+        {
+        	local_pos_pub.publish(pose_pub);
+        }
+
         ros::spinOnce();
         rate.sleep();
     }
@@ -364,12 +379,16 @@ void state_machine_func(void)
 	switch(current_mission_state)
 	{
 		case takeoff:
-			pose_pub.pose.position.x = current_pos.pose.position.x;
-			pose_pub.pose.position.y = current_pos.pose.position.y;
-			pose_pub.pose.position.z = setpoint_H.pose.position.z;
+			/* local velocity setpoint publish. -libn */
+			vel_pub.twist.linear.x = 0.0f;
+			vel_pub.twist.linear.y = 0.0f;
+			vel_pub.twist.linear.z = 3.0f;
+			vel_pub.twist.angular.x = 0.0f;
+			vel_pub.twist.angular.y = 0.0f;
+			vel_pub.twist.angular.z = 0.0f;
 			if((abs(current_pos.pose.position.x - current_pos.pose.position.x) < 0.2) &&      // switch to next state
 			   (abs(current_pos.pose.position.y - current_pos.pose.position.y) < 0.2) &&
-			   (abs(current_pos.pose.position.z - setpoint_H.pose.position.z) < 0.2))
+			   (abs(current_pos.pose.position.z - setpoint_H.pose.position.z) < 0.8))
 			   {
 					current_mission_state = takeoff_hover; // current_mission_state++;
 					mission_last_time = ros::Time::now();
@@ -385,8 +404,7 @@ void state_machine_func(void)
         	pose_pub.pose.position.z = setpoint_H.pose.position.z;
         	if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
         	{
-        		current_mission_state = mission_home; // current_mission_state++;
-        		mission_last_time = ros::Time::now();
+        		current_mission_state = mission_point_A; // current_mission_state++;
         	}
             break;
         case mission_point_A:
