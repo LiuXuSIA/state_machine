@@ -60,6 +60,7 @@ add_executable(send4setpoint 			src/send4setpoint.cpp)
 add_executable(send_expected_pos 		src/send_expected_pos.cpp)
 add_executable(send10picture_position 	src/send10picture_position.cpp)
 add_executable(offb_simulation_test 	src/offb_simulation_test.cpp)
+add_executable(get_board_position 	src/get_board_position.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -68,6 +69,7 @@ add_dependencies(send4setpoint 			state_machine_generate_messages_cpp)
 add_dependencies(send_expected_pos 		state_machine_generate_messages_cpp)
 add_dependencies(send10picture_position state_machine_generate_messages_cpp)
 add_dependencies(offb_simulation_test 	state_machine_generate_messages_cpp)
+add_dependencies(get_board_position 	state_machine_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(state_machine  			${catkin_LIBRARIES})
@@ -75,5 +77,5 @@ target_link_libraries(send4setpoint  			${catkin_LIBRARIES})
 target_link_libraries(send_expected_pos  		${catkin_LIBRARIES})
 target_link_libraries(send10picture_position  	${catkin_LIBRARIES})
 target_link_libraries(offb_simulation_test  	${catkin_LIBRARIES})
-
+target_link_libraries(get_board_position  	${catkin_LIBRARIES})
 
