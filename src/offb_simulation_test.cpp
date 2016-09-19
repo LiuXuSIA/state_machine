@@ -13,7 +13,7 @@
 #include <state_machine/State.h>
 #include <state_machine/CommandTOL.h>
 #include <state_machine/Setpoint.h>
-#include <state_machine/DrawingBoard.h>
+#include <state_machine/DrawingBoard10.h>
 
 void state_machine_func(void);
 /* mission state. -libn */
@@ -40,6 +40,7 @@ bool display_screen_num_recognized = false;	/* to check if the num on display sc
 bool relocate_valid = false;	/* to complete relocate mission. -libn */
 int mission_failure = 0;
 
+int current_mission_num;	/* mission num: 5 subtask -> 5 current nums.	TODO:change mission num. -libn */
 
 ros::Time mission_timer_t;	/* timer to control the whole mission. -libn */
 ros::Time loop_timer_t;	/* timer to control subtask. -libn */
@@ -66,6 +67,34 @@ void pos_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
     current_pos = *msg;
 }
 
+/* 10 drawing board positions. -libn */
+state_machine::DrawingBoard10 board10;
+void board_pos_cb(const state_machine::DrawingBoard10::ConstPtr& msg)
+{
+	board10 = *msg;
+
+	ROS_INFO("\nboard_0 position: %d x = %f y = %f z = %f\n"
+				"board_1 position: %d x = %f y = %f z = %f\n"
+				"board_2 position: %d x = %f y = %f z = %f\n"
+				"board_3 position: %d x = %f y = %f z = %f\n"
+				"board_4 position: %d x = %f y = %f z = %f\n"
+				"board_5 position: %d x = %f y = %f z = %f\n"
+				"board_6 position: %d x = %f y = %f z = %f\n"
+				"board_7 position: %d x = %f y = %f z = %f\n"
+				"board_8 position: %d x = %f y = %f z = %f\n"
+				"board_9 position: %d x = %f y = %f z = %f\n",
+				board10.drawingboard[0].valid,board10.drawingboard[0].x,board10.drawingboard[0].y,board10.drawingboard[0].z,
+				board10.drawingboard[1].valid,board10.drawingboard[1].x,board10.drawingboard[1].y,board10.drawingboard[1].z,
+				board10.drawingboard[2].valid,board10.drawingboard[2].x,board10.drawingboard[2].y,board10.drawingboard[2].z,
+				board10.drawingboard[3].valid,board10.drawingboard[3].x,board10.drawingboard[3].y,board10.drawingboard[3].z,
+				board10.drawingboard[4].valid,board10.drawingboard[4].x,board10.drawingboard[4].y,board10.drawingboard[4].z,
+				board10.drawingboard[5].valid,board10.drawingboard[5].x,board10.drawingboard[5].y,board10.drawingboard[5].z,
+				board10.drawingboard[6].valid,board10.drawingboard[6].x,board10.drawingboard[6].y,board10.drawingboard[6].z,
+				board10.drawingboard[7].valid,board10.drawingboard[7].x,board10.drawingboard[7].y,board10.drawingboard[7].z,
+				board10.drawingboard[8].valid,board10.drawingboard[8].x,board10.drawingboard[8].y,board10.drawingboard[8].z,
+				board10.drawingboard[9].valid,board10.drawingboard[9].x,board10.drawingboard[9].y,board10.drawingboard[9].z);
+}
+
 /* 4 setpoints. -libn */
 geometry_msgs::PoseStamped setpoint_A;
 geometry_msgs::PoseStamped setpoint_B;
@@ -75,23 +104,6 @@ geometry_msgs::PoseStamped setpoint_H;	/* home position. -libn */
 
 geometry_msgs::PoseStamped pose_pub;
 geometry_msgs::TwistStamped vel_pub;	/* velocity setpoint to be published. -libn */
-
-state_machine::DrawingBoard board;
-void DrawingBoardCallback(const state_machine::DrawingBoard::ConstPtr& msg)
-{
-	board = *msg;
-}
-/* 10 drawing board position. -libn */
-state_machine::DrawingBoard board_1;
-state_machine::DrawingBoard board_2;
-state_machine::DrawingBoard board_3;
-state_machine::DrawingBoard board_4;
-state_machine::DrawingBoard board_5;
-state_machine::DrawingBoard board_6;
-state_machine::DrawingBoard board_7;
-state_machine::DrawingBoard board_8;
-state_machine::DrawingBoard board_9;
-state_machine::DrawingBoard board_0;
 
 
 int main(int argc, char **argv)
@@ -124,8 +136,9 @@ int main(int argc, char **argv)
 	/* get pixhawk's local position. -libn */
 	ros::Subscriber local_pos_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose", 10, pos_cb);
 
-	/* receive 10 drawing board position. -libn */
-	ros::Subscriber drawingboard_Indexed_sub = nh.subscribe("DrawingBoard_Position", 100 ,DrawingBoardCallback);
+	ros::Subscriber DrawingBoard_Position_sub = nh.subscribe<state_machine::DrawingBoard10>
+		            ("DrawingBoard_Position10", 10, board_pos_cb);
+	board10.drawingboard.resize(10);		/* MUST! -libn */
 
     //the setpoint publishing rate MUST be faster than 2Hz
     ros::Rate rate(10.0);
@@ -149,23 +162,14 @@ int main(int argc, char **argv)
 	setpoint_H.pose.position.y = 0.0f;
 	setpoint_H.pose.position.z = 3.0f;
 
-	board_0.valid = false;	/* used to check if the positon of the board is valid. -libn */
-	board_1.valid = false;
-	board_2.valid = false;
-	board_3.valid = false;
-	board_4.valid = false;
-	board_5.valid = false;
-	board_6.valid = false;
-	board_7.valid = false;
-	board_8.valid = false;
-	board_9.valid = false;
-
     //send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){
         local_pos_pub.publish(pose_pub);
         ros::spinOnce();
         rate.sleep();
     }
+
+    current_mission_num = 0;
 
     ros::Time last_request = ros::Time::now();
     ros::Time last_show_request = ros::Time::now();
@@ -243,18 +247,6 @@ int main(int argc, char **argv)
 			ROS_INFO("current position: %5.3f %5.3f %5.3f",current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
 //			ROS_INFO("mission_timer_t = %.3f",mission_timer_t);
 //			ROS_INFO("loop_timer_t = %.3f",loop_timer_t);
-			ROS_INFO("setpoint_received:\n"
-					"setpoint_A:%5.3f %5.3f %5.3f \n"
-					"setpoint_B:%5.3f %5.3f %5.3f \n"
-					"setpoint_C:%5.3f %5.3f %5.3f \n"
-					"setpoint_D:%5.3f %5.3f %5.3f \n"
-					"setpoint_H:%5.3f %5.3f %5.3f",
-					setpoint_A.pose.position.x,setpoint_A.pose.position.y,setpoint_A.pose.position.z,
-					setpoint_B.pose.position.x,setpoint_B.pose.position.y,setpoint_B.pose.position.z,
-					setpoint_C.pose.position.x,setpoint_C.pose.position.y,setpoint_C.pose.position.z,
-					setpoint_D.pose.position.x,setpoint_D.pose.position.y,setpoint_D.pose.position.z,
-					setpoint_H.pose.position.x,setpoint_H.pose.position.y,setpoint_H.pose.position.z);
-
 			ROS_INFO("board_position_received:\n"
 					"board0: %d %5.3f %5.3f %5.3f \n"
 					"board1: %d %5.3f %5.3f %5.3f \n"
@@ -266,16 +258,16 @@ int main(int argc, char **argv)
 					"board7: %d %5.3f %5.3f %5.3f \n"
 					"board8: %d %5.3f %5.3f %5.3f \n"
 					"board9: %d %5.3f %5.3f %5.3f \n",
-					board_0.valid,board_0.x,board_0.y,board_0.z,
-					board_1.valid,board_1.x,board_1.y,board_1.z,
-					board_2.valid,board_2.x,board_2.y,board_2.z,
-					board_3.valid,board_3.x,board_3.y,board_3.z,
-					board_4.valid,board_4.x,board_4.y,board_4.z,
-					board_5.valid,board_5.x,board_5.y,board_5.z,
-					board_6.valid,board_6.x,board_6.y,board_6.z,
-					board_7.valid,board_7.x,board_7.y,board_7.z,
-					board_8.valid,board_8.x,board_8.y,board_8.z,
-					board_9.valid,board_9.x,board_9.y,board_9.z);
+					board10.drawingboard[0].valid,board10.drawingboard[0].x,board10.drawingboard[0].y,board10.drawingboard[0].z,
+					board10.drawingboard[1].valid,board10.drawingboard[1].x,board10.drawingboard[1].y,board10.drawingboard[1].z,
+					board10.drawingboard[2].valid,board10.drawingboard[2].x,board10.drawingboard[2].y,board10.drawingboard[2].z,
+					board10.drawingboard[3].valid,board10.drawingboard[3].x,board10.drawingboard[3].y,board10.drawingboard[3].z,
+					board10.drawingboard[4].valid,board10.drawingboard[4].x,board10.drawingboard[4].y,board10.drawingboard[4].z,
+					board10.drawingboard[5].valid,board10.drawingboard[5].x,board10.drawingboard[5].y,board10.drawingboard[5].z,
+					board10.drawingboard[6].valid,board10.drawingboard[6].x,board10.drawingboard[6].y,board10.drawingboard[6].z,
+					board10.drawingboard[7].valid,board10.drawingboard[7].x,board10.drawingboard[7].y,board10.drawingboard[7].z,
+					board10.drawingboard[8].valid,board10.drawingboard[8].x,board10.drawingboard[8].y,board10.drawingboard[8].z,
+					board10.drawingboard[9].valid,board10.drawingboard[9].x,board10.drawingboard[9].y,board10.drawingboard[9].z);
 
 		}
 		else
@@ -288,6 +280,41 @@ int main(int argc, char **argv)
 				last_state_display.armed = current_state.armed;
 				last_state_display.mode = current_state.mode;
 				ROS_INFO("current position: %5.3f %5.3f %5.3f", current_pos.pose.position.x, 	  	current_pos.pose.position.y, current_pos.pose.position.z);
+
+				ROS_INFO("setpoint_received:\n"
+						"setpoint_A:%5.3f %5.3f %5.3f \n"
+						"setpoint_B:%5.3f %5.3f %5.3f \n"
+						"setpoint_C:%5.3f %5.3f %5.3f \n"
+						"setpoint_D:%5.3f %5.3f %5.3f \n"
+						"setpoint_H:%5.3f %5.3f %5.3f",
+						setpoint_A.pose.position.x,setpoint_A.pose.position.y,setpoint_A.pose.position.z,
+						setpoint_B.pose.position.x,setpoint_B.pose.position.y,setpoint_B.pose.position.z,
+						setpoint_C.pose.position.x,setpoint_C.pose.position.y,setpoint_C.pose.position.z,
+						setpoint_D.pose.position.x,setpoint_D.pose.position.y,setpoint_D.pose.position.z,
+						setpoint_H.pose.position.x,setpoint_H.pose.position.y,setpoint_H.pose.position.z);
+
+				ROS_INFO("board_position_received:\n"
+						"board0: %d %5.3f %5.3f %5.3f \n"
+						"board1: %d %5.3f %5.3f %5.3f \n"
+						"board2: %d %5.3f %5.3f %5.3f \n"
+						"board3: %d %5.3f %5.3f %5.3f \n"
+						"board4: %d %5.3f %5.3f %5.3f \n"
+						"board5: %d %5.3f %5.3f %5.3f \n"
+						"board6: %d %5.3f %5.3f %5.3f \n"
+						"board7: %d %5.3f %5.3f %5.3f \n"
+						"board8: %d %5.3f %5.3f %5.3f \n"
+						"board9: %d %5.3f %5.3f %5.3f \n",
+						board10.drawingboard[0].valid,board10.drawingboard[0].x,board10.drawingboard[0].y,board10.drawingboard[0].z,
+						board10.drawingboard[1].valid,board10.drawingboard[1].x,board10.drawingboard[1].y,board10.drawingboard[1].z,
+						board10.drawingboard[2].valid,board10.drawingboard[2].x,board10.drawingboard[2].y,board10.drawingboard[2].z,
+						board10.drawingboard[3].valid,board10.drawingboard[3].x,board10.drawingboard[3].y,board10.drawingboard[3].z,
+						board10.drawingboard[4].valid,board10.drawingboard[4].x,board10.drawingboard[4].y,board10.drawingboard[4].z,
+						board10.drawingboard[5].valid,board10.drawingboard[5].x,board10.drawingboard[5].y,board10.drawingboard[5].z,
+						board10.drawingboard[6].valid,board10.drawingboard[6].x,board10.drawingboard[6].y,board10.drawingboard[6].z,
+						board10.drawingboard[7].valid,board10.drawingboard[7].x,board10.drawingboard[7].y,board10.drawingboard[7].z,
+						board10.drawingboard[8].valid,board10.drawingboard[8].x,board10.drawingboard[8].y,board10.drawingboard[8].z,
+						board10.drawingboard[9].valid,board10.drawingboard[9].x,board10.drawingboard[9].y,board10.drawingboard[9].z);
+
 			}
 		}
 
@@ -316,44 +343,6 @@ int main(int argc, char **argv)
 				break;
 			default:
 				ROS_INFO("setpoint index error!");
-				break;
-		}
-
-		/* get 10 drawing board's letter and position. -libn */
-		switch(board.num)
-		{
-			case 0:
-				board_0 = board;
-				break;
-			case 1:
-				board_1 = board;
-				break;
-			case 2:
-				board_2 = board;
-				break;
-			case 3:
-				board_3 = board;
-				break;
-			case 4:
-				board_4 = board;
-				break;
-			case 5:
-				board_5 = board;
-				break;
-			case 6:
-				board_6 = board;
-				break;
-			case 7:
-				board_7 = board;
-				break;
-			case 8:
-				board_8 = board;
-				break;
-			case 9:
-				board_9 = board;
-				break;
-			default:
-				ROS_INFO("board index error!");
 				break;
 		}
 
@@ -463,14 +452,14 @@ void state_machine_func(void)
 
 			break;
         case mission_search:
-        	if(board_0.valid)
+        	if(board10.drawingboard[current_mission_num].valid)
         	{
-        		pose_pub.pose.position.x = board_0.x;	/* TODO:switch to different board positions. -libn */
-				pose_pub.pose.position.y = board_0.y;
-				pose_pub.pose.position.z = board_0.z;
-				if((abs(current_pos.pose.position.x - board_0.x) < 0.2) &&      // switch to next state
-				   (abs(current_pos.pose.position.y - board_0.y) < 0.2) &&
-				   (abs(current_pos.pose.position.z - board_0.z) < 0.2))
+        		pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x;	/* TODO:switch to different board positions. -libn */
+				pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y;
+				pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z;
+				if((abs(current_pos.pose.position.x - board10.drawingboard[current_mission_num].x) < 0.2) &&      // switch to next state
+				   (abs(current_pos.pose.position.y - board10.drawingboard[current_mission_num].y) < 0.2) &&
+				   (abs(current_pos.pose.position.z - board10.drawingboard[current_mission_num].z) < 0.2))
 				{
 					current_mission_state = mission_relocate; // current_mission_state++;
 					mission_last_time = ros::Time::now();
@@ -484,9 +473,9 @@ void state_machine_func(void)
         	}
 			break;
         case mission_relocate:
-    		pose_pub.pose.position.x = board_0.x;	/* TODO:switch to different board positions. -libn */
-			pose_pub.pose.position.y = board_0.y;
-			pose_pub.pose.position.z = board_0.z;
+        	pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x;	/* TODO:switch to different board positions. -libn */
+			pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y;
+			pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z;
 			/* TODO:update the position of the drawing board.  -libn */
 			relocate_valid = true;
 
@@ -504,21 +493,21 @@ void state_machine_func(void)
 			}
 			break;
         case mission_operate_move:
-    		pose_pub.pose.position.x = board_0.x;	/* TODO:switch to different board positions. -libn */
-			pose_pub.pose.position.y = board_0.y;
-			pose_pub.pose.position.z = board_0.z;
-            if((abs(current_pos.pose.position.x - board_0.x) < 0.2) &&      // switch to next state
-               (abs(current_pos.pose.position.y - board_0.y) < 0.2) &&
-               (abs(current_pos.pose.position.z - board_0.z) < 0.2))
+        	pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x;	/* TODO:switch to different board positions. -libn */
+			pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y;
+			pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z;
+            if((abs(current_pos.pose.position.x - board10.drawingboard[current_mission_num].x) < 0.2) &&      // switch to next state
+               (abs(current_pos.pose.position.y - board10.drawingboard[current_mission_num].y) < 0.2) &&
+               (abs(current_pos.pose.position.z - board10.drawingboard[current_mission_num].z) < 0.2))
                {
             	current_mission_state = mission_operate_hover; // current_mission_state++;
             	mission_last_time = ros::Time::now();
                }
             break;
         case mission_operate_hover:
-        	pose_pub.pose.position.x = board_0.x;	/* TODO:switch to different board positions. -libn */
-			pose_pub.pose.position.y = board_0.y;
-			pose_pub.pose.position.z = board_0.z;
+        	pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x;	/* TODO:switch to different board positions. -libn */
+			pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y;
+			pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z;
         	if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
         	{
         		current_mission_state = mission_operate_spray; // current_mission_state++;
@@ -528,9 +517,9 @@ void state_machine_func(void)
         	}
             break;
         case mission_operate_spray:
-        	pose_pub.pose.position.x = board_0.x;	/* TODO:switch to different board positions. -libn */
-			pose_pub.pose.position.y = board_0.y;
-			pose_pub.pose.position.z = board_0.z;
+        	pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x;	/* TODO:switch to different board positions. -libn */
+			pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y;
+			pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z;
             if(ros::Time::now() - mission_last_time > ros::Duration(1))	/* spray for 1 seconds. -libn */
         	{
         		/* TODO: stop spraying. -libn */
