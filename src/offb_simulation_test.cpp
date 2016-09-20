@@ -456,7 +456,7 @@ void state_machine_func(void)
         	{
         		pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x;	/* TODO:switch to different board positions. -libn */
 				pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y;
-				pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z;
+				pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + 3;
 				if((abs(current_pos.pose.position.x - board10.drawingboard[current_mission_num].x) < 0.2) &&      // switch to next state
 				   (abs(current_pos.pose.position.y - board10.drawingboard[current_mission_num].y) < 0.2) &&
 				   (abs(current_pos.pose.position.z - board10.drawingboard[current_mission_num].z) < 0.2))
@@ -475,7 +475,7 @@ void state_machine_func(void)
         case mission_relocate:
         	pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x;	/* TODO:switch to different board positions. -libn */
 			pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y;
-			pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z;
+			pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + 3;
 			/* TODO:update the position of the drawing board.  -libn */
 			relocate_valid = true;
 
@@ -495,7 +495,7 @@ void state_machine_func(void)
         case mission_operate_move:
         	pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x;	/* TODO:switch to different board positions. -libn */
 			pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y;
-			pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z;
+			pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + 3;
             if((abs(current_pos.pose.position.x - board10.drawingboard[current_mission_num].x) < 0.2) &&      // switch to next state
                (abs(current_pos.pose.position.y - board10.drawingboard[current_mission_num].y) < 0.2) &&
                (abs(current_pos.pose.position.z - board10.drawingboard[current_mission_num].z) < 0.2))
@@ -507,7 +507,7 @@ void state_machine_func(void)
         case mission_operate_hover:
         	pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x;	/* TODO:switch to different board positions. -libn */
 			pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y;
-			pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z;
+			pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + 3;
         	if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
         	{
         		current_mission_state = mission_operate_spray; // current_mission_state++;
@@ -519,7 +519,7 @@ void state_machine_func(void)
         case mission_operate_spray:
         	pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x;	/* TODO:switch to different board positions. -libn */
 			pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y;
-			pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z;
+			pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + 3;
             if(ros::Time::now() - mission_last_time > ros::Duration(1))	/* spray for 1 seconds. -libn */
         	{
         		/* TODO: stop spraying. -libn */
