@@ -42,6 +42,8 @@ int mission_failure = 0;
 
 int current_mission_num;	/* mission num: 5 subtask -> 5 current nums.	TODO:change mission num. -libn */
 
+bool velocity_control_enable = false;
+
 ros::Time mission_timer_t;	/* timer to control the whole mission. -libn */
 ros::Time loop_timer_t;	/* timer to control subtask. -libn */
 
@@ -73,26 +75,26 @@ void board_pos_cb(const state_machine::DrawingBoard10::ConstPtr& msg)
 {
 	board10 = *msg;
 
-	ROS_INFO("\nboard_0 position: %d x = %f y = %f z = %f\n"
-				"board_1 position: %d x = %f y = %f z = %f\n"
-				"board_2 position: %d x = %f y = %f z = %f\n"
-				"board_3 position: %d x = %f y = %f z = %f\n"
-				"board_4 position: %d x = %f y = %f z = %f\n"
-				"board_5 position: %d x = %f y = %f z = %f\n"
-				"board_6 position: %d x = %f y = %f z = %f\n"
-				"board_7 position: %d x = %f y = %f z = %f\n"
-				"board_8 position: %d x = %f y = %f z = %f\n"
-				"board_9 position: %d x = %f y = %f z = %f\n",
-				board10.drawingboard[0].valid,board10.drawingboard[0].x,board10.drawingboard[0].y,board10.drawingboard[0].z,
-				board10.drawingboard[1].valid,board10.drawingboard[1].x,board10.drawingboard[1].y,board10.drawingboard[1].z,
-				board10.drawingboard[2].valid,board10.drawingboard[2].x,board10.drawingboard[2].y,board10.drawingboard[2].z,
-				board10.drawingboard[3].valid,board10.drawingboard[3].x,board10.drawingboard[3].y,board10.drawingboard[3].z,
-				board10.drawingboard[4].valid,board10.drawingboard[4].x,board10.drawingboard[4].y,board10.drawingboard[4].z,
-				board10.drawingboard[5].valid,board10.drawingboard[5].x,board10.drawingboard[5].y,board10.drawingboard[5].z,
-				board10.drawingboard[6].valid,board10.drawingboard[6].x,board10.drawingboard[6].y,board10.drawingboard[6].z,
-				board10.drawingboard[7].valid,board10.drawingboard[7].x,board10.drawingboard[7].y,board10.drawingboard[7].z,
-				board10.drawingboard[8].valid,board10.drawingboard[8].x,board10.drawingboard[8].y,board10.drawingboard[8].z,
-				board10.drawingboard[9].valid,board10.drawingboard[9].x,board10.drawingboard[9].y,board10.drawingboard[9].z);
+//	ROS_INFO("\nboard_0 position: %d x = %f y = %f z = %f\n"
+//				"board_1 position: %d x = %f y = %f z = %f\n"
+//				"board_2 position: %d x = %f y = %f z = %f\n"
+//				"board_3 position: %d x = %f y = %f z = %f\n"
+//				"board_4 position: %d x = %f y = %f z = %f\n"
+//				"board_5 position: %d x = %f y = %f z = %f\n"
+//				"board_6 position: %d x = %f y = %f z = %f\n"
+//				"board_7 position: %d x = %f y = %f z = %f\n"
+//				"board_8 position: %d x = %f y = %f z = %f\n"
+//				"board_9 position: %d x = %f y = %f z = %f\n",
+//				board10.drawingboard[0].valid,board10.drawingboard[0].x,board10.drawingboard[0].y,board10.drawingboard[0].z,
+//				board10.drawingboard[1].valid,board10.drawingboard[1].x,board10.drawingboard[1].y,board10.drawingboard[1].z,
+//				board10.drawingboard[2].valid,board10.drawingboard[2].x,board10.drawingboard[2].y,board10.drawingboard[2].z,
+//				board10.drawingboard[3].valid,board10.drawingboard[3].x,board10.drawingboard[3].y,board10.drawingboard[3].z,
+//				board10.drawingboard[4].valid,board10.drawingboard[4].x,board10.drawingboard[4].y,board10.drawingboard[4].z,
+//				board10.drawingboard[5].valid,board10.drawingboard[5].x,board10.drawingboard[5].y,board10.drawingboard[5].z,
+//				board10.drawingboard[6].valid,board10.drawingboard[6].x,board10.drawingboard[6].y,board10.drawingboard[6].z,
+//				board10.drawingboard[7].valid,board10.drawingboard[7].x,board10.drawingboard[7].y,board10.drawingboard[7].z,
+//				board10.drawingboard[8].valid,board10.drawingboard[8].x,board10.drawingboard[8].y,board10.drawingboard[8].z,
+//				board10.drawingboard[9].valid,board10.drawingboard[9].x,board10.drawingboard[9].y,board10.drawingboard[9].z);
 }
 
 /* 4 setpoints. -libn */
@@ -169,7 +171,7 @@ int main(int argc, char **argv)
         rate.sleep();
     }
 
-    current_mission_num = 0;
+    current_mission_num = 2;
 
     ros::Time last_request = ros::Time::now();
     ros::Time last_show_request = ros::Time::now();
@@ -243,31 +245,39 @@ int main(int argc, char **argv)
 
 			ROS_INFO("current loop: %d",loop);
 			ROS_INFO("current_mission_state: %d",current_mission_state);
-			ROS_INFO("position*: %5.3f %5.3f %5.3f",pose_pub.pose.position.x,pose_pub.pose.position.y,pose_pub.pose.position.z);
-			ROS_INFO("current position: %5.3f %5.3f %5.3f",current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
+			if(velocity_control_enable)
+			{
+				ROS_INFO("velocity*: %5.3f %5.3f %5.3f",vel_pub.twist.linear.x, vel_pub.twist.linear.y, vel_pub.twist.linear.z);
+			}
+			else
+			{
+				ROS_INFO("position*: %5.3f %5.3f %5.3f",pose_pub.pose.position.x,pose_pub.pose.position.y,pose_pub.pose.position.z);
+			}
+
+			ROS_INFO("current position: %5.3f %5.3f %5.3f\n",current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
 //			ROS_INFO("mission_timer_t = %.3f",mission_timer_t);
 //			ROS_INFO("loop_timer_t = %.3f",loop_timer_t);
-			ROS_INFO("board_position_received:\n"
-					"board0: %d %5.3f %5.3f %5.3f \n"
-					"board1: %d %5.3f %5.3f %5.3f \n"
-					"board2: %d %5.3f %5.3f %5.3f \n"
-					"board3: %d %5.3f %5.3f %5.3f \n"
-					"board4: %d %5.3f %5.3f %5.3f \n"
-					"board5: %d %5.3f %5.3f %5.3f \n"
-					"board6: %d %5.3f %5.3f %5.3f \n"
-					"board7: %d %5.3f %5.3f %5.3f \n"
-					"board8: %d %5.3f %5.3f %5.3f \n"
-					"board9: %d %5.3f %5.3f %5.3f \n",
-					board10.drawingboard[0].valid,board10.drawingboard[0].x,board10.drawingboard[0].y,board10.drawingboard[0].z,
-					board10.drawingboard[1].valid,board10.drawingboard[1].x,board10.drawingboard[1].y,board10.drawingboard[1].z,
-					board10.drawingboard[2].valid,board10.drawingboard[2].x,board10.drawingboard[2].y,board10.drawingboard[2].z,
-					board10.drawingboard[3].valid,board10.drawingboard[3].x,board10.drawingboard[3].y,board10.drawingboard[3].z,
-					board10.drawingboard[4].valid,board10.drawingboard[4].x,board10.drawingboard[4].y,board10.drawingboard[4].z,
-					board10.drawingboard[5].valid,board10.drawingboard[5].x,board10.drawingboard[5].y,board10.drawingboard[5].z,
-					board10.drawingboard[6].valid,board10.drawingboard[6].x,board10.drawingboard[6].y,board10.drawingboard[6].z,
-					board10.drawingboard[7].valid,board10.drawingboard[7].x,board10.drawingboard[7].y,board10.drawingboard[7].z,
-					board10.drawingboard[8].valid,board10.drawingboard[8].x,board10.drawingboard[8].y,board10.drawingboard[8].z,
-					board10.drawingboard[9].valid,board10.drawingboard[9].x,board10.drawingboard[9].y,board10.drawingboard[9].z);
+//			ROS_INFO("board_position_received:\n"
+//					"board0: %d %5.3f %5.3f %5.3f \n"
+//					"board1: %d %5.3f %5.3f %5.3f \n"
+//					"board2: %d %5.3f %5.3f %5.3f \n"
+//					"board3: %d %5.3f %5.3f %5.3f \n"
+//					"board4: %d %5.3f %5.3f %5.3f \n"
+//					"board5: %d %5.3f %5.3f %5.3f \n"
+//					"board6: %d %5.3f %5.3f %5.3f \n"
+//					"board7: %d %5.3f %5.3f %5.3f \n"
+//					"board8: %d %5.3f %5.3f %5.3f \n"
+//					"board9: %d %5.3f %5.3f %5.3f \n",
+//					board10.drawingboard[0].valid,board10.drawingboard[0].x,board10.drawingboard[0].y,board10.drawingboard[0].z,
+//					board10.drawingboard[1].valid,board10.drawingboard[1].x,board10.drawingboard[1].y,board10.drawingboard[1].z,
+//					board10.drawingboard[2].valid,board10.drawingboard[2].x,board10.drawingboard[2].y,board10.drawingboard[2].z,
+//					board10.drawingboard[3].valid,board10.drawingboard[3].x,board10.drawingboard[3].y,board10.drawingboard[3].z,
+//					board10.drawingboard[4].valid,board10.drawingboard[4].x,board10.drawingboard[4].y,board10.drawingboard[4].z,
+//					board10.drawingboard[5].valid,board10.drawingboard[5].x,board10.drawingboard[5].y,board10.drawingboard[5].z,
+//					board10.drawingboard[6].valid,board10.drawingboard[6].x,board10.drawingboard[6].y,board10.drawingboard[6].z,
+//					board10.drawingboard[7].valid,board10.drawingboard[7].x,board10.drawingboard[7].y,board10.drawingboard[7].z,
+//					board10.drawingboard[8].valid,board10.drawingboard[8].x,board10.drawingboard[8].y,board10.drawingboard[8].z,
+//					board10.drawingboard[9].valid,board10.drawingboard[9].x,board10.drawingboard[9].y,board10.drawingboard[9].z);
 
 		}
 		else
@@ -280,7 +290,9 @@ int main(int argc, char **argv)
 				last_state_display.armed = current_state.armed;
 				last_state_display.mode = current_state.mode;
 				ROS_INFO("current position: %5.3f %5.3f %5.3f", current_pos.pose.position.x, 	  	current_pos.pose.position.y, current_pos.pose.position.z);
-
+				ROS_INFO("board: current_mission_num: %d\n"
+						"position:%5.3f %5.3f %5.3f",current_mission_num,board10.drawingboard[current_mission_num].x,
+						board10.drawingboard[current_mission_num].y,board10.drawingboard[current_mission_num].z);
 				ROS_INFO("setpoint_received:\n"
 						"setpoint_A:%5.3f %5.3f %5.3f \n"
 						"setpoint_B:%5.3f %5.3f %5.3f \n"
@@ -346,7 +358,7 @@ int main(int argc, char **argv)
 				break;
 		}
 
-        if(current_mission_state == takeoff)
+        if(velocity_control_enable)
         {
         	local_vel_pub.publish(vel_pub);
         }
@@ -375,6 +387,7 @@ void state_machine_func(void)
 			vel_pub.twist.angular.x = 0.0f;
 			vel_pub.twist.angular.y = 0.0f;
 			vel_pub.twist.angular.z = 0.0f;
+			velocity_control_enable = true;
 			if((abs(current_pos.pose.position.x - current_pos.pose.position.x) < 0.2) &&      // switch to next state
 			   (abs(current_pos.pose.position.y - current_pos.pose.position.y) < 0.2) &&
 			   (abs(current_pos.pose.position.z - setpoint_H.pose.position.z) < 0.8))
@@ -384,6 +397,7 @@ void state_machine_func(void)
 					mission_timer_t = ros::Time::now();
 					setpoint_H.pose.position.x = current_pos.pose.position.x;
 					setpoint_H.pose.position.y = current_pos.pose.position.y;
+					velocity_control_enable = false;
 			   }
     		break;
 
@@ -452,24 +466,42 @@ void state_machine_func(void)
 
 			break;
         case mission_search:
+//        	ROS_INFO("board10.drawingboard[current_mission_num].valid = %d",board10.drawingboard[current_mission_num].valid);
         	if(board10.drawingboard[current_mission_num].valid)
         	{
+//        		ROS_INFO("Now I am making decision.\n"
+//        				"current_pos: x = %5.3f y = %5.3f z = %5.3f\n"
+//        				"board10.drawingboard[%d]_pos: x = %5.3f y = %5.3f z = %5.3f\n",
+//						current_pos.pose.position.x, current_pos.pose.position.y, current_pos.pose.position.z,
+//						current_mission_num,board10.drawingboard[current_mission_num].x,
+//						board10.drawingboard[current_mission_num].y,board10.drawingboard[current_mission_num].z);
+//
+//        		ROS_INFO("position*: %5.3f %5.3f %5.3f",pose_pub.pose.position.x,pose_pub.pose.position.y,pose_pub.pose.position.z);
+//				ROS_INFO("current position: %5.3f %5.3f %5.3f",current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
+
         		pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x;	/* TODO:switch to different board positions. -libn */
 				pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y;
 				pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + 3;
+
+//				ROS_INFO("distance: x = %5.3f y = %5.3f z = %5.3f\n",
+//						abs(current_pos.pose.position.x - board10.drawingboard[current_mission_num].x),
+//						abs(current_pos.pose.position.y - board10.drawingboard[current_mission_num].y),
+//						abs(current_pos.pose.position.z - (board10.drawingboard[current_mission_num].z+3)));
+
 				if((abs(current_pos.pose.position.x - board10.drawingboard[current_mission_num].x) < 0.2) &&      // switch to next state
 				   (abs(current_pos.pose.position.y - board10.drawingboard[current_mission_num].y) < 0.2) &&
-				   (abs(current_pos.pose.position.z - board10.drawingboard[current_mission_num].z) < 0.2))
+				   (abs(current_pos.pose.position.z - (board10.drawingboard[current_mission_num].z+3)) < 0.2))
 				{
 					current_mission_state = mission_relocate; // current_mission_state++;
 					mission_last_time = ros::Time::now();
+					ROS_INFO("mission switched well!");
 				}
         	}
         	else
         	{
         		/* TODO: add scanning method! -libn */
         		current_mission_state = mission_scan; // current_mission_state++;
-        		ROS_INFO("current mission state: mission_scan");
+        		ROS_INFO("fall into mission state: mission_scan");
         	}
 			break;
         case mission_relocate:
@@ -498,7 +530,7 @@ void state_machine_func(void)
 			pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + 3;
             if((abs(current_pos.pose.position.x - board10.drawingboard[current_mission_num].x) < 0.2) &&      // switch to next state
                (abs(current_pos.pose.position.y - board10.drawingboard[current_mission_num].y) < 0.2) &&
-               (abs(current_pos.pose.position.z - board10.drawingboard[current_mission_num].z) < 0.2))
+               (abs(current_pos.pose.position.z - (board10.drawingboard[current_mission_num].z+3)) < 0.2))
                {
             	current_mission_state = mission_operate_hover; // current_mission_state++;
             	mission_last_time = ros::Time::now();

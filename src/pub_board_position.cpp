@@ -48,9 +48,9 @@ int main(int argc, char **argv)
 	for(int i = 0; i < 10; i++)
 	{
         board10.drawingboard[i].num = i;
-        board10.drawingboard[i].x = (float)i;
+        board10.drawingboard[i].x = -(float)i;
         board10.drawingboard[i].y = (float)i;
-        board10.drawingboard[i].z = (float)i;
+        board10.drawingboard[i].z = 0.0f;
         board10.drawingboard[i].valid = true;
 
 	}
