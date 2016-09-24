@@ -171,7 +171,7 @@ int main(int argc, char **argv)
         rate.sleep();
     }
 
-    current_mission_num = 2;
+    current_mission_num = 5;
 
     ros::Time last_request = ros::Time::now();
     ros::Time last_show_request = ros::Time::now();
