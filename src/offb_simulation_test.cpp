@@ -29,7 +29,7 @@
 
 #include <math.h>
 
-#include <std_msgs/Int8.h>
+#include <std_msgs/Int32.h>
 
 void state_machine_func(void);
 /* mission state. -libn */
@@ -158,6 +158,12 @@ void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::Cons
 				task_status_change_p2m_data.loop_value);
 }
 
+std_msgs::Int32 vision_num_data;
+void vision_num_cb(const std_msgs::Int32::ConstPtr& msg){
+    vision_num_data = *msg;
+    ROS_INFO("subscribing vision_num_data = %d", vision_num_data.data);
+}
+
 /* publish messages to pixhawk. -libn */
 state_machine::OBSTACLE_POSITION_M2P obstacle_position_m2p_data;
 state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor_m2p_data;
@@ -245,9 +251,13 @@ int main(int argc, char **argv)
     ros::Publisher  vision_one_num_get_m2p_pub  = nh.advertise<state_machine::VISION_ONE_NUM_GET_M2P>("mavros/vision_one_num_get_m2p", 10);
     ros::Publisher  yaw_sp_calculated_m2p_pub  = nh.advertise<state_machine::YAW_SP_CALCULATED_M2P>("mavros/yaw_sp_calculated_m2p", 10);
 
-    ros::Publisher  camera_switch_pub  = nh.advertise<std_msgs::Int8>("camera_switch", 10);
-    std_msgs::Int8 camera_switch_data;
+    ros::Publisher  camera_switch_pub  = nh.advertise<std_msgs::Int32>("camera_switch", 10);
+    std_msgs::Int32 camera_switch_data;
+    /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
     camera_switch_data.data = 0;
+
+    /* get vision_num */
+    ros::Subscriber vision_num_sub = nh.subscribe<std_msgs::Int32>("vision_num", 10, vision_num_cb);
 
     //the setpoint publishing rate MUST be faster than 2Hz
     ros::Rate rate(10.0);
@@ -271,7 +281,7 @@ int main(int argc, char **argv)
 	setpoint_H.pose.position.y = 0.0f;
 	setpoint_H.pose.position.z = 3.0f;
 
-	ROS_INFO("sending 100 setpoints, please wait!");
+    ROS_INFO("sending 100 setpoints, please wait 10 seconds!");
     //send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){
         local_pos_pub.publish(pose_pub);
@@ -296,12 +306,13 @@ int main(int argc, char **argv)
     /* spray left(x1,y1) and spray right(x2,y2) in NED. */
     float x1 = 0.3f,y1 = 0.3f,x2 = 0.6f,y2 = 0.6f;
     float deta_x,deta_y;
-
-    camera_switch_data.data = 1;
+    camera_switch_data.data = 2;
     camera_switch_pub.publish(camera_switch_data);
-    ROS_INFO("send camera_switch_data = %d",camera_switch_data.data);
+    ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
 
-    while(ros::ok()){
+
+    while(ros::ok())
+    {
     	/* prefilght process. -libn */
 		if(mission_preflight && fixed_target_gotten)
 		{
@@ -314,19 +325,36 @@ int main(int argc, char **argv)
 			mission_preflight = false;
 			ROS_INFO("\n\tyaw_sp_calculated!!!\n");
             ROS_INFO("yaw_sp =  rad:%f  deg:%f",yaw_sp_calculated_m2p_data.yaw_sp,yaw_sp_calculated_m2p_data.yaw_sp*180/M_PI);
-			/* start manual scanning. -libn */
 
 		}
+
+//        /* TODO:change and publish camera_switch_data in state_machine_func(). */
+//        camera_switch_data.data = 2;
+//        camera_switch_pub.publish(camera_switch_data);
+//        ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+
+
         /* mode switch display(Once). -libn */
     	if(current_state.mode == "MANUAL" && last_state.mode != "MANUAL")
     	{
     		last_state.mode = "MANUAL";
     		ROS_INFO("switch to mode: MANUAL");
+            /* start manual scanning. -libn */
+            /*  camera_switch/camera_switch_return: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+            camera_switch_data.data = 1;
+            camera_switch_pub.publish(camera_switch_data);
+            ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
     	}
-    	if(current_state.mode == "POSCTL" && last_state.mode != "POSCTL")
+        if(current_state.mode == "ALTCTL" && last_state.mode != "ALTCTL")
     	{
-    		last_state.mode = "POSCTL";
-    		ROS_INFO("switch to mode: POSCTL");
+            last_state.mode = "ALTCTL";
+            ROS_INFO("switch to mode: ALTCTL");
+            /* start manual scanning. -libn */
+            /*  camera_switch/camera_switch_return: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+            camera_switch_data.data = 2;
+            camera_switch_pub.publish(camera_switch_data);
+            ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+
     	}
     	if(current_state.mode == "OFFBOARD" && last_state.mode != "OFFBOARD")
     	{
