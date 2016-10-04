@@ -27,6 +27,8 @@
 #include <state_machine/VISION_ONE_NUM_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
 
+#include <math.h>
+
 void state_machine_func(void);
 /* mission state. -libn */
 static const int takeoff = 0;
@@ -51,6 +53,9 @@ ros::Time mission_last_time;	/* timer used in mission. -libn */
 bool display_screen_num_recognized = false;	/* to check if the num on display screen is recognized. -libn */
 bool relocate_valid = false;	/* to complete relocate mission. -libn */
 int mission_failure = 0;
+
+bool mission_preflight = true;	/* preflight process. -libn */
+bool fixed_target_gotten = false;	/* receive fixed target. -libn */
 
 int current_mission_num;	/* mission num: 5 subtask -> 5 current nums.	TODO:change mission num. -libn */
 
@@ -119,14 +124,27 @@ geometry_msgs::PoseStamped setpoint_H;	/* home position. -libn */
 geometry_msgs::PoseStamped pose_pub;
 geometry_msgs::TwistStamped vel_pub;	/* velocity setpoint to be published. -libn */
 
+ros::Publisher  fixed_target_return_m2p_pub;
+
 /* subscribe messages from pixhawk. -libn */
 state_machine::FIXED_TARGET_POSITION_P2M fixed_target_position_p2m_data;
+state_machine::FIXED_TARGET_RETURN_M2P fixed_target_return_m2p_data;
 void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M::ConstPtr& msg){
 	fixed_target_position_p2m_data = *msg;
 	ROS_INFO("subscribing fixed_target_position_p2m: %5.3f %5.3f %5.3f",
 			fixed_target_position_p2m_data.home_lat,
 			fixed_target_position_p2m_data.home_lon,
 			fixed_target_position_p2m_data.home_alt);
+	/* publish messages to pixhawk. -libn */
+	fixed_target_return_m2p_data.home_lat = fixed_target_position_p2m_data.home_lat;
+	fixed_target_return_m2p_data.home_lon = fixed_target_position_p2m_data.home_lon;
+	fixed_target_return_m2p_data.home_alt = fixed_target_position_p2m_data.home_alt;
+	fixed_target_return_m2p_pub.publish(fixed_target_return_m2p_data);
+	ROS_INFO("publishing fixed_target_return_m2p: %f\t%f\t%f\t",
+			fixed_target_return_m2p_data.home_lat,
+			fixed_target_return_m2p_data.home_lon,
+			fixed_target_return_m2p_data.home_alt);
+	fixed_target_gotten = true;	/* fixed_target gotten, start number scanning mission. -libn */
 }
 
 state_machine::TASK_STATUS_CHANGE_P2M task_status_change_p2m_data;
@@ -139,7 +157,6 @@ void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::Cons
 }
 
 /* publish messages to pixhawk. -libn */
-state_machine::FIXED_TARGET_RETURN_M2P fixed_target_return_m2p_data;
 state_machine::OBSTACLE_POSITION_M2P obstacle_position_m2p_data;
 state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor_m2p_data;
 state_machine::VISION_NUM_SCAN_M2P vision_num_scan_m2p_data;
@@ -153,6 +170,31 @@ void vision_one_num_get_cal(void)
 void yaw_sp_cal(void)
 {
 	yaw_sp_calculated_m2p_data.yaw_sp = 0.6f;
+}
+/* limit angle_rad to [-pi,pi]. */
+float wrap_pi(float angle_rad)
+{
+    /* value is inf or NaN */
+    if (angle_rad > 10 || angle_rad < -10) {
+        return angle_rad;
+    }
+    int c = 0;
+    while (angle_rad >= M_PI) {
+        angle_rad -= M_PI*2;
+
+        if (c++ > 3) {
+            return NAN;
+        }
+    }
+    c = 0;
+    while (angle_rad < -M_PI) {
+        angle_rad += M_PI*2;
+
+        if (c++ > 3) {
+            return NAN;
+        }
+    }
+    return angle_rad;
 }
 
 int main(int argc, char **argv)
@@ -194,7 +236,7 @@ int main(int argc, char **argv)
     ros::Subscriber task_status_change_p2m_sub = nh.subscribe<state_machine::TASK_STATUS_CHANGE_P2M>("mavros/task_status_change_p2m", 10, task_status_change_p2m_cb);
 
     /* publish messages to pixhawk. -libn */
-    ros::Publisher  fixed_target_return_m2p_pub  = nh.advertise<state_machine::FIXED_TARGET_RETURN_M2P>("mavros/fixed_target_return_m2p", 10);
+    fixed_target_return_m2p_pub  = nh.advertise<state_machine::FIXED_TARGET_RETURN_M2P>("mavros/fixed_target_return_m2p", 10);
     ros::Publisher  obstacle_position_m2p_pub  = nh.advertise<state_machine::OBSTACLE_POSITION_M2P>("mavros/obstacle_position_m2p", 10);
     ros::Publisher  task_status_monitor_m2p_pub  = nh.advertise<state_machine::TASK_STATUS_MONITOR_M2P>("mavros/task_status_monitor_m2p", 10);
     ros::Publisher  vision_num_scan_m2p_pub  = nh.advertise<state_machine::VISION_NUM_SCAN_M2P>("mavros/vision_num_scan_m2p", 10);
@@ -205,7 +247,7 @@ int main(int argc, char **argv)
     ros::Rate rate(10.0);
 
     // wait for FCU connection
-    while(ros::ok() && current_state.connected){
+    while(ros::ok() && !current_state.connected){
         ros::spinOnce();
         rate.sleep();
     }
@@ -223,6 +265,7 @@ int main(int argc, char **argv)
 	setpoint_H.pose.position.y = 0.0f;
 	setpoint_H.pose.position.z = 3.0f;
 
+	ROS_INFO("sending 100 setpoints, please wait!");
     //send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){
         local_pos_pub.publish(pose_pub);
@@ -242,7 +285,28 @@ int main(int argc, char **argv)
     ROS_INFO("current_state.mode = %s",current_state.mode.c_str());
     ROS_INFO("armed status: %d",current_state.armed);
 
+    yaw_sp_calculated_m2p_data.yaw_sp = 0.0f;
+
+    /* spray left(x1,y1) and spray right(x2,y2) in NED. */
+    float x1 = 0.3f,y1 = 0.3f,x2 = 0.6f,y2 = 0.6f;
+    float deta_x,deta_y;
+
     while(ros::ok()){
+    	/* prefilght process. -libn */
+		if(mission_preflight && fixed_target_gotten)
+		{
+			/* calculate yaw*. -libn */
+            /* TODO:calculate yaw* */
+
+            deta_x = x2 - x1;deta_y = y2 - y1;
+            yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
+            yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in NED. */
+			mission_preflight = false;
+			ROS_INFO("\n\tyaw_sp_calculated!!!\n");
+            ROS_INFO("yaw_sp =  rad:%f  deg:%f",yaw_sp_calculated_m2p_data.yaw_sp,yaw_sp_calculated_m2p_data.yaw_sp*180/M_PI);
+			/* start manual scanning. -libn */
+
+		}
     	/* mode switch display(Once). -libn */
     	if(current_state.mode == "MANUAL" && last_state.mode != "MANUAL")
     	{
@@ -343,16 +407,6 @@ int main(int argc, char **argv)
 		{
 			if(current_state.mode != last_state_display.mode || last_state_display.armed != current_state.armed)
 			{
-				/* publish messages to pixhawk. -libn */
-				fixed_target_return_m2p_data.home_lat= 1.0f;
-				fixed_target_return_m2p_data.home_lon= 1.0f;
-				fixed_target_return_m2p_data.home_alt= 1.0f;
-				fixed_target_return_m2p_pub.publish(fixed_target_return_m2p_data);
-				ROS_INFO("publishing fixed_target_return_m2p: %f\t%f\t%f\t",
-						fixed_target_return_m2p_data.home_lat,
-						fixed_target_return_m2p_data.home_lon,
-						fixed_target_return_m2p_data.home_alt);
-
 				ROS_INFO("current_state.mode = %s",current_state.mode.c_str());
 				ROS_INFO("last_state_display.mode = %s",last_state_display.mode.c_str());
 				ROS_INFO("armed status: %d\n",current_state.armed);
@@ -373,7 +427,7 @@ int main(int argc, char **argv)
 						setpoint_C.pose.position.x,setpoint_C.pose.position.y,setpoint_C.pose.position.z,
 						setpoint_D.pose.position.x,setpoint_D.pose.position.y,setpoint_D.pose.position.z,
 						setpoint_H.pose.position.x,setpoint_H.pose.position.y,setpoint_H.pose.position.z);
-
+				ROS_INFO("yaw_sp_calculated_m2p_data.yaw_sp: %f",yaw_sp_calculated_m2p_data.yaw_sp);
 				ROS_INFO("board_position_received:\n"
 						"board0: %d %5.3f %5.3f %5.3f \n"
 						"board1: %d %5.3f %5.3f %5.3f \n"
@@ -433,11 +487,11 @@ int main(int argc, char **argv)
 		obstacle_position_m2p_data.obstacle_z = 2.0f;
 		obstacle_position_m2p_data.obstacle_valid = true;
 		obstacle_position_m2p_pub.publish(obstacle_position_m2p_data);
-		ROS_INFO("publishing obstacle_position_m2p: %f\t%f\t%f\t%d",
-				obstacle_position_m2p_data.obstacle_x,
-				obstacle_position_m2p_data.obstacle_y,
-				obstacle_position_m2p_data.obstacle_z,
-				obstacle_position_m2p_data.obstacle_valid);
+//		ROS_INFO("publishing obstacle_position_m2p: %f\t%f\t%f\t%d",
+//				obstacle_position_m2p_data.obstacle_x,
+//				obstacle_position_m2p_data.obstacle_y,
+//				obstacle_position_m2p_data.obstacle_z,
+//				obstacle_position_m2p_data.obstacle_valid);
 
 		task_status_monitor_m2p_data.spray_duration = 0.3f;
 		task_status_monitor_m2p_data.task_status = 0;
@@ -446,13 +500,13 @@ int main(int argc, char **argv)
 		task_status_monitor_m2p_data.target_lon = 3.0f;
 		task_status_monitor_m2p_data.target_alt = 3.0f;
 		task_status_monitor_m2p_pub.publish(task_status_monitor_m2p_data);
-		ROS_INFO("publishing task_status_monitor_m2p: %f %d %d %f %f %f",
-				task_status_monitor_m2p_data.spray_duration,
-				task_status_monitor_m2p_data.task_status,
-				task_status_monitor_m2p_data.loop_value,
-				task_status_monitor_m2p_data.target_lat,
-				task_status_monitor_m2p_data.target_lon,
-				task_status_monitor_m2p_data.target_alt);
+//		ROS_INFO("publishing task_status_monitor_m2p: %f %d %d %f %f %f",
+//				task_status_monitor_m2p_data.spray_duration,
+//				task_status_monitor_m2p_data.task_status,
+//				task_status_monitor_m2p_data.loop_value,
+//				task_status_monitor_m2p_data.target_lat,
+//				task_status_monitor_m2p_data.target_lon,
+//				task_status_monitor_m2p_data.target_alt);
 
 		vision_num_scan_m2p_data.board_num = 0;
 		vision_num_scan_m2p_data.board_x = 4.0f;
@@ -460,23 +514,23 @@ int main(int argc, char **argv)
 		vision_num_scan_m2p_data.board_z = 4.0f;
 		vision_num_scan_m2p_data.board_valid = true;
 		vision_num_scan_m2p_pub.publish(vision_num_scan_m2p_data);
-		ROS_INFO("publishing vision_num_scan_m2p: %d %f %f %f %d",
-				vision_num_scan_m2p_data.board_num,
-				vision_num_scan_m2p_data.board_x,
-				vision_num_scan_m2p_data.board_y,
-				vision_num_scan_m2p_data.board_z,
-				vision_num_scan_m2p_data.board_valid);
+//		ROS_INFO("publishing vision_num_scan_m2p: %d %f %f %f %d",
+//				vision_num_scan_m2p_data.board_num,
+//				vision_num_scan_m2p_data.board_x,
+//				vision_num_scan_m2p_data.board_y,
+//				vision_num_scan_m2p_data.board_z,
+//				vision_num_scan_m2p_data.board_valid);
 
 		vision_one_num_get_m2p_data.loop_value = 0;
 		vision_one_num_get_m2p_data.num = 5;
 		vision_one_num_get_m2p_pub.publish(vision_one_num_get_m2p_data);
-		ROS_INFO("publishing vision_one_num_get_m2p: %d %d",
-				vision_one_num_get_m2p_data.loop_value,
-				vision_one_num_get_m2p_data.num);
+//		ROS_INFO("publishing vision_one_num_get_m2p: %d %d",
+//				vision_one_num_get_m2p_data.loop_value,
+//				vision_one_num_get_m2p_data.num);
 
 		yaw_sp_calculated_m2p_pub.publish(yaw_sp_calculated_m2p_data);
-		ROS_INFO("publishing yaw_sp_calculated_m2p: %f",
-				yaw_sp_calculated_m2p_data.yaw_sp);
+//		ROS_INFO("publishing yaw_sp_calculated_m2p: %f",
+//				yaw_sp_calculated_m2p_data.yaw_sp);
 
         if(velocity_control_enable)
         {

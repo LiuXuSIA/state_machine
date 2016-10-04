@@ -89,7 +89,6 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
 
 }
 
-
 int main(int argc, char **argv)
 {
 	ROS_INFO("I was alive.");
