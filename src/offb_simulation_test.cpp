@@ -29,6 +29,8 @@
 
 #include <math.h>
 
+#include <std_msgs/Int8.h>
+
 void state_machine_func(void);
 /* mission state. -libn */
 static const int takeoff = 0;
@@ -243,6 +245,10 @@ int main(int argc, char **argv)
     ros::Publisher  vision_one_num_get_m2p_pub  = nh.advertise<state_machine::VISION_ONE_NUM_GET_M2P>("mavros/vision_one_num_get_m2p", 10);
     ros::Publisher  yaw_sp_calculated_m2p_pub  = nh.advertise<state_machine::YAW_SP_CALCULATED_M2P>("mavros/yaw_sp_calculated_m2p", 10);
 
+    ros::Publisher  camera_switch_pub  = nh.advertise<std_msgs::Int8>("camera_switch", 10);
+    std_msgs::Int8 camera_switch_data;
+    camera_switch_data.data = 0;
+
     //the setpoint publishing rate MUST be faster than 2Hz
     ros::Rate rate(10.0);
 
@@ -291,6 +297,10 @@ int main(int argc, char **argv)
     float x1 = 0.3f,y1 = 0.3f,x2 = 0.6f,y2 = 0.6f;
     float deta_x,deta_y;
 
+    camera_switch_data.data = 1;
+    camera_switch_pub.publish(camera_switch_data);
+    ROS_INFO("send camera_switch_data = %d",camera_switch_data.data);
+
     while(ros::ok()){
     	/* prefilght process. -libn */
 		if(mission_preflight && fixed_target_gotten)
@@ -307,7 +317,7 @@ int main(int argc, char **argv)
 			/* start manual scanning. -libn */
 
 		}
-    	/* mode switch display(Once). -libn */
+        /* mode switch display(Once). -libn */
     	if(current_state.mode == "MANUAL" && last_state.mode != "MANUAL")
     	{
     		last_state.mode = "MANUAL";
