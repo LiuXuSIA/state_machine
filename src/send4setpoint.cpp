@@ -37,27 +37,28 @@ int main(int argc, char **argv)
 //        setpoint_indexed.z = 2.5f;
 		setpoint_indexed.x = 0.0f;
 		setpoint_indexed.y = 5.0f;	/* ROS coordinate frame: NWU(North/West/Up) -libn */
-		setpoint_indexed.z = 5.0f;
+        setpoint_indexed.z = 4.0f;
 		setpoint_indexed_pub.publish(setpoint_indexed);
 		ros::spinOnce();
 		loop_rate.sleep();
 
-		setpoint_indexed.index = 2;	/* 2ed setpoint(B). -libn <Aug 15, 2016 9:01:21 AM> */
+        setpoint_indexed.index = 2;	/* 2ed setpoint(L). -libn <Aug 15, 2016 9:01:21 AM> */
 		setpoint_indexed.x = 0.0f;
 		setpoint_indexed.y = 2.0f;
-		setpoint_indexed.z = 5.0f;
+        setpoint_indexed.z = 5.0f;  /* not necessary. */
 		setpoint_indexed_pub.publish(setpoint_indexed);
 		ros::spinOnce();
 		loop_rate.sleep();
 
-		setpoint_indexed.index = 3;	/* 3rd setpoint(C). -libn <Aug 15, 2016 9:01:21 AM> */
+        setpoint_indexed.index = 3;	/* 3rd setpoint(R). -libn <Aug 15, 2016 9:01:21 AM> */
 		setpoint_indexed.x = -2.0f;
 		setpoint_indexed.y = 2.0f;
-		setpoint_indexed.z = 5.0f;
+        setpoint_indexed.z = 5.0f;  /* not necessary. */
 		setpoint_indexed_pub.publish(setpoint_indexed);
 		ros::spinOnce();
 		loop_rate.sleep();
 
+        /* 4th setpoint(D): not necessary. */
 		setpoint_indexed.index = 4;	/* 4th setpoint(D). -libn <Aug 15, 2016 9:01:21 AM> */
 		setpoint_indexed.x = -2.0f;
 		setpoint_indexed.y = 0.0f;

@@ -28,6 +28,8 @@
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
 #define SPRAY_DISTANCE 1.5  /* min distance from UAV to drawing board. */
 #define VISION_SCAN_DISTANCE 2  /* distance from UAV to drawing board while hoveing and scanning. */
+#define SCREEN_HEIGHT 3 /* height of screen. */
+#define SAFE_HEIGHT_DISTANCE 3  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
 
 #include <math.h>
 
@@ -68,6 +70,13 @@ bool velocity_control_enable = false;
 ros::Time mission_timer_t;	/* timer to control the whole mission. -libn */
 ros::Time loop_timer_t;	/* timer to control subtask. -libn */
 
+/* 4 setpoints. -libn */
+geometry_msgs::PoseStamped setpoint_A;
+geometry_msgs::PoseStamped setpoint_L;
+geometry_msgs::PoseStamped setpoint_R;
+geometry_msgs::PoseStamped setpoint_D;
+geometry_msgs::PoseStamped setpoint_H;	/* home position. -libn */
+
 state_machine::State current_state;
 state_machine::State last_state;
 state_machine::State last_state_display;
@@ -77,10 +86,80 @@ void state_cb(const state_machine::State::ConstPtr& msg){
 	current_state = *msg;
 }
 
+state_machine::YAW_SP_CALCULATED_M2P yaw_sp_calculated_m2p_data;
+geometry_msgs::PoseStamped pose_pub;
+geometry_msgs::TwistStamped vel_pub;	/* velocity setpoint to be published. -libn */
+
+/* limit angle_rad to [-pi,pi]. */
+float wrap_pi(float angle_rad)
+{
+    /* value is inf or NaN */
+    if (angle_rad > 10 || angle_rad < -10) {
+        return angle_rad;
+    }
+    int c = 0;
+    while (angle_rad >= M_PI) {
+        angle_rad -= M_PI*2;
+
+        if (c++ > 3) {
+            return NAN;
+        }
+    }
+    c = 0;
+    while (angle_rad < -M_PI) {
+        angle_rad += M_PI*2;
+
+        if (c++ > 3) {
+            return NAN;
+        }
+    }
+    return angle_rad;
+}
+
+float deta_x,deta_y;
 state_machine::Setpoint setpoint_indexed;
 void SetpointIndexedCallback(const state_machine::Setpoint::ConstPtr& msg)
 {
 	setpoint_indexed = *msg;
+    /* get 4 setpoints:A,B,C,D. -libn */
+    switch(setpoint_indexed.index)
+    {
+        case 1:
+            setpoint_A.pose.position.x = setpoint_indexed.x;
+            setpoint_A.pose.position.y = setpoint_indexed.y;
+            setpoint_A.pose.position.z = setpoint_indexed.z;
+            break;
+        case 2:
+            setpoint_L.pose.position.x = setpoint_indexed.x;
+            setpoint_L.pose.position.y = setpoint_indexed.y;
+            setpoint_L.pose.position.z = setpoint_indexed.z;
+            break;
+        case 3:
+            setpoint_R.pose.position.x = setpoint_indexed.x;
+            setpoint_R.pose.position.y = setpoint_indexed.y;
+            setpoint_R.pose.position.z = setpoint_indexed.z;
+            break;
+        case 4:
+            setpoint_D.pose.position.x = setpoint_indexed.x;
+            setpoint_D.pose.position.y = setpoint_indexed.y;
+            setpoint_D.pose.position.z = setpoint_indexed.z;
+            break;
+        default:
+            ROS_INFO("setpoint index error!");
+            break;
+    }
+
+    /* calculate yaw*. -libn */
+    deta_x = setpoint_R.pose.position.x - setpoint_L.pose.position.x;
+    deta_y = setpoint_R.pose.position.y - setpoint_L.pose.position.y;
+    yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
+    yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in NED in rad within [-pi,pi]. */
+    ROS_INFO("yaw*(NED) calculated for test with send4setpoint running.");
+    pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
+    pose_pub.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
+    pose_pub.pose.orientation.z = sin(yaw_sp_calculated_m2p_data.yaw_sp/2);
+    pose_pub.pose.orientation.w = cos(yaw_sp_calculated_m2p_data.yaw_sp/2);		/* set yaw* = 90 degree(default in simulation). -libn */
+
 }
 
 // local position msg callback function
@@ -118,15 +197,6 @@ void board_pos_cb(const state_machine::DrawingBoard10::ConstPtr& msg)
 //				board10.drawingboard[9].valid,board10.drawingboard[9].x,board10.drawingboard[9].y,board10.drawingboard[9].z);
 }
 
-/* 4 setpoints. -libn */
-geometry_msgs::PoseStamped setpoint_A;
-geometry_msgs::PoseStamped setpoint_B;
-geometry_msgs::PoseStamped setpoint_C;
-geometry_msgs::PoseStamped setpoint_D;
-geometry_msgs::PoseStamped setpoint_H;	/* home position. -libn */
-
-geometry_msgs::PoseStamped pose_pub;
-geometry_msgs::TwistStamped vel_pub;	/* velocity setpoint to be published. -libn */
 
 ros::Publisher  fixed_target_return_m2p_pub;
 
@@ -172,7 +242,6 @@ state_machine::OBSTACLE_POSITION_M2P obstacle_position_m2p_data;
 state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor_m2p_data;
 state_machine::VISION_NUM_SCAN_M2P vision_num_scan_m2p_data;
 state_machine::VISION_ONE_NUM_GET_M2P vision_one_num_get_m2p_data;
-state_machine::YAW_SP_CALCULATED_M2P yaw_sp_calculated_m2p_data;
 
 std_msgs::Int32 camera_switch_data;
 ros::Publisher  camera_switch_pub;
@@ -186,31 +255,7 @@ ros::Publisher  camera_switch_pub;
 //{
 //	yaw_sp_calculated_m2p_data.yaw_sp = 0.6f;
 //}
-/* limit angle_rad to [-pi,pi]. */
-float wrap_pi(float angle_rad)
-{
-    /* value is inf or NaN */
-    if (angle_rad > 10 || angle_rad < -10) {
-        return angle_rad;
-    }
-    int c = 0;
-    while (angle_rad >= M_PI) {
-        angle_rad -= M_PI*2;
 
-        if (c++ > 3) {
-            return NAN;
-        }
-    }
-    c = 0;
-    while (angle_rad < -M_PI) {
-        angle_rad += M_PI*2;
-
-        if (c++ > 3) {
-            return NAN;
-        }
-    }
-    return angle_rad;
-}
 
 int main(int argc, char **argv)
 {
@@ -286,7 +331,7 @@ int main(int argc, char **argv)
 
 	setpoint_H.pose.position.x = 0.0f;	/* pose(x,y) is not used, just for safe. -libn */
 	setpoint_H.pose.position.y = 0.0f;
-	setpoint_H.pose.position.z = 3.0f;
+    setpoint_H.pose.position.z = 4.0f;
 
     ROS_INFO("sending 100 setpoints, please wait 10 seconds!");
     //send a few setpoints before starting
@@ -312,7 +357,6 @@ int main(int argc, char **argv)
 
     /* spray left(x1,y1) and spray right(x2,y2) in NED. */
     float x1 = 0.3f,y1 = 0.3f,x2 = 0.6f,y2 = 0.6f;
-    float deta_x,deta_y;
 
     camera_switch_data.data = 2;
     camera_switch_pub.publish(camera_switch_data);
@@ -325,14 +369,13 @@ int main(int argc, char **argv)
         /* prefilght process. -libn */
 		if(mission_preflight && fixed_target_gotten)
 		{
-			/* calculate yaw*. -libn */
-            /* TODO:calculate yaw* */
 
+            /* calculate yaw*. -libn */
             deta_x = x2 - x1;deta_y = y2 - y1;
             yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
             yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in NED. */
 			mission_preflight = false;
-			ROS_INFO("\n\tyaw_sp_calculated!!!\n");
+            ROS_INFO("\n\tyaw_sp_calculated using data from GCS!!!\n");
             ROS_INFO("yaw_sp =  rad:%f  deg:%f",yaw_sp_calculated_m2p_data.yaw_sp,yaw_sp_calculated_m2p_data.yaw_sp*180/M_PI);
 
 		}
@@ -344,46 +387,51 @@ int main(int argc, char **argv)
 
 
         /* mode switch display(Once). -libn */
-    	if(current_state.mode == "MANUAL" && last_state.mode != "MANUAL")
-    	{
-    		last_state.mode = "MANUAL";
-    		ROS_INFO("switch to mode: MANUAL");
-            /* start manual scanning. -libn */
-            /*  camera_switch/camera_switch_return: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
-            camera_switch_data.data = 1;
-            camera_switch_pub.publish(camera_switch_data);
-            ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
-    	}
-        if(current_state.mode == "ALTCTL" && last_state.mode != "ALTCTL")
-    	{
-            last_state.mode = "ALTCTL";
-            ROS_INFO("switch to mode: ALTCTL");
-            /* start manual scanning. -libn */
-            /*  camera_switch/camera_switch_return: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
-            camera_switch_data.data = 2;
-            camera_switch_pub.publish(camera_switch_data);
-            ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+        if(1)
+        {
 
-    	}
-    	if(current_state.mode == "OFFBOARD" && last_state.mode != "OFFBOARD")
-    	{
-    		last_state.mode = "OFFBOARD";
-            ROS_INFO("switch to mode: OFFBOARD");
+            if(current_state.mode == "MANUAL" && last_state.mode != "MANUAL")
+            {
+                last_state.mode = "MANUAL";
+                ROS_INFO("switch to mode: MANUAL");
+                /* start manual scanning. -libn */
+                /*  camera_switch/camera_switch_return: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+                camera_switch_data.data = 1;
+                camera_switch_pub.publish(camera_switch_data);
+                ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+            }
+            if(current_state.mode == "ALTCTL" && last_state.mode != "ALTCTL")
+            {
+                last_state.mode = "ALTCTL";
+                ROS_INFO("switch to mode: ALTCTL");
+                /* start manual scanning. -libn */
+                /*  camera_switch/camera_switch_return: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+                camera_switch_data.data = 2;
+                camera_switch_pub.publish(camera_switch_data);
+                ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
 
-            /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
-            /* set camera_switch 1(vision_one_num_get) as default */
-            camera_switch_data.data = 1;
-            camera_switch_pub.publish(camera_switch_data);
-            ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
-    	}
-    	if(current_state.armed && !last_state.armed)
-    	 		{
+            }
+            if(current_state.mode == "OFFBOARD" && last_state.mode != "OFFBOARD")
+            {
+                last_state.mode = "OFFBOARD";
+                ROS_INFO("switch to mode: OFFBOARD");
 
-    		last_state.armed = current_state.armed;
-    		ROS_INFO("UAV armed!");
-    	}
+                /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+                /* set camera_switch 1(vision_one_num_get) as default */
+                camera_switch_data.data = 1;
+                camera_switch_pub.publish(camera_switch_data);
+                ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+            }
+            if(current_state.armed && !last_state.armed)
+                    {
 
-		// landing
+                last_state.armed = current_state.armed;
+                ROS_INFO("UAV armed!");
+            }
+
+        }
+
+        // landing
 		if(current_state.armed && current_mission_state == land)	/* set landing mode until uav stops. -libn */
 		{
 			if(current_state.mode != "AUTO.LAND" && (ros::Time::now() - last_request > ros::Duration(5.0)))
@@ -396,67 +444,82 @@ int main(int argc, char **argv)
 			}
 		}
 
-		/* mission state display. -libn */
+        /* state_machine start and mission state display. -libn */
 		if(current_state.mode == "OFFBOARD" && current_state.armed)	/* set message display delay(0.5s). -libn */
 		{
 			ROS_INFO("now I am in OFFBOARD and armed mode!");	/* state machine! -libn */
 
 			state_machine_func();
 
-//			/* mission timer(5 loops). -libn */
-//			if(ros::Time::now() - mission_timer_t > ros::Duration(100.0))
-//			{
-//				current_mission_state = mission_home;	/* mission timeout. -libn */
-//				ROS_INFO("mission time out!");
-//			}
-//			/* subtask timer(1 loop). -libn */
-//			if(current_mission_state >= mission_point_A && ros::Time::now() - loop_timer_t > ros::Duration(10.0))
-//			{
-//				loop++;
-//				ROS_INFO("loop timeout");
-//				current_mission_state = mission_point_A;	/* loop timeout, forced to switch to next loop. -libn */
-//				/* TODO: mission failure recorded(using switch/case). -libn */
-//
-//			}
+            /* system timer. TODO! */
+            if(1)
+            {
+                //			/* mission timer(5 loops). -libn */
+                //			if(ros::Time::now() - mission_timer_t > ros::Duration(100.0))
+                //			{
+                //				current_mission_state = mission_home;	/* mission timeout. -libn */
+                //				ROS_INFO("mission time out!");
+                //			}
+                //			/* subtask timer(1 loop). -libn */
+                //			if(current_mission_state >= mission_point_A && ros::Time::now() - loop_timer_t > ros::Duration(10.0))
+                //			{
+                //				loop++;
+                //				ROS_INFO("loop timeout");
+                //				current_mission_state = mission_point_A;	/* loop timeout, forced to switch to next loop. -libn */
+                //				/* TODO: mission failure recorded(using switch/case). -libn */
+                //
+                //			}
+            }
 
-			ROS_INFO("current loop: %d",loop);
-			ROS_INFO("current_mission_state: %d",current_mission_state);
-			if(velocity_control_enable)
-			{
-				ROS_INFO("velocity*: %5.3f %5.3f %5.3f",vel_pub.twist.linear.x, vel_pub.twist.linear.y, vel_pub.twist.linear.z);
-			}
-			else
-			{
-				ROS_INFO("position*: %5.3f %5.3f %5.3f",pose_pub.pose.position.x,pose_pub.pose.position.y,pose_pub.pose.position.z);
-			}
+            if(1)   /* ROS_INFO display. */
+            {
+                ROS_INFO("current loop: %d",loop);
+                ROS_INFO("current_mission_state: %d",current_mission_state);
+                if(velocity_control_enable)
+                {
+                    ROS_INFO("velocity*: %5.3f %5.3f %5.3f",vel_pub.twist.linear.x, vel_pub.twist.linear.y, vel_pub.twist.linear.z);
+                }
+                else
+                {
+                    ROS_INFO("position*: %5.3f %5.3f %5.3f",pose_pub.pose.position.x,pose_pub.pose.position.y,pose_pub.pose.position.z);
+                }
 
-			ROS_INFO("current position: %5.3f %5.3f %5.3f\n",current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
-//			ROS_INFO("mission_timer_t = %.3f",mission_timer_t);
-//			ROS_INFO("loop_timer_t = %.3f",loop_timer_t);
-//			ROS_INFO("board_position_received:\n"
-//					"board0: %d %5.3f %5.3f %5.3f \n"
-//					"board1: %d %5.3f %5.3f %5.3f \n"
-//					"board2: %d %5.3f %5.3f %5.3f \n"
-//					"board3: %d %5.3f %5.3f %5.3f \n"
-//					"board4: %d %5.3f %5.3f %5.3f \n"
-//					"board5: %d %5.3f %5.3f %5.3f \n"
-//					"board6: %d %5.3f %5.3f %5.3f \n"
-//					"board7: %d %5.3f %5.3f %5.3f \n"
-//					"board8: %d %5.3f %5.3f %5.3f \n"
-//					"board9: %d %5.3f %5.3f %5.3f \n",
-//					board10.drawingboard[0].valid,board10.drawingboard[0].x,board10.drawingboard[0].y,board10.drawingboard[0].z,
-//					board10.drawingboard[1].valid,board10.drawingboard[1].x,board10.drawingboard[1].y,board10.drawingboard[1].z,
-//					board10.drawingboard[2].valid,board10.drawingboard[2].x,board10.drawingboard[2].y,board10.drawingboard[2].z,
-//					board10.drawingboard[3].valid,board10.drawingboard[3].x,board10.drawingboard[3].y,board10.drawingboard[3].z,
-//					board10.drawingboard[4].valid,board10.drawingboard[4].x,board10.drawingboard[4].y,board10.drawingboard[4].z,
-//					board10.drawingboard[5].valid,board10.drawingboard[5].x,board10.drawingboard[5].y,board10.drawingboard[5].z,
-//					board10.drawingboard[6].valid,board10.drawingboard[6].x,board10.drawingboard[6].y,board10.drawingboard[6].z,
-//					board10.drawingboard[7].valid,board10.drawingboard[7].x,board10.drawingboard[7].y,board10.drawingboard[7].z,
-//					board10.drawingboard[8].valid,board10.drawingboard[8].x,board10.drawingboard[8].y,board10.drawingboard[8].z,
-//					board10.drawingboard[9].valid,board10.drawingboard[9].x,board10.drawingboard[9].y,board10.drawingboard[9].z);
+                ROS_INFO("current position: %5.3f %5.3f %5.3f\n",current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
+
+                ROS_INFO("current_mission_num = %d",current_mission_num);
+                ROS_INFO("board: current_mission_num: %d\n"
+                        "position:%5.3f %5.3f %5.3f",current_mission_num,board10.drawingboard[current_mission_num].x,
+                        board10.drawingboard[current_mission_num].y,board10.drawingboard[current_mission_num].z);
+
+
+    //			ROS_INFO("mission_timer_t = %.3f",mission_timer_t);
+    //			ROS_INFO("loop_timer_t = %.3f",loop_timer_t);
+    //			ROS_INFO("board_position_received:\n"
+    //					"board0: %d %5.3f %5.3f %5.3f \n"
+    //					"board1: %d %5.3f %5.3f %5.3f \n"
+    //					"board2: %d %5.3f %5.3f %5.3f \n"
+    //					"board3: %d %5.3f %5.3f %5.3f \n"
+    //					"board4: %d %5.3f %5.3f %5.3f \n"
+    //					"board5: %d %5.3f %5.3f %5.3f \n"
+    //					"board6: %d %5.3f %5.3f %5.3f \n"
+    //					"board7: %d %5.3f %5.3f %5.3f \n"
+    //					"board8: %d %5.3f %5.3f %5.3f \n"
+    //					"board9: %d %5.3f %5.3f %5.3f \n",
+    //					board10.drawingboard[0].valid,board10.drawingboard[0].x,board10.drawingboard[0].y,board10.drawingboard[0].z,
+    //					board10.drawingboard[1].valid,board10.drawingboard[1].x,board10.drawingboard[1].y,board10.drawingboard[1].z,
+    //					board10.drawingboard[2].valid,board10.drawingboard[2].x,board10.drawingboard[2].y,board10.drawingboard[2].z,
+    //					board10.drawingboard[3].valid,board10.drawingboard[3].x,board10.drawingboard[3].y,board10.drawingboard[3].z,
+    //					board10.drawingboard[4].valid,board10.drawingboard[4].x,board10.drawingboard[4].y,board10.drawingboard[4].z,
+    //					board10.drawingboard[5].valid,board10.drawingboard[5].x,board10.drawingboard[5].y,board10.drawingboard[5].z,
+    //					board10.drawingboard[6].valid,board10.drawingboard[6].x,board10.drawingboard[6].y,board10.drawingboard[6].z,
+    //					board10.drawingboard[7].valid,board10.drawingboard[7].x,board10.drawingboard[7].y,board10.drawingboard[7].z,
+    //					board10.drawingboard[8].valid,board10.drawingboard[8].x,board10.drawingboard[8].y,board10.drawingboard[8].z,
+    //					board10.drawingboard[9].valid,board10.drawingboard[9].x,board10.drawingboard[9].y,board10.drawingboard[9].z);
+
+            }
 
 		}
-		else
+        else    /* ROS_INFO display. */
 		{
 			if(current_state.mode != last_state_display.mode || last_state_display.armed != current_state.armed)
 			{
@@ -469,13 +532,13 @@ int main(int argc, char **argv)
 
 				ROS_INFO("setpoint_received:\n"
 						"setpoint_A:%5.3f %5.3f %5.3f \n"
-						"setpoint_B:%5.3f %5.3f %5.3f \n"
-						"setpoint_C:%5.3f %5.3f %5.3f \n"
+                        "setpoint_L:%5.3f %5.3f %5.3f \n"
+                        "setpoint_R:%5.3f %5.3f %5.3f \n"
 						"setpoint_D:%5.3f %5.3f %5.3f \n"
 						"setpoint_H:%5.3f %5.3f %5.3f",
 						setpoint_A.pose.position.x,setpoint_A.pose.position.y,setpoint_A.pose.position.z,
-						setpoint_B.pose.position.x,setpoint_B.pose.position.y,setpoint_B.pose.position.z,
-						setpoint_C.pose.position.x,setpoint_C.pose.position.y,setpoint_C.pose.position.z,
+                        setpoint_L.pose.position.x,setpoint_L.pose.position.y,setpoint_L.pose.position.z,
+                        setpoint_R.pose.position.x,setpoint_R.pose.position.y,setpoint_R.pose.position.z,
 						setpoint_D.pose.position.x,setpoint_D.pose.position.y,setpoint_D.pose.position.z,
 						setpoint_H.pose.position.x,setpoint_H.pose.position.y,setpoint_H.pose.position.z);
 				ROS_INFO("yaw_sp_calculated_m2p_data.yaw_sp: %f",yaw_sp_calculated_m2p_data.yaw_sp);
@@ -504,90 +567,67 @@ int main(int argc, char **argv)
                 ROS_INFO("board: current_mission_num: %d\n"
                         "position:%5.3f %5.3f %5.3f",current_mission_num,board10.drawingboard[current_mission_num].x,
                         board10.drawingboard[current_mission_num].y,board10.drawingboard[current_mission_num].z);
+                ROS_INFO("SCREEN_HEIGHT = %d SAFE_HEIGHT_DISTANCE = %d",(int)SCREEN_HEIGHT,(int)SAFE_HEIGHT_DISTANCE);
 
 			}
 		}
 
-		/* get 4 setpoints:A,B,C,D. -libn */
-		switch(setpoint_indexed.index)
-		{
-			case 1:
-				setpoint_A.pose.position.x = setpoint_indexed.x;
-				setpoint_A.pose.position.y = setpoint_indexed.y;
-				setpoint_A.pose.position.z = setpoint_indexed.z;
-				break;
-			case 2:
-				setpoint_B.pose.position.x = setpoint_indexed.x;
-				setpoint_B.pose.position.y = setpoint_indexed.y;
-				setpoint_B.pose.position.z = setpoint_indexed.z;
-				break;
-			case 3:
-				setpoint_C.pose.position.x = setpoint_indexed.x;
-				setpoint_C.pose.position.y = setpoint_indexed.y;
-				setpoint_C.pose.position.z = setpoint_indexed.z;
-				break;
-			case 4:
-				setpoint_D.pose.position.x = setpoint_indexed.x;
-				setpoint_D.pose.position.y = setpoint_indexed.y;
-				setpoint_D.pose.position.z = setpoint_indexed.z;
-				break;
-			default:
-				ROS_INFO("setpoint index error!");
-				break;
-		}
+        if(1)   /* publish messages to pixhawk. */
+        {
+            /* publish messages to pixhawk. -libn */
+            obstacle_position_m2p_data.obstacle_x = 2.0f;
+            obstacle_position_m2p_data.obstacle_y = 2.0f;
+            obstacle_position_m2p_data.obstacle_z = 2.0f;
+            obstacle_position_m2p_data.obstacle_valid = true;
+            obstacle_position_m2p_pub.publish(obstacle_position_m2p_data);
+    //		ROS_INFO("publishing obstacle_position_m2p: %f\t%f\t%f\t%d",
+    //				obstacle_position_m2p_data.obstacle_x,
+    //				obstacle_position_m2p_data.obstacle_y,
+    //				obstacle_position_m2p_data.obstacle_z,
+    //				obstacle_position_m2p_data.obstacle_valid);
 
-		/* publish messages to pixhawk. -libn */
-		obstacle_position_m2p_data.obstacle_x = 2.0f;
-		obstacle_position_m2p_data.obstacle_y = 2.0f;
-		obstacle_position_m2p_data.obstacle_z = 2.0f;
-		obstacle_position_m2p_data.obstacle_valid = true;
-		obstacle_position_m2p_pub.publish(obstacle_position_m2p_data);
-//		ROS_INFO("publishing obstacle_position_m2p: %f\t%f\t%f\t%d",
-//				obstacle_position_m2p_data.obstacle_x,
-//				obstacle_position_m2p_data.obstacle_y,
-//				obstacle_position_m2p_data.obstacle_z,
-//				obstacle_position_m2p_data.obstacle_valid);
+            task_status_monitor_m2p_data.spray_duration = 0.3f;
+            task_status_monitor_m2p_data.task_status = current_mission_state;
+            task_status_monitor_m2p_data.loop_value = loop;
+            task_status_monitor_m2p_data.target_lat = 3.0f;
+            task_status_monitor_m2p_data.target_lon = 3.0f;
+            task_status_monitor_m2p_data.target_alt = 3.0f;
+            task_status_monitor_m2p_pub.publish(task_status_monitor_m2p_data);
+    //		ROS_INFO("publishing task_status_monitor_m2p: %f %d %d %f %f %f",
+    //				task_status_monitor_m2p_data.spray_duration,
+    //				task_status_monitor_m2p_data.task_status,
+    //				task_status_monitor_m2p_data.loop_value,
+    //				task_status_monitor_m2p_data.target_lat,
+    //				task_status_monitor_m2p_data.target_lon,
+    //				task_status_monitor_m2p_data.target_alt);
 
-		task_status_monitor_m2p_data.spray_duration = 0.3f;
-        task_status_monitor_m2p_data.task_status = current_mission_state;
-        task_status_monitor_m2p_data.loop_value = loop;
-		task_status_monitor_m2p_data.target_lat = 3.0f;
-		task_status_monitor_m2p_data.target_lon = 3.0f;
-		task_status_monitor_m2p_data.target_alt = 3.0f;
-		task_status_monitor_m2p_pub.publish(task_status_monitor_m2p_data);
-//		ROS_INFO("publishing task_status_monitor_m2p: %f %d %d %f %f %f",
-//				task_status_monitor_m2p_data.spray_duration,
-//				task_status_monitor_m2p_data.task_status,
-//				task_status_monitor_m2p_data.loop_value,
-//				task_status_monitor_m2p_data.target_lat,
-//				task_status_monitor_m2p_data.target_lon,
-//				task_status_monitor_m2p_data.target_alt);
+            send_vision_num_count++;
+            send_vision_num_count = send_vision_num_count % 10;
+            vision_num_scan_m2p_data.board_num = send_vision_num_count;
+            vision_num_scan_m2p_data.board_x = board10.drawingboard[send_vision_num_count].x,
+            vision_num_scan_m2p_data.board_y = board10.drawingboard[send_vision_num_count].y,
+            vision_num_scan_m2p_data.board_z = board10.drawingboard[send_vision_num_count].z,
+            vision_num_scan_m2p_data.board_valid = board10.drawingboard[send_vision_num_count].valid;
+            vision_num_scan_m2p_pub.publish(vision_num_scan_m2p_data);
+    //		ROS_INFO("publishing vision_num_scan_m2p: %d %f %f %f %d",
+    //				vision_num_scan_m2p_data.board_num,
+    //				vision_num_scan_m2p_data.board_x,
+    //				vision_num_scan_m2p_data.board_y,
+    //				vision_num_scan_m2p_data.board_z,
+    //				vision_num_scan_m2p_data.board_valid);
 
-        send_vision_num_count++;
-        send_vision_num_count = send_vision_num_count % 10;
-        vision_num_scan_m2p_data.board_num = send_vision_num_count;
-        vision_num_scan_m2p_data.board_x = board10.drawingboard[send_vision_num_count].x,
-        vision_num_scan_m2p_data.board_y = board10.drawingboard[send_vision_num_count].y,
-        vision_num_scan_m2p_data.board_z = board10.drawingboard[send_vision_num_count].z,
-        vision_num_scan_m2p_data.board_valid = board10.drawingboard[send_vision_num_count].valid;
-		vision_num_scan_m2p_pub.publish(vision_num_scan_m2p_data);
-//		ROS_INFO("publishing vision_num_scan_m2p: %d %f %f %f %d",
-//				vision_num_scan_m2p_data.board_num,
-//				vision_num_scan_m2p_data.board_x,
-//				vision_num_scan_m2p_data.board_y,
-//				vision_num_scan_m2p_data.board_z,
-//				vision_num_scan_m2p_data.board_valid);
+            vision_one_num_get_m2p_data.loop_value = loop;
+            vision_one_num_get_m2p_data.num = current_mission_num;
+            vision_one_num_get_m2p_pub.publish(vision_one_num_get_m2p_data);
+    //		ROS_INFO("publishing vision_one_num_get_m2p: %d %d",
+    //				vision_one_num_get_m2p_data.loop_value,
+    //				vision_one_num_get_m2p_data.num);
 
-        vision_one_num_get_m2p_data.loop_value = loop;
-        vision_one_num_get_m2p_data.num = current_mission_num;
-		vision_one_num_get_m2p_pub.publish(vision_one_num_get_m2p_data);
-//		ROS_INFO("publishing vision_one_num_get_m2p: %d %d",
-//				vision_one_num_get_m2p_data.loop_value,
-//				vision_one_num_get_m2p_data.num);
+            yaw_sp_calculated_m2p_pub.publish(yaw_sp_calculated_m2p_data);
+    //		ROS_INFO("publishing yaw_sp_calculated_m2p: %f",
+    //				yaw_sp_calculated_m2p_data.yaw_sp);
+        }
 
-		yaw_sp_calculated_m2p_pub.publish(yaw_sp_calculated_m2p_data);
-//		ROS_INFO("publishing yaw_sp_calculated_m2p: %f",
-//				yaw_sp_calculated_m2p_data.yaw_sp);
 
         if(velocity_control_enable)
         {
@@ -614,7 +654,7 @@ void state_machine_func(void)
 			/* local velocity setpoint publish. -libn */
 			vel_pub.twist.linear.x = 0.0f;
 			vel_pub.twist.linear.y = 0.0f;
-			vel_pub.twist.linear.z = 3.0f;
+            vel_pub.twist.linear.z = 2.0f;
 			vel_pub.twist.angular.x = 0.0f;
 			vel_pub.twist.angular.y = 0.0f;
 			vel_pub.twist.angular.z = 0.0f;
@@ -650,12 +690,16 @@ void state_machine_func(void)
         	pose_pub.pose.position.x = setpoint_A.pose.position.x;
 			pose_pub.pose.position.y = setpoint_A.pose.position.y;
 			pose_pub.pose.position.z = setpoint_A.pose.position.z;
-            if((abs(current_pos.pose.position.x - setpoint_A.pose.position.x) < 0.2) &&      // switch to next state
-               (abs(current_pos.pose.position.y - setpoint_A.pose.position.y) < 0.2) &&
-               (abs(current_pos.pose.position.z - setpoint_A.pose.position.z) < 0.2))
+            if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
+               (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
+               (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 0.2))
             {
             	current_mission_state = mission_point_A_hover_recognize; // current_mission_state++;
             	mission_last_time = ros::Time::now();
+                /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+                camera_switch_data.data = 1;
+                camera_switch_pub.publish(camera_switch_data);
+                ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
             }
             loop_timer_t = ros::Time::now();
             break;
@@ -697,7 +741,7 @@ void state_machine_func(void)
                 camera_switch_data.data = 2;
                 camera_switch_pub.publish(camera_switch_data);
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
-			}
+            }
 
 
 
@@ -718,7 +762,7 @@ void state_machine_func(void)
 
                 pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
                 pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-				pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + 3;
+                pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
 
 //				ROS_INFO("distance: x = %5.3f y = %5.3f z = %5.3f\n",
 //						abs(current_pos.pose.position.x - board10.drawingboard[current_mission_num].x),
@@ -744,7 +788,7 @@ void state_machine_func(void)
         case mission_relocate:
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + 3;
+            pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
 			/* TODO:update the position of the drawing board.  -libn */
 			relocate_valid = true;
 
@@ -764,7 +808,7 @@ void state_machine_func(void)
         case mission_operate_move:
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + 3;
+            pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
             if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
                (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
                (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 0.2))
@@ -776,7 +820,7 @@ void state_machine_func(void)
         case mission_operate_hover:
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + 3;
+            pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
         	if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
         	{
         		current_mission_state = mission_operate_spray; // current_mission_state++;
@@ -788,7 +832,7 @@ void state_machine_func(void)
         case mission_operate_spray:
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + 3;
+            pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
             if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* spray for 5 seconds. -libn */
         	{
         		/* TODO: stop spraying. -libn */
