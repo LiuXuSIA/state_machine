@@ -50,7 +50,6 @@ ros::Publisher  vision_num_pub;
 void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
 	board_scan = *msg;
-    int amout = board_scan.ranges.size()/4;
     int num;
 
     ROS_INFO("vision message received!");
@@ -82,6 +81,7 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
 
     if(camera_switch_data.data == 2)
     {
+        int amout = board_scan.ranges.size()/4;
         /* get vision current detection message. */
         for ( int i = 0; i < amout; ++i )
         {
