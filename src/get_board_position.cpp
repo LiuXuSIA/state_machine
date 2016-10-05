@@ -55,7 +55,7 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
     ROS_INFO("vision message received!");
 
     /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
-    if(camera_switch_data.data == 1)
+    if(camera_switch_data.data == 1 && board_scan.ranges[1] > 100 && board_scan.ranges[2] > 100)
     {
         num = (int)board_scan.ranges[0];
         if(num == 11)   ROS_INFO("incomplete rectangle detected");
@@ -79,7 +79,7 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
 
     }
 
-    if(camera_switch_data.data == 2)
+    if(camera_switch_data.data == 2 && board_scan.ranges[1] < 100 && board_scan.ranges[2] < 100)
     {
         int amout = board_scan.ranges.size()/4;
         /* get vision current detection message. */
