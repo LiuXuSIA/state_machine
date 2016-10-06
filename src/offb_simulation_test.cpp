@@ -26,7 +26,7 @@
 #include <state_machine/VISION_NUM_SCAN_M2P.h>
 #include <state_machine/VISION_ONE_NUM_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
-#define SPRAY_DISTANCE 1.5  /* min distance from UAV to drawing board. */
+#define SPRAY_DISTANCE 1.5  /* distance from UAV to drawing board while sparying. */
 #define VISION_SCAN_DISTANCE 2  /* distance from UAV to drawing board while hoveing and scanning. */
 #define SCREEN_HEIGHT 3 /* height of screen. */
 #define SAFE_HEIGHT_DISTANCE 3  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
@@ -59,9 +59,6 @@ ros::Time mission_last_time;	/* timer used in mission. -libn */
 bool display_screen_num_recognized = false;	/* to check if the num on display screen is recognized. -libn */
 bool relocate_valid = false;	/* to complete relocate mission. -libn */
 int mission_failure = 0;
-
-bool mission_preflight = true;	/* preflight process. -libn */
-bool fixed_target_gotten = false;	/* receive fixed target. -libn */
 
 int current_mission_num;	/* mission num: 5 subtask -> 5 current nums.	TODO:change mission num. -libn */
 
@@ -118,6 +115,7 @@ float wrap_pi(float angle_rad)
 
 float deta_x,deta_y;
 state_machine::Setpoint setpoint_indexed;
+/* get 4 setpoints and calculate yaw*. */
 void SetpointIndexedCallback(const state_machine::Setpoint::ConstPtr& msg)
 {
 	setpoint_indexed = *msg;
@@ -155,6 +153,7 @@ void SetpointIndexedCallback(const state_machine::Setpoint::ConstPtr& msg)
     yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
     yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in NED in rad within [-pi,pi]. */
     ROS_INFO("yaw*(NED) calculated for test with send4setpoint running.");
+    /* yaw* for controller. */
     pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
     pose_pub.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
     pose_pub.pose.orientation.z = sin(yaw_sp_calculated_m2p_data.yaw_sp/2);
@@ -203,6 +202,7 @@ ros::Publisher  fixed_target_return_m2p_pub;
 /* subscribe messages from pixhawk. -libn */
 state_machine::FIXED_TARGET_POSITION_P2M fixed_target_position_p2m_data;
 state_machine::FIXED_TARGET_RETURN_M2P fixed_target_return_m2p_data;
+/* get 4 setpoints and calculate yaw*. */
 void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M::ConstPtr& msg){
 	fixed_target_position_p2m_data = *msg;
 	ROS_INFO("subscribing fixed_target_position_p2m: %5.3f %5.3f %5.3f",
@@ -218,7 +218,27 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
 			fixed_target_return_m2p_data.home_lat,
 			fixed_target_return_m2p_data.home_lon,
 			fixed_target_return_m2p_data.home_alt);
-	fixed_target_gotten = true;	/* fixed_target gotten, start number scanning mission. -libn */
+
+
+    /* TODO: set 4 setpoints(NED->ENU) and calculate related yaw*. */
+
+
+//    /* spray left(x1,y1) and spray right(x2,y2) in NED. */
+//    float x1 = 0.3f,y1 = 0.3f,x2 = 0.6f,y2 = 0.6f;
+//    deta_x = x2 - x1;deta_y = y2 - y1;
+//    /* calculate yaw*. -libn */
+//    yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
+//    yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in NED. */
+//    ROS_INFO("\n\tyaw_sp_calculated using data from GCS!!!\n");
+//    ROS_INFO("yaw_sp(NED) from GCS =  rad:%f  deg:%f",yaw_sp_calculated_m2p_data.yaw_sp,yaw_sp_calculated_m2p_data.yaw_sp*180/M_PI);
+
+//    /* yaw* for controller. */
+//    pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
+//    pose_pub.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
+//    pose_pub.pose.orientation.z = sin(yaw_sp_calculated_m2p_data.yaw_sp/2);
+//    pose_pub.pose.orientation.w = cos(yaw_sp_calculated_m2p_data.yaw_sp/2);		/* set yaw* = 90 degree(default in simulation). -libn */
+
+
 }
 
 state_machine::TASK_STATUS_CHANGE_P2M task_status_change_p2m_data;
@@ -321,27 +341,25 @@ int main(int argc, char **argv)
     }
 
 
-    pose_pub.pose.position.x = 0;
-    pose_pub.pose.position.y = 0;
-    pose_pub.pose.position.z = 2;
-    pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
-	pose_pub.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
-	pose_pub.pose.orientation.z = 0.707;
-	pose_pub.pose.orientation.w = 0.707;		/* set yaw* = 90 degree(default in simulation). -libn */
+    if(1)   /* initialisation: send 100 setpoints. */
+    {
+        pose_pub.pose.position.x = 0;
+        pose_pub.pose.position.y = 0;
+        pose_pub.pose.position.z = 2;
+        pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
+        pose_pub.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
+        pose_pub.pose.orientation.z = 0.707;
+        pose_pub.pose.orientation.w = 0.707;		/* set yaw* = 90 degree(default in simulation). -libn */
 
-	setpoint_H.pose.position.x = 0.0f;	/* pose(x,y) is not used, just for safe. -libn */
-	setpoint_H.pose.position.y = 0.0f;
-    setpoint_H.pose.position.z = 4.0f;
-
-    ROS_INFO("sending 100 setpoints, please wait 10 seconds!");
-    //send a few setpoints before starting
-    for(int i = 100; ros::ok() && i > 0; --i){
-        local_pos_pub.publish(pose_pub);
-        ros::spinOnce();
-        rate.sleep();
+        ROS_INFO("sending 100 setpoints, please wait 10 seconds!");
+        //send a few setpoints before starting
+        for(int i = 100; ros::ok() && i > 0; --i){
+            local_pos_pub.publish(pose_pub);
+            ros::spinOnce();
+            rate.sleep();
+        }
     }
 
-    current_mission_num = 0;    /* set current_mission_num as 0 as default. */
 
     ros::Time last_request = ros::Time::now();
     ros::Time last_show_request = ros::Time::now();
@@ -353,40 +371,63 @@ int main(int argc, char **argv)
     ROS_INFO("current_state.mode = %s",current_state.mode.c_str());
     ROS_INFO("armed status: %d",current_state.armed);
 
-    yaw_sp_calculated_m2p_data.yaw_sp = 0.0f;
+    /* initialisation(loop once). */
+    /* initialize: 4 fixed setpoints(A,L,R,D), yaw*, 10 board position,
+     * current_mission_num, camera_switch_data. */
+    if(1)
+    {
+        setpoint_H.pose.position.x = 0.0f;	/* pose(x,y) is not used, just for safe. -libn */
+        setpoint_H.pose.position.y = 0.0f;
+        setpoint_H.pose.position.z = 3.0f;  /* it's better to choose z* = SAFE_HEIGHT_DISTANCE(no altitude lost). */
 
-    /* spray left(x1,y1) and spray right(x2,y2) in NED. */
-    float x1 = 0.3f,y1 = 0.3f,x2 = 0.6f,y2 = 0.6f;
+        setpoint_A.pose.position.x = 0.0f;
+        setpoint_A.pose.position.y = 0.0f;
+        setpoint_A.pose.position.z = 3.0f;
 
-    camera_switch_data.data = 2;
-    camera_switch_pub.publish(camera_switch_data);
-    ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+        setpoint_L.pose.position.x = 0.0f;
+        setpoint_L.pose.position.y = 0.0f;
+        setpoint_L.pose.position.z = 3.0f;
+
+        setpoint_R.pose.position.x = 0.0f;
+        setpoint_R.pose.position.y = 0.0f;
+        setpoint_R.pose.position.z = 3.0f;
+
+        setpoint_D.pose.position.x = 0.0f;
+        setpoint_D.pose.position.y = 0.0f;
+        setpoint_D.pose.position.z = 3.0f;
+
+        yaw_sp_calculated_m2p_data.yaw_sp = 90*M_PI/180;   /* default yaw*(90 degree)(ENU) -> North! */
+
+        /* yaw* for controller. */
+        pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
+        pose_pub.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
+        pose_pub.pose.orientation.z = sin(yaw_sp_calculated_m2p_data.yaw_sp/2);
+        pose_pub.pose.orientation.w = cos(yaw_sp_calculated_m2p_data.yaw_sp/2);
+
+        for(int co = 0; co<10; ++co)
+        {
+            board10.drawingboard[co].valid = true;
+            board10.drawingboard[co].x = 0.0f;
+            board10.drawingboard[co].y = 0.0f;
+            board10.drawingboard[co].z = 0.0f;  /* it's safe for we have SAFE_HEIGHT_DISTANCE. */
+        }
+        current_mission_num = 0;    /* set current_mission_num as 0 as default. */
+
+        /* camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+        camera_switch_data.data = 1;    /* vision used for detection as default. */
+        camera_switch_pub.publish(camera_switch_data);
+//        ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+
+    }
+
+
 
     int send_vision_num_count = 0;
 
     while(ros::ok())
     {
-        /* prefilght process. -libn */
-		if(mission_preflight && fixed_target_gotten)
-		{
 
-            /* calculate yaw*. -libn */
-            deta_x = x2 - x1;deta_y = y2 - y1;
-            yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
-            yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in NED. */
-			mission_preflight = false;
-            ROS_INFO("\n\tyaw_sp_calculated using data from GCS!!!\n");
-            ROS_INFO("yaw_sp =  rad:%f  deg:%f",yaw_sp_calculated_m2p_data.yaw_sp,yaw_sp_calculated_m2p_data.yaw_sp*180/M_PI);
-
-		}
-
-//        /* TODO:change and publish camera_switch_data in state_machine_func(). */
-//        camera_switch_data.data = 2;
-//        camera_switch_pub.publish(camera_switch_data);
-//        ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
-
-
-        /* mode switch display(Once). -libn */
+        /* camera switch for test(set in state_machine_func for mission) and mode switch display(Once when freshed). -libn */
         if(1)
         {
 
@@ -416,11 +457,11 @@ int main(int argc, char **argv)
                 last_state.mode = "OFFBOARD";
                 ROS_INFO("switch to mode: OFFBOARD");
 
-                /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
-                /* set camera_switch 1(vision_one_num_get) as default */
-                camera_switch_data.data = 1;
-                camera_switch_pub.publish(camera_switch_data);
-                ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+//                /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+//                /* set camera_switch 1(vision_one_num_get) as default */
+//                camera_switch_data.data = 1;
+//                camera_switch_pub.publish(camera_switch_data);
+//                ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
             }
             if(current_state.armed && !last_state.armed)
                     {
@@ -519,7 +560,7 @@ int main(int argc, char **argv)
             }
 
 		}
-        else    /* ROS_INFO display. */
+        else    /* All information display. */
 		{
 			if(current_state.mode != last_state_display.mode || last_state_display.armed != current_state.armed)
 			{
@@ -540,8 +581,8 @@ int main(int argc, char **argv)
                         setpoint_L.pose.position.x,setpoint_L.pose.position.y,setpoint_L.pose.position.z,
                         setpoint_R.pose.position.x,setpoint_R.pose.position.y,setpoint_R.pose.position.z,
 						setpoint_D.pose.position.x,setpoint_D.pose.position.y,setpoint_D.pose.position.z,
-						setpoint_H.pose.position.x,setpoint_H.pose.position.y,setpoint_H.pose.position.z);
-				ROS_INFO("yaw_sp_calculated_m2p_data.yaw_sp: %f",yaw_sp_calculated_m2p_data.yaw_sp);
+                        setpoint_H.pose.position.x,setpoint_H.pose.position.y,setpoint_H.pose.position.z);
+                ROS_INFO("yaw_sp(ENU) = rad:%f deg:%f",yaw_sp_calculated_m2p_data.yaw_sp,yaw_sp_calculated_m2p_data.yaw_sp*180/M_PI);
 				ROS_INFO("board_position_received:\n"
 						"board0: %d %5.3f %5.3f %5.3f \n"
 						"board1: %d %5.3f %5.3f %5.3f \n"
@@ -669,6 +710,11 @@ void state_machine_func(void)
 					setpoint_H.pose.position.x = current_pos.pose.position.x;
 					setpoint_H.pose.position.y = current_pos.pose.position.y;
 					velocity_control_enable = false;
+
+                    /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+                    camera_switch_data.data = 1;
+                    camera_switch_pub.publish(camera_switch_data);
+                    ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
 			   }
     		break;
 

@@ -24,7 +24,7 @@ int main(int argc, char **argv)
 
     setpoint_indexed.index = 1;	/* 1st setpoint. -libn <Aug 15, 2016 9:01:21 AM> */
     setpoint_indexed.x = 0.0f;
-    setpoint_indexed.y = 0.0f;	/* ROS coordinate frame: NWU(North/West/Up) -libn */
+    setpoint_indexed.y = 0.0f;	/* ROS coordinate frame: ENU(East/North/Up) -libn */
     setpoint_indexed.z = 0.0f;
 
 	ros::Rate loop_rate(10);
@@ -33,10 +33,10 @@ int main(int argc, char **argv)
 	{
 		setpoint_indexed.index = 1;	/* 1st setpoint(A). -libn <Aug 15, 2016 9:01:21 AM> */
 //        setpoint_indexed.x = 3.37f;
-//        setpoint_indexed.y = -0.88f;	/* ROS coordinate frame: NWU(North/West/Up) -libn */
+//        setpoint_indexed.y = -0.88f;	/* ROS coordinate frame: ENU(East/North/Up) -libn */
 //        setpoint_indexed.z = 2.5f;
 		setpoint_indexed.x = 0.0f;
-		setpoint_indexed.y = 5.0f;	/* ROS coordinate frame: NWU(North/West/Up) -libn */
+        setpoint_indexed.y = 5.0f;	/* ROS coordinate frame: ENU(East/North/Up) -libn */
         setpoint_indexed.z = 4.0f;
 		setpoint_indexed_pub.publish(setpoint_indexed);
 		ros::spinOnce();
