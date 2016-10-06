@@ -806,8 +806,8 @@ void state_machine_func(void)
 //        		ROS_INFO("position*: %5.3f %5.3f %5.3f",pose_pub.pose.position.x,pose_pub.pose.position.y,pose_pub.pose.position.z);
 //				ROS_INFO("current position: %5.3f %5.3f %5.3f",current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
 
-                pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-                pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+                pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
+                pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
                 pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
 
 //				ROS_INFO("distance: x = %5.3f y = %5.3f z = %5.3f\n",
@@ -832,10 +832,10 @@ void state_machine_func(void)
         	}
 			break;
         case mission_relocate:
-            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
+            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-			/* TODO:update the position of the drawing board.  -libn */
+            /* TODO:update the position of the drawing board.  -libn */
 			relocate_valid = true;
 
 			if(relocate_valid)
@@ -852,8 +852,8 @@ void state_machine_func(void)
 			}
 			break;
         case mission_operate_move:
-            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
+            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
             if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
                (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
@@ -864,10 +864,10 @@ void state_machine_func(void)
                }
             break;
         case mission_operate_hover:
-            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
+            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-        	if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
         	{
         		current_mission_state = mission_operate_spray; // current_mission_state++;
         		mission_last_time = ros::Time::now();
@@ -876,8 +876,8 @@ void state_machine_func(void)
         	}
             break;
         case mission_operate_spray:
-            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
+            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
             if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* spray for 5 seconds. -libn */
         	{
