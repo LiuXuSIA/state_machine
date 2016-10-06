@@ -26,9 +26,9 @@
 #include <state_machine/VISION_NUM_SCAN_M2P.h>
 #include <state_machine/VISION_ONE_NUM_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
-#define SPRAY_DISTANCE 1.5  /* distance from UAV to drawing board while sparying. */
-#define VISION_SCAN_DISTANCE 2  /* distance from UAV to drawing board while hoveing and scanning. */
-#define SCREEN_HEIGHT 3 /* height of screen. */
+#define SPRAY_DISTANCE 3.5  /* distance from UAV to drawing board while sparying. */
+#define VISION_SCAN_DISTANCE 4  /* distance from UAV to drawing board while hoveing and scanning. */
+#define SCREEN_HEIGHT 3 /* height of screen(not used). */
 #define SAFE_HEIGHT_DISTANCE 3  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
 
 #include <math.h>
@@ -62,7 +62,7 @@ int mission_failure = 0;
 
 int current_mission_num;	/* mission num: 5 subtask -> 5 current nums.	TODO:change mission num. -libn */
 
-bool velocity_control_enable = false;
+bool velocity_control_enable = true;
 
 ros::Time mission_timer_t;	/* timer to control the whole mission. -libn */
 ros::Time loop_timer_t;	/* timer to control subtask. -libn */
@@ -113,13 +113,15 @@ float wrap_pi(float angle_rad)
     return angle_rad;
 }
 
+ros::Publisher  yaw_sp_calculated_m2p_pub;
+
 float deta_x,deta_y;
 state_machine::Setpoint setpoint_indexed;
 /* get 4 setpoints and calculate yaw*. */
 void SetpointIndexedCallback(const state_machine::Setpoint::ConstPtr& msg)
 {
 	setpoint_indexed = *msg;
-    /* get 4 setpoints:A,B,C,D. -libn */
+    /* get 4 setpoints:A,B,C,D(ENU). -libn */
     switch(setpoint_indexed.index)
     {
         case 1:
@@ -138,7 +140,7 @@ void SetpointIndexedCallback(const state_machine::Setpoint::ConstPtr& msg)
             setpoint_R.pose.position.z = setpoint_indexed.z;
             break;
         case 4:
-            setpoint_D.pose.position.x = setpoint_indexed.x;
+            setpoint_D.pose.position.x = setpoint_indexed.x;    /* not used! */
             setpoint_D.pose.position.y = setpoint_indexed.y;
             setpoint_D.pose.position.z = setpoint_indexed.z;
             break;
@@ -151,13 +153,18 @@ void SetpointIndexedCallback(const state_machine::Setpoint::ConstPtr& msg)
     deta_x = setpoint_R.pose.position.x - setpoint_L.pose.position.x;
     deta_y = setpoint_R.pose.position.y - setpoint_L.pose.position.y;
     yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
-    yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in NED in rad within [-pi,pi]. */
-    ROS_INFO("yaw*(NED) calculated for test with send4setpoint running.");
+    yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in ENU in rad within [-pi,pi]. */
+    ROS_INFO("yaw*(ENU) calculated for test with send4setpoint running.");
     /* yaw* for controller. */
     pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
     pose_pub.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
     pose_pub.pose.orientation.z = sin(yaw_sp_calculated_m2p_data.yaw_sp/2);
     pose_pub.pose.orientation.w = cos(yaw_sp_calculated_m2p_data.yaw_sp/2);		/* set yaw* = 90 degree(default in simulation). -libn */
+
+    /* publish yaw_sp to pixhawk. */
+    yaw_sp_calculated_m2p_pub.publish(yaw_sp_calculated_m2p_data);
+    ROS_INFO("publishing yaw_sp_calculated_m2p(ENU): %f",
+            yaw_sp_calculated_m2p_data.yaw_sp);
 
 }
 
@@ -199,6 +206,14 @@ void board_pos_cb(const state_machine::DrawingBoard10::ConstPtr& msg)
 
 ros::Publisher  fixed_target_return_m2p_pub;
 
+/* transform to ENU from NED. */
+void position_x_ENU_from_NED(float x_NED, float y_NED, float z_NED, float* pos_ENU_f)
+{
+    *pos_ENU_f = y_NED;
+    *(pos_ENU_f+1) = x_NED;
+    *(pos_ENU_f+2) = -z_NED;
+}
+
 /* subscribe messages from pixhawk. -libn */
 state_machine::FIXED_TARGET_POSITION_P2M fixed_target_position_p2m_data;
 state_machine::FIXED_TARGET_RETURN_M2P fixed_target_return_m2p_data;
@@ -206,38 +221,83 @@ state_machine::FIXED_TARGET_RETURN_M2P fixed_target_return_m2p_data;
 void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M::ConstPtr& msg){
 	fixed_target_position_p2m_data = *msg;
 	ROS_INFO("subscribing fixed_target_position_p2m: %5.3f %5.3f %5.3f",
-			fixed_target_position_p2m_data.home_lat,
-			fixed_target_position_p2m_data.home_lon,
-			fixed_target_position_p2m_data.home_alt);
+            fixed_target_position_p2m_data.home_x,
+            fixed_target_position_p2m_data.home_y,
+            fixed_target_position_p2m_data.home_z);
+
 	/* publish messages to pixhawk. -libn */
-	fixed_target_return_m2p_data.home_lat = fixed_target_position_p2m_data.home_lat;
-	fixed_target_return_m2p_data.home_lon = fixed_target_position_p2m_data.home_lon;
-	fixed_target_return_m2p_data.home_alt = fixed_target_position_p2m_data.home_alt;
+    fixed_target_return_m2p_data.home_x = fixed_target_position_p2m_data.home_x;
+    fixed_target_return_m2p_data.home_y = fixed_target_position_p2m_data.home_y;
+    fixed_target_return_m2p_data.home_z = fixed_target_position_p2m_data.home_z;
+
+    fixed_target_return_m2p_data.observe_x = fixed_target_position_p2m_data.observe_x;
+    fixed_target_return_m2p_data.observe_y = fixed_target_position_p2m_data.observe_y;
+    fixed_target_return_m2p_data.observe_z = fixed_target_position_p2m_data.observe_z;
+
+    fixed_target_return_m2p_data.spray_left_x = fixed_target_position_p2m_data.spray_left_x;
+    fixed_target_return_m2p_data.spray_left_y = fixed_target_position_p2m_data.spray_left_y;
+    fixed_target_return_m2p_data.spray_left_z = fixed_target_position_p2m_data.spray_left_z;
+
+    fixed_target_return_m2p_data.spray_right_x = fixed_target_position_p2m_data.spray_right_x;
+    fixed_target_return_m2p_data.spray_right_y = fixed_target_position_p2m_data.spray_right_y;
+    fixed_target_return_m2p_data.spray_right_z = fixed_target_position_p2m_data.spray_right_z;
 	fixed_target_return_m2p_pub.publish(fixed_target_return_m2p_data);
-	ROS_INFO("publishing fixed_target_return_m2p: %f\t%f\t%f\t",
-			fixed_target_return_m2p_data.home_lat,
-			fixed_target_return_m2p_data.home_lon,
-			fixed_target_return_m2p_data.home_alt);
+    ROS_INFO("publishing fixed_target_return_m2p(NED): %f\t%f\t%f\t",
+            fixed_target_return_m2p_data.home_x,
+            fixed_target_return_m2p_data.home_y,
+            fixed_target_return_m2p_data.home_z);
 
+    /* get 4 fixed_setpoint. */
+    /* transform position from NED to ENU. */
+    float pos_ENU[3] = {0,0,0};
+    position_x_ENU_from_NED(fixed_target_position_p2m_data.home_x,
+                            fixed_target_position_p2m_data.home_y,
+                            fixed_target_position_p2m_data.home_z,
+                            pos_ENU);
+    setpoint_H.pose.position.x = pos_ENU[0];
+    setpoint_H.pose.position.y = pos_ENU[1];
+    setpoint_H.pose.position.z = pos_ENU[2];
 
-    /* TODO: set 4 setpoints(NED->ENU) and calculate related yaw*. */
+    position_x_ENU_from_NED(fixed_target_position_p2m_data.observe_x,
+                            fixed_target_position_p2m_data.observe_y,
+                            fixed_target_position_p2m_data.observe_z,
+                            pos_ENU);
+    setpoint_A.pose.position.x = pos_ENU[0];
+    setpoint_A.pose.position.y = pos_ENU[1];
+    setpoint_A.pose.position.z = pos_ENU[2];
 
+    position_x_ENU_from_NED(fixed_target_position_p2m_data.spray_left_x,
+                            fixed_target_position_p2m_data.spray_left_y,
+                            fixed_target_position_p2m_data.spray_left_z,
+                            pos_ENU);
+    setpoint_L.pose.position.x = pos_ENU[0];
+    setpoint_L.pose.position.y = pos_ENU[1];
+    setpoint_L.pose.position.z = pos_ENU[2];
 
-//    /* spray left(x1,y1) and spray right(x2,y2) in NED. */
-//    float x1 = 0.3f,y1 = 0.3f,x2 = 0.6f,y2 = 0.6f;
-//    deta_x = x2 - x1;deta_y = y2 - y1;
-//    /* calculate yaw*. -libn */
-//    yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
-//    yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in NED. */
-//    ROS_INFO("\n\tyaw_sp_calculated using data from GCS!!!\n");
-//    ROS_INFO("yaw_sp(NED) from GCS =  rad:%f  deg:%f",yaw_sp_calculated_m2p_data.yaw_sp,yaw_sp_calculated_m2p_data.yaw_sp*180/M_PI);
+    position_x_ENU_from_NED(fixed_target_position_p2m_data.spray_right_x,
+                            fixed_target_position_p2m_data.spray_right_y,
+                            fixed_target_position_p2m_data.spray_right_z,
+                            pos_ENU);
+    setpoint_R.pose.position.x = pos_ENU[0];
+    setpoint_R.pose.position.y = pos_ENU[1];
+    setpoint_R.pose.position.z = pos_ENU[2];
 
-//    /* yaw* for controller. */
-//    pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
-//    pose_pub.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
-//    pose_pub.pose.orientation.z = sin(yaw_sp_calculated_m2p_data.yaw_sp/2);
-//    pose_pub.pose.orientation.w = cos(yaw_sp_calculated_m2p_data.yaw_sp/2);		/* set yaw* = 90 degree(default in simulation). -libn */
+    /* calculate yaw*. -libn */
+    deta_x = setpoint_R.pose.position.x - setpoint_L.pose.position.x;
+    deta_y = setpoint_R.pose.position.y - setpoint_L.pose.position.y;
+    yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
+    yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in NED in rad within [-pi,pi]. */
+    ROS_INFO("yaw*(ENU) calculated using fixed_position from GCS.");
+    /* yaw* for controller. */
+    pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
+    pose_pub.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
+    pose_pub.pose.orientation.z = sin(yaw_sp_calculated_m2p_data.yaw_sp/2);
+    pose_pub.pose.orientation.w = cos(yaw_sp_calculated_m2p_data.yaw_sp/2);		/* set yaw* = 90 degree(default in simulation). -libn */
 
+    /* publish yaw_sp to pixhawk. */
+    yaw_sp_calculated_m2p_pub.publish(yaw_sp_calculated_m2p_data);
+    ROS_INFO("publishing yaw_sp_calculated_m2p(ENU): %f",
+            yaw_sp_calculated_m2p_data.yaw_sp);
 
 }
 
@@ -321,7 +381,7 @@ int main(int argc, char **argv)
     ros::Publisher  task_status_monitor_m2p_pub  = nh.advertise<state_machine::TASK_STATUS_MONITOR_M2P>("mavros/task_status_monitor_m2p", 10);
     ros::Publisher  vision_num_scan_m2p_pub  = nh.advertise<state_machine::VISION_NUM_SCAN_M2P>("mavros/vision_num_scan_m2p", 10);
     ros::Publisher  vision_one_num_get_m2p_pub  = nh.advertise<state_machine::VISION_ONE_NUM_GET_M2P>("mavros/vision_one_num_get_m2p", 10);
-    ros::Publisher  yaw_sp_calculated_m2p_pub  = nh.advertise<state_machine::YAW_SP_CALCULATED_M2P>("mavros/yaw_sp_calculated_m2p", 10);
+    yaw_sp_calculated_m2p_pub  = nh.advertise<state_machine::YAW_SP_CALCULATED_M2P>("mavros/yaw_sp_calculated_m2p", 10);
 
     camera_switch_pub  = nh.advertise<std_msgs::Int32>("camera_switch", 10);
 
@@ -343,18 +403,18 @@ int main(int argc, char **argv)
 
     if(1)   /* initialisation: send 100 setpoints. */
     {
-        pose_pub.pose.position.x = 0;
-        pose_pub.pose.position.y = 0;
-        pose_pub.pose.position.z = 2;
-        pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
-        pose_pub.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
-        pose_pub.pose.orientation.z = 0.707;
-        pose_pub.pose.orientation.w = 0.707;		/* set yaw* = 90 degree(default in simulation). -libn */
-
+        /* local velocity setpoint publish. -libn */
+        vel_pub.twist.linear.x = 0.0f;
+        vel_pub.twist.linear.y = 0.0f;
+        vel_pub.twist.linear.z = 2.0f;
+        vel_pub.twist.angular.x = 0.0f;
+        vel_pub.twist.angular.y = 0.0f;
+        vel_pub.twist.angular.z = 0.0f;
         ROS_INFO("sending 100 setpoints, please wait 10 seconds!");
         //send a few setpoints before starting
         for(int i = 100; ros::ok() && i > 0; --i){
-            local_pos_pub.publish(pose_pub);
+//            local_pos_pub.publish(pose_pub);
+            local_vel_pub.publish(vel_pub);
             ros::spinOnce();
             rate.sleep();
         }
@@ -376,8 +436,8 @@ int main(int argc, char **argv)
      * current_mission_num, camera_switch_data. */
     if(1)
     {
-        setpoint_H.pose.position.x = 0.0f;	/* pose(x,y) is not used, just for safe. -libn */
-        setpoint_H.pose.position.y = 0.0f;
+        setpoint_H.pose.position.x = current_pos.pose.position.x;
+        setpoint_H.pose.position.y = current_pos.pose.position.y;
         setpoint_H.pose.position.z = 3.0f;  /* it's better to choose z* = SAFE_HEIGHT_DISTANCE(no altitude lost). */
 
         setpoint_A.pose.position.x = 0.0f;
@@ -397,6 +457,10 @@ int main(int argc, char **argv)
         setpoint_D.pose.position.z = 3.0f;
 
         yaw_sp_calculated_m2p_data.yaw_sp = 90*M_PI/180;   /* default yaw*(90 degree)(ENU) -> North! */
+        /* publish yaw_sp to pixhawk. */
+        yaw_sp_calculated_m2p_pub.publish(yaw_sp_calculated_m2p_data);
+        ROS_INFO("publishing yaw_sp_calculated_m2p: %f",
+                yaw_sp_calculated_m2p_data.yaw_sp);
 
         /* yaw* for controller. */
         pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
@@ -420,9 +484,7 @@ int main(int argc, char **argv)
 
     }
 
-
-
-    int send_vision_num_count = 0;
+    int send_vision_num_count = 0;  /* used to publish vision_scanning results. */
 
     while(ros::ok())
     {
@@ -572,18 +634,18 @@ int main(int argc, char **argv)
 				ROS_INFO("current position: %5.3f %5.3f %5.3f", current_pos.pose.position.x, 	  	current_pos.pose.position.y, current_pos.pose.position.z);
 
 				ROS_INFO("setpoint_received:\n"
-						"setpoint_A:%5.3f %5.3f %5.3f \n"
-                        "setpoint_L:%5.3f %5.3f %5.3f \n"
-                        "setpoint_R:%5.3f %5.3f %5.3f \n"
-						"setpoint_D:%5.3f %5.3f %5.3f \n"
-						"setpoint_H:%5.3f %5.3f %5.3f",
+                        "setpoint_A(ENU):%5.3f %5.3f %5.3f \n"
+                        "setpoint_L(ENU):%5.3f %5.3f %5.3f \n"
+                        "setpoint_R(ENU):%5.3f %5.3f %5.3f \n"
+                        "setpoint_D(ENU):%5.3f %5.3f %5.3f \n"
+                        "setpoint_H(ENU):%5.3f %5.3f %5.3f",
 						setpoint_A.pose.position.x,setpoint_A.pose.position.y,setpoint_A.pose.position.z,
                         setpoint_L.pose.position.x,setpoint_L.pose.position.y,setpoint_L.pose.position.z,
                         setpoint_R.pose.position.x,setpoint_R.pose.position.y,setpoint_R.pose.position.z,
 						setpoint_D.pose.position.x,setpoint_D.pose.position.y,setpoint_D.pose.position.z,
                         setpoint_H.pose.position.x,setpoint_H.pose.position.y,setpoint_H.pose.position.z);
                 ROS_INFO("yaw_sp(ENU) = rad:%f deg:%f",yaw_sp_calculated_m2p_data.yaw_sp,yaw_sp_calculated_m2p_data.yaw_sp*180/M_PI);
-				ROS_INFO("board_position_received:\n"
+                ROS_INFO("board_position_received(ENU):\n"
 						"board0: %d %5.3f %5.3f %5.3f \n"
 						"board1: %d %5.3f %5.3f %5.3f \n"
 						"board2: %d %5.3f %5.3f %5.3f \n"
@@ -630,9 +692,18 @@ int main(int argc, char **argv)
             task_status_monitor_m2p_data.spray_duration = 0.3f;
             task_status_monitor_m2p_data.task_status = current_mission_state;
             task_status_monitor_m2p_data.loop_value = loop;
-            task_status_monitor_m2p_data.target_lat = 3.0f;
-            task_status_monitor_m2p_data.target_lon = 3.0f;
-            task_status_monitor_m2p_data.target_alt = 3.0f;
+            if(velocity_control_enable)
+            {
+                task_status_monitor_m2p_data.target_x = (float)vel_pub.twist.linear.x;
+                task_status_monitor_m2p_data.target_y= (float)vel_pub.twist.linear.y;
+                task_status_monitor_m2p_data.target_z = (float)vel_pub.twist.linear.z;
+            }
+            else
+            {
+                task_status_monitor_m2p_data.target_x = pose_pub.pose.position.x;
+                task_status_monitor_m2p_data.target_y= pose_pub.pose.position.y;
+                task_status_monitor_m2p_data.target_z = pose_pub.pose.position.z;
+            }
             task_status_monitor_m2p_pub.publish(task_status_monitor_m2p_data);
     //		ROS_INFO("publishing task_status_monitor_m2p: %f %d %d %f %f %f",
     //				task_status_monitor_m2p_data.spray_duration,
@@ -664,9 +735,6 @@ int main(int argc, char **argv)
     //				vision_one_num_get_m2p_data.loop_value,
     //				vision_one_num_get_m2p_data.num);
 
-            yaw_sp_calculated_m2p_pub.publish(yaw_sp_calculated_m2p_data);
-    //		ROS_INFO("publishing yaw_sp_calculated_m2p: %f",
-    //				yaw_sp_calculated_m2p_data.yaw_sp);
         }
 
 
@@ -693,23 +761,25 @@ void state_machine_func(void)
 	{
 		case takeoff:
 			/* local velocity setpoint publish. -libn */
-			vel_pub.twist.linear.x = 0.0f;
+            velocity_control_enable = true;
+            vel_pub.twist.linear.x = 0.0f;
 			vel_pub.twist.linear.y = 0.0f;
             vel_pub.twist.linear.z = 2.0f;
 			vel_pub.twist.angular.x = 0.0f;
 			vel_pub.twist.angular.y = 0.0f;
 			vel_pub.twist.angular.z = 0.0f;
-			velocity_control_enable = true;
-			if((abs(current_pos.pose.position.x - current_pos.pose.position.x) < 0.2) &&      // switch to next state
+            if((abs(current_pos.pose.position.x - current_pos.pose.position.x) < 0.2) &&      // switch to next state
 			   (abs(current_pos.pose.position.y - current_pos.pose.position.y) < 0.2) &&
 			   (abs(current_pos.pose.position.z - setpoint_H.pose.position.z) < 0.8))
 			   {
 					current_mission_state = takeoff_hover; // current_mission_state++;
 					mission_last_time = ros::Time::now();
 					mission_timer_t = ros::Time::now();
-					setpoint_H.pose.position.x = current_pos.pose.position.x;
-					setpoint_H.pose.position.y = current_pos.pose.position.y;
+
 					velocity_control_enable = false;
+                    pose_pub.pose.position.x = current_pos.pose.position.x;
+                    pose_pub.pose.position.y = current_pos.pose.position.y;
+                    pose_pub.pose.position.z = setpoint_H.pose.position.z;
 
                     /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
                     camera_switch_data.data = 1;
@@ -722,7 +792,7 @@ void state_machine_func(void)
         	pose_pub.pose.position.x = current_pos.pose.position.x;
         	pose_pub.pose.position.y = current_pos.pose.position.y;
         	pose_pub.pose.position.z = setpoint_H.pose.position.z;
-        	if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* hover for 5 seconds. -libn */
         	{
         		current_mission_state = mission_point_A; // current_mission_state++;
         	}
@@ -778,7 +848,7 @@ void state_machine_func(void)
 //				current_mission_state = mission_search; // current_mission_state++;
 //			}
 			//time delay added(just for test! --delete it directly!)
-			if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* hover for 5 seconds. -libn */
 			{
 				current_mission_state = mission_search; // current_mission_state++;
 
@@ -840,16 +910,21 @@ void state_machine_func(void)
 
 			if(relocate_valid)
 			{
-				current_mission_state = mission_operate_move; // current_mission_state++;
+                if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* hover for 5 seconds. -libn */
+                {
+                    current_mission_state = mission_operate_move; // current_mission_state++;
+                    mission_last_time = ros::Time::now();
+                }
 			}
 			else
 			{
-				if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* wait for this operate 10 seconds at most. -libn */
+                if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* wait for this operate 5 seconds at most. -libn */
 				{
 					/* TODO: add scanning method! -libn */
 					current_mission_state = mission_scan; // current_mission_state++;
 				}
-			}
+			}            
+
 			break;
         case mission_operate_move:
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
@@ -867,7 +942,7 @@ void state_machine_func(void)
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* hover for 5 seconds. -libn */
         	{
         		current_mission_state = mission_operate_spray; // current_mission_state++;
         		mission_last_time = ros::Time::now();
@@ -879,7 +954,7 @@ void state_machine_func(void)
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* spray for 5 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* spray for 5 seconds. -libn */
         	{
         		/* TODO: stop spraying. -libn */
 
@@ -937,7 +1012,7 @@ void state_machine_func(void)
 			if((abs(current_pos.pose.position.x - setpoint_H.pose.position.x) < 0.2) &&      // switch to next state
 			   (abs(current_pos.pose.position.y - setpoint_H.pose.position.y) < 0.2) &&
 			   (abs(current_pos.pose.position.z - setpoint_H.pose.position.z) < 0.2) &&
-			   (ros::Time::now() - mission_last_time > ros::Duration(5)))		/* Bug: mission_last_time is not necessary! -libn */
+               (ros::Time::now() - mission_last_time > ros::Duration(2)))		/* Bug: mission_last_time is not necessary! -libn */
 			{
 				ROS_INFO("start mission_home_hover");
 				current_mission_state = mission_home_hover; // current_mission_state++;
@@ -949,7 +1024,7 @@ void state_machine_func(void)
 			pose_pub.pose.position.x = setpoint_H.pose.position.x;
 			pose_pub.pose.position.y = setpoint_H.pose.position.y;
 			pose_pub.pose.position.z = setpoint_H.pose.position.z;
-			if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 2 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* hover for 2 seconds. -libn */
 			{
 				current_mission_state = land; // current_mission_state++;
 			}
