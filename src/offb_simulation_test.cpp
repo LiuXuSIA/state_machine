@@ -26,10 +26,11 @@
 #include <state_machine/VISION_NUM_SCAN_M2P.h>
 #include <state_machine/VISION_ONE_NUM_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
-#define SPRAY_DISTANCE 3.5  /* distance from UAV to drawing board while sparying. */
-#define VISION_SCAN_DISTANCE 4  /* distance from UAV to drawing board while hoveing and scanning. */
+#define SPRAY_DISTANCE 1.5  /* distance from UAV to drawing board while sparying. */
+#define VISION_SCAN_DISTANCE 2  /* distance from UAV to drawing board while hoveing and scanning. */
 #define SCREEN_HEIGHT 3 /* height of screen(not used). */
-#define SAFE_HEIGHT_DISTANCE 3  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
+#define SAFE_HEIGHT_DISTANCE 2  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
+#define FIXED_POS_HEIGHT 2
 
 #include <math.h>
 
@@ -127,22 +128,22 @@ void SetpointIndexedCallback(const state_machine::Setpoint::ConstPtr& msg)
         case 1:
             setpoint_A.pose.position.x = setpoint_indexed.x;
             setpoint_A.pose.position.y = setpoint_indexed.y;
-            setpoint_A.pose.position.z = setpoint_indexed.z;
+//            setpoint_A.pose.position.z = setpoint_indexed.z;
             break;
         case 2:
             setpoint_L.pose.position.x = setpoint_indexed.x;
             setpoint_L.pose.position.y = setpoint_indexed.y;
-            setpoint_L.pose.position.z = setpoint_indexed.z;
+//            setpoint_L.pose.position.z = setpoint_indexed.z;
             break;
         case 3:
             setpoint_R.pose.position.x = setpoint_indexed.x;
             setpoint_R.pose.position.y = setpoint_indexed.y;
-            setpoint_R.pose.position.z = setpoint_indexed.z;
+//            setpoint_R.pose.position.z = setpoint_indexed.z;
             break;
         case 4:
             setpoint_D.pose.position.x = setpoint_indexed.x;    /* not used! */
             setpoint_D.pose.position.y = setpoint_indexed.y;
-            setpoint_D.pose.position.z = setpoint_indexed.z;
+//            setpoint_D.pose.position.z = setpoint_indexed.z;
             break;
         default:
             ROS_INFO("setpoint index error!");
@@ -228,19 +229,19 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
 	/* publish messages to pixhawk. -libn */
     fixed_target_return_m2p_data.home_x = fixed_target_position_p2m_data.home_x;
     fixed_target_return_m2p_data.home_y = fixed_target_position_p2m_data.home_y;
-    fixed_target_return_m2p_data.home_z = fixed_target_position_p2m_data.home_z;
+    fixed_target_return_m2p_data.home_z = -FIXED_POS_HEIGHT;
 
     fixed_target_return_m2p_data.observe_x = fixed_target_position_p2m_data.observe_x;
     fixed_target_return_m2p_data.observe_y = fixed_target_position_p2m_data.observe_y;
-    fixed_target_return_m2p_data.observe_z = fixed_target_position_p2m_data.observe_z;
+    fixed_target_return_m2p_data.observe_z = -FIXED_POS_HEIGHT;
 
     fixed_target_return_m2p_data.spray_left_x = fixed_target_position_p2m_data.spray_left_x;
     fixed_target_return_m2p_data.spray_left_y = fixed_target_position_p2m_data.spray_left_y;
-    fixed_target_return_m2p_data.spray_left_z = fixed_target_position_p2m_data.spray_left_z;
+    fixed_target_return_m2p_data.spray_left_z = -FIXED_POS_HEIGHT;
 
     fixed_target_return_m2p_data.spray_right_x = fixed_target_position_p2m_data.spray_right_x;
     fixed_target_return_m2p_data.spray_right_y = fixed_target_position_p2m_data.spray_right_y;
-    fixed_target_return_m2p_data.spray_right_z = fixed_target_position_p2m_data.spray_right_z;
+    fixed_target_return_m2p_data.spray_right_z = -FIXED_POS_HEIGHT;
 	fixed_target_return_m2p_pub.publish(fixed_target_return_m2p_data);
     ROS_INFO("publishing fixed_target_return_m2p(NED): %f\t%f\t%f\t",
             fixed_target_return_m2p_data.home_x,
@@ -256,7 +257,7 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
                             pos_ENU);
     setpoint_H.pose.position.x = pos_ENU[0];
     setpoint_H.pose.position.y = pos_ENU[1];
-    setpoint_H.pose.position.z = pos_ENU[2];
+//    setpoint_H.pose.position.z = pos_ENU[2];
 
     position_x_ENU_from_NED(fixed_target_position_p2m_data.observe_x,
                             fixed_target_position_p2m_data.observe_y,
@@ -264,7 +265,7 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
                             pos_ENU);
     setpoint_A.pose.position.x = pos_ENU[0];
     setpoint_A.pose.position.y = pos_ENU[1];
-    setpoint_A.pose.position.z = pos_ENU[2];
+//    setpoint_A.pose.position.z = pos_ENU[2];
 
     position_x_ENU_from_NED(fixed_target_position_p2m_data.spray_left_x,
                             fixed_target_position_p2m_data.spray_left_y,
@@ -272,7 +273,7 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
                             pos_ENU);
     setpoint_L.pose.position.x = pos_ENU[0];
     setpoint_L.pose.position.y = pos_ENU[1];
-    setpoint_L.pose.position.z = pos_ENU[2];
+//    setpoint_L.pose.position.z = pos_ENU[2];
 
     position_x_ENU_from_NED(fixed_target_position_p2m_data.spray_right_x,
                             fixed_target_position_p2m_data.spray_right_y,
@@ -280,7 +281,7 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
                             pos_ENU);
     setpoint_R.pose.position.x = pos_ENU[0];
     setpoint_R.pose.position.y = pos_ENU[1];
-    setpoint_R.pose.position.z = pos_ENU[2];
+//    setpoint_R.pose.position.z = pos_ENU[2];
 
     /* calculate yaw*. -libn */
     deta_x = setpoint_R.pose.position.x - setpoint_L.pose.position.x;
@@ -438,23 +439,23 @@ int main(int argc, char **argv)
     {
         setpoint_H.pose.position.x = current_pos.pose.position.x;
         setpoint_H.pose.position.y = current_pos.pose.position.y;
-        setpoint_H.pose.position.z = 3.0f;  /* it's better to choose z* = SAFE_HEIGHT_DISTANCE(no altitude lost). */
+        setpoint_H.pose.position.z = FIXED_POS_HEIGHT;  /* it's better to choose z* = SAFE_HEIGHT_DISTANCE(no altitude lost). */
 
         setpoint_A.pose.position.x = 0.0f;
         setpoint_A.pose.position.y = 0.0f;
-        setpoint_A.pose.position.z = 3.0f;
+        setpoint_A.pose.position.z = FIXED_POS_HEIGHT;
 
         setpoint_L.pose.position.x = 0.0f;
         setpoint_L.pose.position.y = 0.0f;
-        setpoint_L.pose.position.z = 3.0f;
+        setpoint_L.pose.position.z = FIXED_POS_HEIGHT;
 
         setpoint_R.pose.position.x = 0.0f;
         setpoint_R.pose.position.y = 0.0f;
-        setpoint_R.pose.position.z = 3.0f;
+        setpoint_R.pose.position.z = FIXED_POS_HEIGHT;
 
         setpoint_D.pose.position.x = 0.0f;
         setpoint_D.pose.position.y = 0.0f;
-        setpoint_D.pose.position.z = 3.0f;
+        setpoint_D.pose.position.z = FIXED_POS_HEIGHT;
 
         yaw_sp_calculated_m2p_data.yaw_sp = 90*M_PI/180;   /* default yaw*(90 degree)(ENU) -> North! */
         /* publish yaw_sp to pixhawk. */
