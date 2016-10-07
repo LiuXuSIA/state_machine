@@ -85,7 +85,7 @@ void state_cb(const state_machine::State::ConstPtr& msg){
 	current_state = *msg;
 }
 
-state_machine::YAW_SP_CALCULATED_M2P yaw_sp_calculated_m2p_data;
+state_machine::YAW_SP_CALCULATED_M2P yaw_sp_calculated_m2p_data,yaw_sp_pub2GCS;
 geometry_msgs::PoseStamped pose_pub;
 geometry_msgs::TwistStamped vel_pub;	/* velocity setpoint to be published. -libn */
 
@@ -297,7 +297,8 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     pose_pub.pose.orientation.w = cos(yaw_sp_calculated_m2p_data.yaw_sp/2);		/* set yaw* = 90 degree(default in simulation). -libn */
 
     /* publish yaw_sp to pixhawk. */
-    yaw_sp_calculated_m2p_pub.publish(wrap_pi(-(yaw_sp_calculated_m2p_data-M_PI/2)));
+    yaw_sp_pub2GCS.yaw_sp = wrap_pi(-(yaw_sp_calculated_m2p_data.yaw_sp - M_PI/2));
+    yaw_sp_calculated_m2p_pub.publish(yaw_sp_pub2GCS);
     ROS_INFO("publishing yaw_sp_calculated_m2p(ENU): %f",
             yaw_sp_calculated_m2p_data.yaw_sp);
 
