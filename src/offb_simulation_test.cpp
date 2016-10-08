@@ -180,6 +180,14 @@ void pos_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
     current_pos = *msg;
 }
 
+// local velocity msg callback function
+geometry_msgs::TwistStamped current_vel;
+void vel_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
+{
+    current_vel = *msg;
+//    ROS_INFO("Vx = %f Vy = %f Vz = %f",current_vel.twist.linear.x,current_vel.twist.linear.y,current_vel.twist.linear.z);
+}
+
 /* 10 drawing board positions. -libn */
 state_machine::DrawingBoard10 board10;
 void board_pos_cb(const state_machine::DrawingBoard10::ConstPtr& msg)
@@ -380,6 +388,9 @@ int main(int argc, char **argv)
 	ros::Subscriber setpoint_Indexed_sub = nh.subscribe("Setpoint_Indexed", 100 ,SetpointIndexedCallback);
 	/* get pixhawk's local position. -libn */
 	ros::Subscriber local_pos_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose", 10, pos_cb);
+
+    /* get pixhawk's local velocity. -libn */
+    ros::Subscriber local_vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity", 10, vel_cb);
 
 	ros::Subscriber DrawingBoard_Position_sub = nh.subscribe<state_machine::DrawingBoard10>
 		            ("DrawingBoard_Position10", 10, board_pos_cb);
@@ -800,24 +811,44 @@ void state_machine_func(void)
 			vel_pub.twist.angular.x = 0.0f;
 			vel_pub.twist.angular.y = 0.0f;
 			vel_pub.twist.angular.z = 0.0f;
-            if((abs(current_pos.pose.position.x - current_pos.pose.position.x) < 0.2) &&      // switch to next state
-			   (abs(current_pos.pose.position.y - current_pos.pose.position.y) < 0.2) &&
-			   (abs(current_pos.pose.position.z - setpoint_H.pose.position.z) < 0.8))
-			   {
-                    current_mission_state = mission_hover_after_takeoff; // current_mission_state++;
-					mission_last_time = ros::Time::now();
-					mission_timer_t = ros::Time::now();
+            if(current_vel.twist.linear.z > 1 &&
+               current_pos.pose.position.z > 1)
+            {
+                ROS_INFO("current_vel.twist.linear.x = %f",current_vel.twist.linear.x);
 
-					velocity_control_enable = false;
-                    pose_pub.pose.position.x = current_pos.pose.position.x;
-                    pose_pub.pose.position.y = current_pos.pose.position.y;
-                    pose_pub.pose.position.z = setpoint_H.pose.position.z;
+                current_mission_state = mission_hover_after_takeoff; // current_mission_state++;
+                mission_last_time = ros::Time::now();
+                mission_timer_t = ros::Time::now();
 
-                    /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
-                    camera_switch_data.data = 0;
-                    camera_switch_pub.publish(camera_switch_data);
-                    ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
-			   }
+                velocity_control_enable = false;
+                pose_pub.pose.position.x = current_pos.pose.position.x;
+                pose_pub.pose.position.y = current_pos.pose.position.y;
+                pose_pub.pose.position.z = setpoint_H.pose.position.z;
+
+                /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+                camera_switch_data.data = 0;
+                camera_switch_pub.publish(camera_switch_data);
+                ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+
+            }
+//            if((abs(current_pos.pose.position.x - current_pos.pose.position.x) < 0.2) &&      // switch to next state
+//			   (abs(current_pos.pose.position.y - current_pos.pose.position.y) < 0.2) &&
+//			   (abs(current_pos.pose.position.z - setpoint_H.pose.position.z) < 0.8))
+//			   {
+//                    current_mission_state = mission_hover_after_takeoff; // current_mission_state++;
+//					mission_last_time = ros::Time::now();
+//					mission_timer_t = ros::Time::now();
+
+//					velocity_control_enable = false;
+//                    pose_pub.pose.position.x = current_pos.pose.position.x;
+//                    pose_pub.pose.position.y = current_pos.pose.position.y;
+//                    pose_pub.pose.position.z = setpoint_H.pose.position.z;
+
+//                    /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+//                    camera_switch_data.data = 0;
+//                    camera_switch_pub.publish(camera_switch_data);
+//                    ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+//			   }
     		break;
 
         case mission_hover_after_takeoff:
