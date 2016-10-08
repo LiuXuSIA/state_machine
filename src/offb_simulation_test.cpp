@@ -219,6 +219,14 @@ void position_x_ENU_from_NED(float x_NED, float y_NED, float z_NED, float* pos_E
     *(pos_ENU_f+2) = -z_NED;
 }
 
+/* limit the error between (x2,y2) and (x1,y1). */
+void error_limit(double x1, double y1, double x2, double y2, double* result)
+{
+    *result = (x2-x1)/sqrt(fabs((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)));
+    *(result+1) = (y2-y1)/sqrt(fabs((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)));
+}
+
+
 /* subscribe messages from pixhawk. -libn */
 state_machine::FIXED_TARGET_POSITION_P2M fixed_target_position_p2m_data;
 state_machine::FIXED_TARGET_RETURN_M2P fixed_target_return_m2p_data;
@@ -686,6 +694,19 @@ int main(int argc, char **argv)
 			}
 		}
 
+        if(!velocity_control_enable)    /* position control. */
+        {
+            /* limit error(x,y) between current position and destination within [-1,1]. */
+            if(abs(pose_pub.pose.position.x - current_pos.pose.position.x) > 1 ||
+                abs(pose_pub.pose.position.y - current_pos.pose.position.y) > 1)
+            {
+                double error_temp[2] = {0,0};
+                error_limit(current_pos.pose.position.x,current_pos.pose.position.y,pose_pub.pose.position.x,pose_pub.pose.position.y,error_temp);
+                pose_pub.pose.position.x = current_pos.pose.position.x + error_temp[0];
+                pose_pub.pose.position.y = current_pos.pose.position.y + error_temp[1];
+            }
+        }
+
         if(1)   /* publish messages to pixhawk. */
         {
             /* publish messages to pixhawk. -libn */
@@ -727,9 +748,9 @@ int main(int argc, char **argv)
             send_vision_num_count++;
             send_vision_num_count = send_vision_num_count % 10;
             vision_num_scan_m2p_data.board_num = send_vision_num_count;
-            vision_num_scan_m2p_data.board_x = board10.drawingboard[send_vision_num_count].x,
-            vision_num_scan_m2p_data.board_y = board10.drawingboard[send_vision_num_count].y,
-            vision_num_scan_m2p_data.board_z = board10.drawingboard[send_vision_num_count].z,
+            vision_num_scan_m2p_data.board_x = board10.drawingboard[send_vision_num_count].y,
+            vision_num_scan_m2p_data.board_y = board10.drawingboard[send_vision_num_count].x,
+            vision_num_scan_m2p_data.board_z = -board10.drawingboard[send_vision_num_count].z,
             vision_num_scan_m2p_data.board_valid = board10.drawingboard[send_vision_num_count].valid;
             vision_num_scan_m2p_pub.publish(vision_num_scan_m2p_data);
     //		ROS_INFO("publishing vision_num_scan_m2p: %d %f %f %f %d",
