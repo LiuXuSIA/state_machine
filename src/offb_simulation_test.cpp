@@ -55,6 +55,7 @@ static const int land = 16;
 static const int mission_end = 17;
 static const int mission_hover_before_spary = 18;
 static const int mission_fix_failure = 19;
+static const int mission_hover_after_stretch_back = 20;
 int loop = 1;	/* loop calculator: loop = 1/2/3/4/5. -libn */
 // current mission state, initial state is to takeoff
 int current_mission_state = takeoff;
@@ -64,6 +65,7 @@ bool relocate_valid = false;	/* to complete relocate mission. -libn */
 int mission_failure = 0;
 
 int current_mission_num;	/* mission num: 5 subtask -> 5 current nums.	TODO:change mission num. -libn */
+int last_mission_num;
 
 bool velocity_control_enable = true;
 
@@ -480,9 +482,10 @@ int main(int argc, char **argv)
             board10.drawingboard[co].z = 0.0f;  /* it's safe for we have SAFE_HEIGHT_DISTANCE. */
         }
         current_mission_num = 0;    /* set current_mission_num as 0 as default. */
+        last_mission_num = 0;
 
         /* camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
-        camera_switch_data.data = 1;    /* vision used for detection as default. */
+        camera_switch_data.data = 0;    /* vision used for vision_num_scan as default. */
         camera_switch_pub.publish(camera_switch_data);
 //        ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
 
@@ -506,6 +509,7 @@ int main(int argc, char **argv)
                 camera_switch_data.data = 1;
                 camera_switch_pub.publish(camera_switch_data);
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+
             }
             if(current_state.mode == "ALTCTL" && last_state.mode != "ALTCTL")
             {
@@ -516,18 +520,12 @@ int main(int argc, char **argv)
                 camera_switch_data.data = 2;
                 camera_switch_pub.publish(camera_switch_data);
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
-
             }
             if(current_state.mode == "OFFBOARD" && last_state.mode != "OFFBOARD")
             {
                 last_state.mode = "OFFBOARD";
                 ROS_INFO("switch to mode: OFFBOARD");
 
-//                /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
-//                /* set camera_switch 1(vision_one_num_get) as default */
-//                camera_switch_data.data = 1;
-//                camera_switch_pub.publish(camera_switch_data);
-//                ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
             }
             if(current_state.armed && !last_state.armed)
                     {
@@ -535,6 +533,15 @@ int main(int argc, char **argv)
                 last_state.armed = current_state.armed;
                 ROS_INFO("UAV armed!");
             }
+
+        }
+        if(current_state.mode == "MANUAL" && current_state.armed)
+        {
+            camera_switch_data.data = 0;    /* disable camere. */
+            camera_switch_pub.publish(camera_switch_data);
+            ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+            current_mission_num = 0;    /* set current_mission_num as 0 as default. */
+            last_mission_num = 0;   /* disable the initial mission_num gotten before takeoff. */
 
         }
 
@@ -786,7 +793,7 @@ void state_machine_func(void)
                     pose_pub.pose.position.z = setpoint_H.pose.position.z;
 
                     /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
-                    camera_switch_data.data = 1;
+                    camera_switch_data.data = 0;
                     camera_switch_pub.publish(camera_switch_data);
                     ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
 			   }
@@ -810,16 +817,20 @@ void state_machine_func(void)
         	pose_pub.pose.position.x = setpoint_A.pose.position.x;
 			pose_pub.pose.position.y = setpoint_A.pose.position.y;
 			pose_pub.pose.position.z = setpoint_A.pose.position.z;
+            if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 1.0) &&      // switch to next state
+               (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 1.0))
+            {
+                /* camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+                camera_switch_data.data = 1;
+                camera_switch_pub.publish(camera_switch_data);
+                ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+            }
             if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
                (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
                (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 0.2))
             {
                 current_mission_state = mission_observe_num_wait; // current_mission_state++;
             	mission_last_time = ros::Time::now();
-                /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
-                camera_switch_data.data = 1;
-                camera_switch_pub.publish(camera_switch_data);
-                ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
             }
             loop_timer_t = ros::Time::now();
             break;
@@ -852,20 +863,25 @@ void state_machine_func(void)
 //				current_mission_state = mission_num_search; // current_mission_state++;
 //			}
 			//time delay added(just for test! --delete it directly!)
-            if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* hover for 5 seconds. -libn */
-			{
-                current_mission_state = mission_num_search; // current_mission_state++;
-
-                /* change and publish camera_switch_data for next subtask. */
-                /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
-                camera_switch_data.data = 2;
-                camera_switch_pub.publish(camera_switch_data);
-                ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+            if(current_mission_num == last_mission_num)
+            {
+                current_mission_state = mission_observe_num_wait; // stop mission_state++, avoid repeating spraying. ;
             }
+            else    /* valid number detected. */
+            {
+                if(ros::Time::now() - mission_last_time > ros::Duration(1))	/* hover for 1 seconds. -libn */
+                {
+                    current_mission_state = mission_num_search; // current_mission_state++;
 
-
-
-			break;
+                    /* change and publish camera_switch_data for next subtask. */
+                    /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+                    camera_switch_data.data = 2;
+                    camera_switch_pub.publish(camera_switch_data);
+                    ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+                }
+            }
+            last_mission_num = current_mission_num;
+            break;
         case mission_num_search:
 //        	ROS_INFO("board10.drawingboard[current_mission_num].valid = %d",board10.drawingboard[current_mission_num].valid);
         	if(board10.drawingboard[current_mission_num].valid)
@@ -958,7 +974,7 @@ void state_machine_func(void)
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 5 seconds. -libn */
         	{
                 current_mission_state = mission_num_hover_spray; // current_mission_state++;
         		mission_last_time = ros::Time::now();
@@ -967,24 +983,31 @@ void state_machine_func(void)
         	}
             break;
         case mission_num_hover_spray:
-            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
+            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* spray for 5 seconds. -libn */
-        	{
-        		/* TODO: stop spraying. -libn */
-
-            	loop++;	/* switch to next loop. -libn */
-            	if(loop > 5)
-            	{
-                    current_mission_state = mission_num_done; // current_mission_state++;
-            	}
-            	else
-            	{
-                    current_mission_state = mission_observe_point_go; // current_mission_state++;
-            	}
-        	}
+            if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* spray for 5 seconds. -libn */
+            {
+                current_mission_state = mission_hover_after_stretch_back; // current_mission_state++;
+                mission_last_time = ros::Time::now();
+            }
             break;
+        case mission_hover_after_stretch_back:
+            pose_pub.pose.position.x = current_pos.pose.position.x;	/* hover in current position. -libn */
+            pose_pub.pose.position.y = current_pos.pose.position.y;
+            pose_pub.pose.position.z = current_pos.pose.position.z;
+            if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* spray for 5 seconds. -libn */
+            {
+                loop++;	/* switch to next loop. -libn */
+                if(loop > 5)
+                {
+                    current_mission_state = mission_num_done; // current_mission_state++;
+                }
+                else
+                {
+                    current_mission_state = mission_observe_point_go; // current_mission_state++;
+                }
+            }
         case mission_num_done:
         	loop_timer_t = ros::Time::now();	/* disable loop_timer. -libn */
         	pose_pub.pose.position.x = current_pos.pose.position.x;	/* hover in current position. -libn */
