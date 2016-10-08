@@ -323,6 +323,11 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
 
 }
 
+/* publish messages to pixhawk. -libn */
+state_machine::OBSTACLE_POSITION_M2P obstacle_position_m2p_data;
+state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor_m2p_data;
+state_machine::VISION_NUM_SCAN_M2P vision_num_scan_m2p_data;
+state_machine::VISION_ONE_NUM_GET_M2P vision_one_num_get_m2p_data;
 state_machine::TASK_STATUS_CHANGE_P2M task_status_change_p2m_data;
 void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::ConstPtr& msg){
 	task_status_change_p2m_data = *msg;
@@ -339,12 +344,6 @@ void vision_num_cb(const std_msgs::Int32::ConstPtr& msg){
     current_mission_num = vision_num_data.data;
     ROS_INFO("subscribing vision_num_data = %d", vision_num_data.data);
 }
-
-/* publish messages to pixhawk. -libn */
-state_machine::OBSTACLE_POSITION_M2P obstacle_position_m2p_data;
-state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor_m2p_data;
-state_machine::VISION_NUM_SCAN_M2P vision_num_scan_m2p_data;
-state_machine::VISION_ONE_NUM_GET_M2P vision_one_num_get_m2p_data;
 
 std_msgs::Int32 camera_switch_data;
 ros::Publisher  camera_switch_pub;
