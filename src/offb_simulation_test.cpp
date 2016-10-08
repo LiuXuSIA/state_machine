@@ -855,7 +855,7 @@ void state_machine_func(void)
         	pose_pub.pose.position.x = current_pos.pose.position.x;
         	pose_pub.pose.position.y = current_pos.pose.position.y;
         	pose_pub.pose.position.z = setpoint_H.pose.position.z;
-            if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* hover for 5 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(3))	/* hover for 5 seconds. -libn */
         	{
                 current_mission_state = mission_observe_point_go; // current_mission_state++;
         	}
@@ -868,7 +868,8 @@ void state_machine_func(void)
 			}
         	pose_pub.pose.position.x = setpoint_A.pose.position.x;
 			pose_pub.pose.position.y = setpoint_A.pose.position.y;
-			pose_pub.pose.position.z = setpoint_A.pose.position.z;
+            pose_pub.pose.position.z = setpoint_A.pose.position.z;
+            /* camera_switch revised. */
             if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 1.0) &&      // switch to next state
                (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 1.0))
             {
@@ -930,9 +931,11 @@ void state_machine_func(void)
                     camera_switch_data.data = 2;
                     camera_switch_pub.publish(camera_switch_data);
                     ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+
+                    last_mission_num = current_mission_num;
                 }
             }
-            last_mission_num = current_mission_num;
+
             break;
         case mission_num_search:
 //        	ROS_INFO("board10.drawingboard[current_mission_num].valid = %d",board10.drawingboard[current_mission_num].valid);
@@ -982,7 +985,7 @@ void state_machine_func(void)
 
 			if(relocate_valid)
 			{
-                if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* hover for 5 seconds. -libn */
+                if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
                 {
                     current_mission_state = mission_num_get_close; // current_mission_state++;
                     mission_last_time = ros::Time::now();
@@ -1115,7 +1118,7 @@ void state_machine_func(void)
 			pose_pub.pose.position.x = setpoint_H.pose.position.x;
 			pose_pub.pose.position.y = setpoint_H.pose.position.y;
 			pose_pub.pose.position.z = setpoint_H.pose.position.z;
-            if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* hover for 2 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 2 seconds. -libn */
 			{
 				current_mission_state = land; // current_mission_state++;
 			}
