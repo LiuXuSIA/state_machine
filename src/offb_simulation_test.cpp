@@ -330,6 +330,7 @@ void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::Cons
 				task_status_change_p2m_data.spray_duration,
 				task_status_change_p2m_data.task_status,
 				task_status_change_p2m_data.loop_value);
+    task_status_monitor_m2p_data.spray_duration = task_status_change_p2m_data.spray_duration;
 }
 
 std_msgs::Int32 vision_num_data;
@@ -507,6 +508,9 @@ int main(int argc, char **argv)
         camera_switch_data.data = 0;    /* vision used for vision_num_scan as default. */
         camera_switch_pub.publish(camera_switch_data);
 //        ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+
+        /* default spray_duration */
+        task_status_monitor_m2p_data.spray_duration = 1.0f;
 
     }
 
@@ -732,7 +736,7 @@ int main(int argc, char **argv)
     //				obstacle_position_m2p_data.obstacle_z,
     //				obstacle_position_m2p_data.obstacle_valid);
 
-            task_status_monitor_m2p_data.spray_duration = 0.3f;
+//            task_status_monitor_m2p_data.spray_duration = 0.3f;
             task_status_monitor_m2p_data.task_status = current_mission_state;
             task_status_monitor_m2p_data.loop_value = loop;
             if(velocity_control_enable)
