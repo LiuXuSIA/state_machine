@@ -26,8 +26,8 @@
 #include <state_machine/VISION_NUM_SCAN_M2P.h>
 #include <state_machine/VISION_ONE_NUM_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
-#define SPRAY_DISTANCE 1.5  /* distance from UAV to drawing board while sparying. */
-#define VISION_SCAN_DISTANCE 2  /* distance from UAV to drawing board while hoveing and scanning. */
+#define SPRAY_DISTANCE 4  /* distance from UAV to drawing board while sparying. */
+#define VISION_SCAN_DISTANCE 4.5  /* distance from UAV to drawing board while hoveing and scanning. */
 #define SCREEN_HEIGHT 3 /* height of screen(not used). */
 #define SAFE_HEIGHT_DISTANCE 2  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
 #define FIXED_POS_HEIGHT 2
@@ -40,6 +40,7 @@ void state_machine_func(void);
 /* mission state. -libn */
 static const int takeoff = 1;
 static const int mission_hover_after_takeoff = 2;
+static const int mission_hover_only = 3;
 static const int mission_observe_point_go = 5;
 static const int mission_observe_num_wait = 6;
 static const int mission_num_search = 8;
@@ -49,11 +50,11 @@ static const int mission_num_get_close = 11;
 static const int mission_arm_spread = 12;
 static const int mission_num_hover_spray = 13;
 static const int mission_num_done = 14;
-static const int mission_fix_failure = 18;
 static const int mission_return_home = 15;
-static const int mission_hover_only = 3;
 static const int land = 16;
 static const int mission_end = 17;
+static const int mission_hover_before_spary = 18;
+static const int mission_fix_failure = 19;
 int loop = 1;	/* loop calculator: loop = 1/2/3/4/5. -libn */
 // current mission state, initial state is to takeoff
 int current_mission_state = takeoff;
@@ -937,15 +938,27 @@ void state_machine_func(void)
                (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
                (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 0.2))
                {
-                current_mission_state = mission_arm_spread; // current_mission_state++;
+                current_mission_state = mission_hover_before_spary; // current_mission_state++;
             	mission_last_time = ros::Time::now();
                }
+            break;
+        case mission_hover_before_spary:
+            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
+            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
+            if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
+            {
+                current_mission_state = mission_arm_spread; // current_mission_state++;
+                mission_last_time = ros::Time::now();
+                /* TODO: start spraying. -libn */
+
+            }
             break;
         case mission_arm_spread:
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* hover for 5 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
         	{
                 current_mission_state = mission_num_hover_spray; // current_mission_state++;
         		mission_last_time = ros::Time::now();
@@ -954,10 +967,10 @@ void state_machine_func(void)
         	}
             break;
         case mission_num_hover_spray:
-            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
+            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* spray for 5 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* spray for 5 seconds. -libn */
         	{
         		/* TODO: stop spraying. -libn */
 
@@ -1015,7 +1028,7 @@ void state_machine_func(void)
 			if((abs(current_pos.pose.position.x - setpoint_H.pose.position.x) < 0.2) &&      // switch to next state
 			   (abs(current_pos.pose.position.y - setpoint_H.pose.position.y) < 0.2) &&
 			   (abs(current_pos.pose.position.z - setpoint_H.pose.position.z) < 0.2) &&
-               (ros::Time::now() - mission_last_time > ros::Duration(2)))		/* Bug: mission_last_time is not necessary! -libn */
+               (ros::Time::now() - mission_last_time > ros::Duration(1)))		/* Bug: mission_last_time is not necessary! -libn */
 			{
                 ROS_INFO("start mission_hover_only");
                 current_mission_state = mission_hover_only; // current_mission_state++;
