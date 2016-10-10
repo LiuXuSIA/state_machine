@@ -28,15 +28,18 @@
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
 #define SPRAY_DISTANCE 2.5  /* distance from UAV to drawing board while sparying. */
 #define VISION_SCAN_DISTANCE 3  /* distance from UAV to drawing board while hoveing and scanning. */
-#define SCREEN_HEIGHT 3 /* height of screen(not used). */
+
 #define SAFE_HEIGHT_DISTANCE 0.4  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
-#define FIXED_POS_HEIGHT 1.5
+#define FIXED_POS_HEIGHT 1.5    /* height of point: H,O,L,R. */
 
 #include <math.h>
 
 #include <std_msgs/Int32.h>
 
+#define MAX_FLIGHT_TIME 200 /* max flight time of whole mission. */
+
 #include <state_machine/FailureRecord.h>
+#define FAILURE_REPAIR 1    /* FAILURE_REPAIR: 0: never repair errores; 1: repair errors. */
 
 void state_machine_func(void);
 /* mission state. -libn */
@@ -66,7 +69,6 @@ int current_mission_state = takeoff;
 ros::Time mission_last_time;	/* timer used in mission. -libn */
 bool display_screen_num_recognized = false;	/* to check if the num on display screen is recognized. -libn */
 bool relocate_valid = false;	/* to complete relocate mission. -libn */
-int mission_failure_acount = 0;
 
 int current_mission_num;	/* mission num: 5 subtask -> 5 current nums.	TODO:change mission num. -libn */
 int last_mission_num;
@@ -85,6 +87,7 @@ geometry_msgs::PoseStamped setpoint_D;
 geometry_msgs::PoseStamped setpoint_H;	/* home position. -libn */
 
 state_machine::FailureRecord failure[5];
+int mission_failure_acount = 0;
 
 state_machine::State current_state;
 state_machine::State last_state;
@@ -606,7 +609,7 @@ int main(int argc, char **argv)
             {
                 /* set time deadline. */
                 /* mission timer(5 loops). -libn */
-                if(ros::Time::now() - mission_timer_start_time > ros::Duration(200.0)
+                if(ros::Time::now() - mission_timer_start_time > ros::Duration(MAX_FLIGHT_TIME)
                         && force_home_enable == true)
                 {
                     force_home_enable = false; /* force once! */
@@ -616,9 +619,9 @@ int main(int argc, char **argv)
                 }
                 /* subtask timer(1 loop). -libn */
                 if(ros::Time::now() - mission_timer_start_time > ros::Duration((float)(loop*30.0f+50.0f)) &&
-                   ros::Time::now() - mission_timer_start_time < ros::Duration(200))
+                   ros::Time::now() - mission_timer_start_time < ros::Duration(MAX_FLIGHT_TIME))
                 {
-                    /* error record! */
+                    /* error recorded! */
                     mission_failure_acount++;
                     failure[mission_failure_acount-1].num = current_mission_num;
                     failure[mission_failure_acount-1].state = current_mission_state;
@@ -1087,7 +1090,7 @@ void state_machine_func(void)
         	pose_pub.pose.position.y = current_pos.pose.position.y;
         	pose_pub.pose.position.z = current_pos.pose.position.z;
         	/* TODO: mission check: if there are failures to be fixed -libn */
-            if(mission_failure_acount != 0)
+            if(FAILURE_REPAIR && mission_failure_acount != 0)
         	{
         		current_mission_state = mission_fix_failure; // current_mission_state++;
         		ROS_INFO("TODO: mission_fix_failure!");
@@ -1101,7 +1104,19 @@ void state_machine_func(void)
 			break;
         case mission_fix_failure:
             /* TODO: add mission_failure_acount_fixed. -libn */
+            if((ros::Time::now() - mission_timer_start_time < ros::Duration(MAX_FLIGHT_TIME))
+                    && (mission_failure_acount != 0))
+            {
+                current_mission_num = failure[mission_failure_acount-1].num;
+                /* deal with failures. */
+                if(mission_num_search < failure[mission_failure_acount-1].state < mission_arm_spread ||
+                        failure[mission_failure_acount-1].state == mission_hover_before_spary)
+                {
+                    current_mission_state = mission_num_search;
+                }
+                mission_failure_acount--;
 
+            }
         	pose_pub.pose.position.x = current_pos.pose.position.x;	/* hover in current position. -libn */
 			pose_pub.pose.position.y = current_pos.pose.position.y;
 			pose_pub.pose.position.z = current_pos.pose.position.z;
