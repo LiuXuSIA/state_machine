@@ -36,6 +36,8 @@
 
 #include <std_msgs/Int32.h>
 
+#include <state_machine/FailureRecord.h>
+
 void state_machine_func(void);
 /* mission state. -libn */
 static const int takeoff = 1;
@@ -56,21 +58,24 @@ static const int mission_end = 17;
 static const int mission_hover_before_spary = 18;
 static const int mission_fix_failure = 19;
 static const int mission_hover_after_stretch_back = 20;
+static const int mission_force_return_home = 21;
+
 int loop = 1;	/* loop calculator: loop = 1/2/3/4/5. -libn */
 // current mission state, initial state is to takeoff
 int current_mission_state = takeoff;
 ros::Time mission_last_time;	/* timer used in mission. -libn */
 bool display_screen_num_recognized = false;	/* to check if the num on display screen is recognized. -libn */
 bool relocate_valid = false;	/* to complete relocate mission. -libn */
-int mission_failure = 0;
+int mission_failure_acount = 0;
 
 int current_mission_num;	/* mission num: 5 subtask -> 5 current nums.	TODO:change mission num. -libn */
 int last_mission_num;
 
 bool velocity_control_enable = true;
 
-ros::Time mission_timer_t;	/* timer to control the whole mission. -libn */
-ros::Time loop_timer_t;	/* timer to control subtask. -libn */
+ros::Time mission_timer_start_time;	/* timer to control the whole mission and 5 subtasks. -libn */
+bool mission_timer_enable = true;   /* start mission_timer. */
+bool force_home_enable = true;
 
 /* 4 setpoints. -libn */
 geometry_msgs::PoseStamped setpoint_A;
@@ -78,6 +83,8 @@ geometry_msgs::PoseStamped setpoint_L;
 geometry_msgs::PoseStamped setpoint_R;
 geometry_msgs::PoseStamped setpoint_D;
 geometry_msgs::PoseStamped setpoint_H;	/* home position. -libn */
+
+state_machine::FailureRecord failure[5];
 
 state_machine::State current_state;
 state_machine::State last_state;
@@ -448,8 +455,7 @@ int main(int argc, char **argv)
 
     ros::Time last_request = ros::Time::now();
     ros::Time last_show_request = ros::Time::now();
-    mission_timer_t = ros::Time::now();
-    loop_timer_t = ros::Time::now();
+
     last_state_display = current_state;
     last_state.mode = current_state.mode;
     last_state.armed = current_state.armed;
@@ -495,7 +501,8 @@ int main(int argc, char **argv)
 
         for(int co = 0; co<10; ++co)
         {
-            board10.drawingboard[co].valid = true;
+            /* set param valid true as default to make state machine able to run, and I am sure all numbers will be valid!(vision) */
+            board10.drawingboard[co].valid = true;  /* Normly it should be false as the default setting. */
             board10.drawingboard[co].x = 0.0f;
             board10.drawingboard[co].y = 0.0f;
             board10.drawingboard[co].z = 0.0f;  /* it's safe for we have SAFE_HEIGHT_DISTANCE. */
@@ -510,6 +517,13 @@ int main(int argc, char **argv)
 
         /* default spray_duration */
         task_status_monitor_m2p_data.spray_duration = 1.0f;
+
+        /* failure recorded. */
+        failure[0].num = -1; failure[0].state = takeoff;
+        failure[1].num = -1; failure[1].state = takeoff;
+        failure[2].num = -1; failure[2].state = takeoff;
+        failure[3].num = -1; failure[3].state = takeoff;
+        failure[4].num = -1; failure[4].state = takeoff;
 
     }
 
@@ -562,8 +576,8 @@ int main(int argc, char **argv)
             camera_switch_data.data = 0;    /* disable camere. */
             camera_switch_pub.publish(camera_switch_data);
             ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
-            current_mission_num = 0;    /* set current_mission_num as 0 as default. */
-            last_mission_num = 0;   /* disable the initial mission_num gotten before takeoff. */
+            current_mission_num = -1;    /* set current_mission_num as 0 as default. */
+            last_mission_num = -1;   /* disable the initial mission_num gotten before takeoff. */
 
         }
 
@@ -590,21 +604,30 @@ int main(int argc, char **argv)
             /* system timer. TODO! */
             if(1)
             {
-                //			/* mission timer(5 loops). -libn */
-                //			if(ros::Time::now() - mission_timer_t > ros::Duration(100.0))
-                //			{
-                //				current_mission_state = mission_return_home;	/* mission timeout. -libn */
-                //				ROS_INFO("mission time out!");
-                //			}
-                //			/* subtask timer(1 loop). -libn */
-                //			if(current_mission_state >= mission_observe_point_go && ros::Time::now() - loop_timer_t > ros::Duration(10.0))
-                //			{
-                //				loop++;
-                //				ROS_INFO("loop timeout");
-                //				current_mission_state = mission_observe_point_go;	/* loop timeout, forced to switch to next loop. -libn */
-                //				/* TODO: mission failure recorded(using switch/case). -libn */
-                //
-                //			}
+                /* set time deadline. */
+                /* mission timer(5 loops). -libn */
+                if(ros::Time::now() - mission_timer_start_time > ros::Duration(200.0)
+                        && force_home_enable == true)
+                {
+                    force_home_enable = false; /* force once! */
+                    current_mission_state = mission_force_return_home;	/* mission timeout. -libn */
+                    ROS_INFO("mission time out! -> return to home!");
+                    mission_last_time = ros::Time::now();   /* start counting time(for hovering). */
+                }
+                /* subtask timer(1 loop). -libn */
+                if(ros::Time::now() - mission_timer_start_time > ros::Duration((float)(loop*30.0f+50.0f)) &&
+                   ros::Time::now() - mission_timer_start_time < ros::Duration(200))
+                {
+                    /* error record! */
+                    mission_failure_acount++;
+                    failure[mission_failure_acount-1].num = current_mission_num;
+                    failure[mission_failure_acount-1].state = current_mission_state;
+                    loop++;
+                    ROS_INFO("loop timeout -> start next loop");
+                    current_mission_state = mission_observe_point_go;	/* loop timeout, forced to switch to next loop. -libn */
+                    /* TODO: mission failure recorded(using switch/case). -libn */
+
+                }
             }
 
             if(1)   /* ROS_INFO display. */
@@ -628,8 +651,8 @@ int main(int argc, char **argv)
                         board10.drawingboard[current_mission_num].y,board10.drawingboard[current_mission_num].z);
 
 
-    //			ROS_INFO("mission_timer_t = %.3f",mission_timer_t);
-    //			ROS_INFO("loop_timer_t = %.3f",loop_timer_t);
+
+
     //			ROS_INFO("board_position_received:\n"
     //					"board0: %d %5.3f %5.3f %5.3f \n"
     //					"board1: %d %5.3f %5.3f %5.3f \n"
@@ -724,16 +747,16 @@ int main(int argc, char **argv)
         if(1)   /* publish messages to pixhawk. */
         {
             /* publish messages to pixhawk. -libn */
-            obstacle_position_m2p_data.obstacle_x = 2.0f;
-            obstacle_position_m2p_data.obstacle_y = 2.0f;
-            obstacle_position_m2p_data.obstacle_z = 2.0f;
-            obstacle_position_m2p_data.obstacle_valid = true;
-            obstacle_position_m2p_pub.publish(obstacle_position_m2p_data);
-    //		ROS_INFO("publishing obstacle_position_m2p: %f\t%f\t%f\t%d",
-    //				obstacle_position_m2p_data.obstacle_x,
-    //				obstacle_position_m2p_data.obstacle_y,
-    //				obstacle_position_m2p_data.obstacle_z,
-    //				obstacle_position_m2p_data.obstacle_valid);
+//            obstacle_position_m2p_data.obstacle_x = 2.0f;
+//            obstacle_position_m2p_data.obstacle_y = 2.0f;
+//            obstacle_position_m2p_data.obstacle_z = 2.0f;
+//            obstacle_position_m2p_data.obstacle_valid = true;
+//            obstacle_position_m2p_pub.publish(obstacle_position_m2p_data);
+//    //		ROS_INFO("publishing obstacle_position_m2p: %f\t%f\t%f\t%d",
+//    //				obstacle_position_m2p_data.obstacle_x,
+//    //				obstacle_position_m2p_data.obstacle_y,
+//    //				obstacle_position_m2p_data.obstacle_z,
+//    //				obstacle_position_m2p_data.obstacle_valid);
 
 //            task_status_monitor_m2p_data.spray_duration = 0.3f;
             task_status_monitor_m2p_data.task_status = current_mission_state;
@@ -812,6 +835,12 @@ void state_machine_func(void)
 	switch(current_mission_state)
 	{
 		case takeoff:
+            /* start mission_timer once. */
+            if(mission_timer_enable)
+            {
+                mission_timer_start_time = ros::Time::now();    /* start mission_timer. */
+                mission_timer_enable = false;
+            }
 			/* local velocity setpoint publish. -libn */
             velocity_control_enable = true;
             vel_pub.twist.linear.x = 0.0f;
@@ -821,13 +850,12 @@ void state_machine_func(void)
 			vel_pub.twist.angular.y = 0.0f;
 			vel_pub.twist.angular.z = 0.0f;
             if(current_vel.twist.linear.z > 0.5 &&
-               current_pos.pose.position.z > 1)
+               current_pos.pose.position.z > 0.8)
             {
                 ROS_INFO("current_vel.twist.linear.x = %f",current_vel.twist.linear.x);
 
                 current_mission_state = mission_hover_after_takeoff; // current_mission_state++;
                 mission_last_time = ros::Time::now();
-                mission_timer_t = ros::Time::now();
 
                 velocity_control_enable = false;
                 pose_pub.pose.position.x = current_pos.pose.position.x;
@@ -840,24 +868,6 @@ void state_machine_func(void)
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
 
             }
-//            if((abs(current_pos.pose.position.x - current_pos.pose.position.x) < 0.2) &&      // switch to next state
-//			   (abs(current_pos.pose.position.y - current_pos.pose.position.y) < 0.2) &&
-//			   (abs(current_pos.pose.position.z - setpoint_H.pose.position.z) < 0.8))
-//			   {
-//                    current_mission_state = mission_hover_after_takeoff; // current_mission_state++;
-//					mission_last_time = ros::Time::now();
-//					mission_timer_t = ros::Time::now();
-
-//					velocity_control_enable = false;
-//                    pose_pub.pose.position.x = current_pos.pose.position.x;
-//                    pose_pub.pose.position.y = current_pos.pose.position.y;
-//                    pose_pub.pose.position.z = setpoint_H.pose.position.z;
-
-//                    /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
-//                    camera_switch_data.data = 0;
-//                    camera_switch_pub.publish(camera_switch_data);
-//                    ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
-//			   }
     		break;
 
         case mission_hover_after_takeoff:
@@ -894,7 +904,6 @@ void state_machine_func(void)
                 current_mission_state = mission_observe_num_wait; // current_mission_state++;
             	mission_last_time = ros::Time::now();
             }
-            loop_timer_t = ros::Time::now();
             break;
         case mission_observe_num_wait:
         	pose_pub.pose.position.x = setpoint_A.pose.position.x;
@@ -1074,12 +1083,11 @@ void state_machine_func(void)
             }
             break;
         case mission_num_done:
-        	loop_timer_t = ros::Time::now();	/* disable loop_timer. -libn */
         	pose_pub.pose.position.x = current_pos.pose.position.x;	/* hover in current position. -libn */
         	pose_pub.pose.position.y = current_pos.pose.position.y;
         	pose_pub.pose.position.z = current_pos.pose.position.z;
         	/* TODO: mission check: if there are failures to be fixed -libn */
-        	if(mission_failure != 0)
+            if(mission_failure_acount != 0)
         	{
         		current_mission_state = mission_fix_failure; // current_mission_state++;
         		ROS_INFO("TODO: mission_fix_failure!");
@@ -1092,8 +1100,7 @@ void state_machine_func(void)
         	}
 			break;
         case mission_fix_failure:
-        	loop_timer_t = ros::Time::now();	/* disable loop_timer. -libn */
-			/* TODO: add mission_failure_fixed. -libn */
+            /* TODO: add mission_failure_acount_fixed. -libn */
 
         	pose_pub.pose.position.x = current_pos.pose.position.x;	/* hover in current position. -libn */
 			pose_pub.pose.position.y = current_pos.pose.position.y;
@@ -1103,9 +1110,16 @@ void state_machine_func(void)
                 current_mission_state = mission_return_home; // current_mission_state++;
 			}
 			break;
-
+        case mission_force_return_home:
+            pose_pub.pose.position.x = current_pos.pose.position.x;
+            pose_pub.pose.position.y = current_pos.pose.position.y;
+            pose_pub.pose.position.z = current_pos.pose.position.z;
+            if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 2 seconds. -libn */
+            {
+                current_mission_state = mission_return_home;    /* force to return to home! */
+            }
+            break;
         case mission_return_home:
-			loop_timer_t = ros::Time::now();	/* disable loop_timer. -libn */
 			pose_pub.pose.position.x = setpoint_H.pose.position.x;
 			pose_pub.pose.position.y = setpoint_H.pose.position.y;
 			pose_pub.pose.position.z = setpoint_H.pose.position.z;
@@ -1124,7 +1138,6 @@ void state_machine_func(void)
 			}
 			break;
         case mission_hover_only:
-			loop_timer_t = ros::Time::now();	/* disable loop_timer. -libn */
 			pose_pub.pose.position.x = setpoint_H.pose.position.x;
 			pose_pub.pose.position.y = setpoint_H.pose.position.y;
 			pose_pub.pose.position.z = setpoint_H.pose.position.z;
@@ -1134,7 +1147,6 @@ void state_machine_func(void)
 			}
 			break;
         case land:
-        	loop_timer_t = ros::Time::now();	/* disable loop_timer. -libn */
 			break;
     }
 
