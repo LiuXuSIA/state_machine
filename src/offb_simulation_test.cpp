@@ -26,11 +26,11 @@
 #include <state_machine/VISION_NUM_SCAN_M2P.h>
 #include <state_machine/VISION_ONE_NUM_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
-#define SPRAY_DISTANCE 4  /* distance from UAV to drawing board while sparying. */
-#define VISION_SCAN_DISTANCE 4.5  /* distance from UAV to drawing board while hoveing and scanning. */
+#define SPRAY_DISTANCE 2.5  /* distance from UAV to drawing board while sparying. */
+#define VISION_SCAN_DISTANCE 3  /* distance from UAV to drawing board while hoveing and scanning. */
 #define SCREEN_HEIGHT 3 /* height of screen(not used). */
-#define SAFE_HEIGHT_DISTANCE 2  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
-#define FIXED_POS_HEIGHT 2
+#define SAFE_HEIGHT_DISTANCE 0.4  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
+#define FIXED_POS_HEIGHT 1.5
 
 #include <math.h>
 
@@ -711,13 +711,13 @@ int main(int argc, char **argv)
         if(!velocity_control_enable)    /* position control. */
         {
             /* limit error(x,y) between current position and destination within [-1,1]. */
-            if(abs(pose_pub.pose.position.x - current_pos.pose.position.x) > 1 ||
-                abs(pose_pub.pose.position.y - current_pos.pose.position.y) > 1)
+            if(abs(pose_pub.pose.position.x - current_pos.pose.position.x) > 30 ||
+                abs(pose_pub.pose.position.y - current_pos.pose.position.y) > 30)
             {
                 double error_temp[2] = {0,0};
                 error_limit(current_pos.pose.position.x,current_pos.pose.position.y,pose_pub.pose.position.x,pose_pub.pose.position.y,error_temp);
-                pose_pub.pose.position.x = current_pos.pose.position.x + error_temp[0];
-                pose_pub.pose.position.y = current_pos.pose.position.y + error_temp[1];
+                pose_pub.pose.position.x = current_pos.pose.position.x + 30*error_temp[0];
+                pose_pub.pose.position.y = current_pos.pose.position.y + 30*error_temp[1];
             }
         }
 
@@ -759,6 +759,8 @@ int main(int argc, char **argv)
     //				task_status_monitor_m2p_data.target_lon,
     //				task_status_monitor_m2p_data.target_alt);
 
+//            for(send_vision_num_count = 0;send_vision_num_count<10;send_vision_num_count++)
+//            {
             send_vision_num_count++;
             send_vision_num_count = send_vision_num_count % 10;
             vision_num_scan_m2p_data.board_num = send_vision_num_count;
@@ -766,7 +768,11 @@ int main(int argc, char **argv)
             vision_num_scan_m2p_data.board_y = board10.drawingboard[send_vision_num_count].x,
             vision_num_scan_m2p_data.board_z = -board10.drawingboard[send_vision_num_count].z,
             vision_num_scan_m2p_data.board_valid = board10.drawingboard[send_vision_num_count].valid;
+
             vision_num_scan_m2p_pub.publish(vision_num_scan_m2p_data);
+//            }
+//            send_vision_num_count = send_vision_num_count % 10;
+
     //		ROS_INFO("publishing vision_num_scan_m2p: %d %f %f %f %d",
     //				vision_num_scan_m2p_data.board_num,
     //				vision_num_scan_m2p_data.board_x,
@@ -814,7 +820,7 @@ void state_machine_func(void)
 			vel_pub.twist.angular.x = 0.0f;
 			vel_pub.twist.angular.y = 0.0f;
 			vel_pub.twist.angular.z = 0.0f;
-            if(current_vel.twist.linear.z > 1 &&
+            if(current_vel.twist.linear.z > 0.5 &&
                current_pos.pose.position.z > 1)
             {
                 ROS_INFO("current_vel.twist.linear.x = %f",current_vel.twist.linear.x);
@@ -1066,6 +1072,7 @@ void state_machine_func(void)
                     current_mission_state = mission_observe_point_go; // current_mission_state++;
                 }
             }
+            break;
         case mission_num_done:
         	loop_timer_t = ros::Time::now();	/* disable loop_timer. -libn */
         	pose_pub.pose.position.x = current_pos.pose.position.x;	/* hover in current position. -libn */

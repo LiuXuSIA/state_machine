@@ -40,7 +40,8 @@ state_machine::DrawingBoard10 board10_pub; /* board10 for publish */
 sensor_msgs::LaserScan board_scan;
 std_msgs::Int32 vision_num_data;
 std_msgs::Int32 vision_num_data_last;
-#define MIN_DETECTION_TIMES 7  /* count_num > MIN_DETECTION_TIMES => num detected; else: num not detected. */
+#define MIN_OBSERVE_TIMES 7
+#define MIN_DETECTION_TIMES 4  /* count_num > MIN_DETECTION_TIMES => num detected; else: num not detected. */
 #define MAX_DETECTION_DISTANCE 0.5  /* max detected board distance between different loops. */
 
 int count_num = 0;
@@ -69,7 +70,7 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
             if(vision_num_data_last.data == vision_num_data.data)   count_num++;
             else    count_num = 0;
             vision_num_data_last = vision_num_data;
-            if(count_num >= MIN_DETECTION_TIMES)    /* get the same num for MIN_DETECTION_TIMES times at last. */
+            if(count_num >= MIN_OBSERVE_TIMES)    /* get the same num for MIN_DETECTION_TIMES times at last. */
             {
                 vision_num_pub.publish(vision_num_data);
                 ROS_INFO("vision_num_data = %d",vision_num_data.data);
