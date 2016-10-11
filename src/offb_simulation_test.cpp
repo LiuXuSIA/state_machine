@@ -653,6 +653,7 @@ int main(int argc, char **argv)
                 ROS_INFO("board: current_mission_num: %d\n"
                         "position:%5.3f %5.3f %5.3f",current_mission_num,board10.drawingboard[current_mission_num].x,
                         board10.drawingboard[current_mission_num].y,board10.drawingboard[current_mission_num].z);
+                ROS_INFO("spray time = %f",(float)task_status_change_p2m_data.spray_duration);
 
 
 
@@ -1040,12 +1041,25 @@ void state_machine_func(void)
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            if(ros::Time::now() - mission_last_time > ros::Duration(3))	/* hover for 5 seconds. -libn */
+            if(loop == 3)
             {
-                current_mission_state = mission_arm_spread; // current_mission_state++;
-                mission_last_time = ros::Time::now();
-                /* TODO: start spraying. -libn */
+                if(ros::Time::now() - mission_last_time > ros::Duration(30))	/* hover for 5 seconds. -libn */
+                {
+                    current_mission_state = mission_arm_spread; // current_mission_state++;
+                    mission_last_time = ros::Time::now();
+                    /* TODO: start spraying. -libn */
 
+                }
+            }
+            else
+            {
+                if(ros::Time::now() - mission_last_time > ros::Duration(3))	/* hover for 5 seconds. -libn */
+                {
+                    current_mission_state = mission_arm_spread; // current_mission_state++;
+                    mission_last_time = ros::Time::now();
+                    /* TODO: start spraying. -libn */
+
+                }
             }
             break;
         case mission_arm_spread:
