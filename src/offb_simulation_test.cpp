@@ -36,7 +36,7 @@
 
 #include <std_msgs/Int32.h>
 
-#define MAX_FLIGHT_TIME 200 /* max flight time of whole mission. */
+#define MAX_FLIGHT_TIME 220 /* max flight time of whole mission. */
 
 #include <state_machine/FailureRecord.h>
 #define FAILURE_REPAIR 1    /* FAILURE_REPAIR: 0: never repair errores; 1: repair errors. */
@@ -729,7 +729,8 @@ int main(int argc, char **argv)
                 ROS_INFO("board: current_mission_num: %d\n"
                         "position:%5.3f %5.3f %5.3f",current_mission_num,board10.drawingboard[current_mission_num].x,
                         board10.drawingboard[current_mission_num].y,board10.drawingboard[current_mission_num].z);
-                ROS_INFO("SCREEN_HEIGHT = %d SAFE_HEIGHT_DISTANCE = %d",(int)SCREEN_HEIGHT,(int)SAFE_HEIGHT_DISTANCE);
+//                ROS_INFO("SCREEN_HEIGHT = %d SAFE_HEIGHT_DISTANCE = %d",(int)SCREEN_HEIGHT,(int)SAFE_HEIGHT_DISTANCE);
+                ROS_INFO("SAFE_HEIGHT_DISTANCE = %d",(int)SAFE_HEIGHT_DISTANCE);
 
 			}
 		}
