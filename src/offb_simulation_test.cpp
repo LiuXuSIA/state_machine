@@ -549,6 +549,8 @@ int main(int argc, char **argv)
                 camera_switch_pub.publish(camera_switch_data);
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
 
+//                current_mission_state = 12;
+
             }
             if(current_state.mode == "ALTCTL" && last_state.mode != "ALTCTL")
             {
@@ -559,11 +561,16 @@ int main(int argc, char **argv)
                 camera_switch_data.data = 2;
                 camera_switch_pub.publish(camera_switch_data);
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+
+//                current_mission_state = 13;
+
             }
             if(current_state.mode == "OFFBOARD" && last_state.mode != "OFFBOARD")
             {
                 last_state.mode = "OFFBOARD";
                 ROS_INFO("switch to mode: OFFBOARD");
+
+//                current_mission_state = 5;
 
             }
             if(current_state.armed && !last_state.armed)
@@ -1043,7 +1050,7 @@ void state_machine_func(void)
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
             if(loop == 3)
             {
-                if(ros::Time::now() - mission_last_time > ros::Duration(30))	/* hover for 5 seconds. -libn */
+                if(ros::Time::now() - mission_last_time > ros::Duration(3))	/* hover for 5 seconds. -libn */
                 {
                     current_mission_state = mission_arm_spread; // current_mission_state++;
                     mission_last_time = ros::Time::now();
@@ -1088,7 +1095,7 @@ void state_machine_func(void)
             pose_pub.pose.position.x = current_pos.pose.position.x;	/* hover in current position. -libn */
             pose_pub.pose.position.y = current_pos.pose.position.y;
             pose_pub.pose.position.z = current_pos.pose.position.z;
-            if(ros::Time::now() - mission_last_time > ros::Duration(0))	/* spray for 5 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(0.5f))	/* spray for 5 seconds. -libn */
             {
                 loop++;	/* switch to next loop. -libn */
                 if(loop > 5)
