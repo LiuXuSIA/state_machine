@@ -619,7 +619,8 @@ int main(int argc, char **argv)
                 }
                 /* subtask timer(1 loop). -libn */
                 if(ros::Time::now() - mission_timer_start_time > ros::Duration((float)(loop*30.0f+50.0f)) &&
-                   ros::Time::now() - mission_timer_start_time < ros::Duration(MAX_FLIGHT_TIME))
+                   ros::Time::now() - mission_timer_start_time < ros::Duration(MAX_FLIGHT_TIME) &&
+                        loop <= 5)  /* stop subtask timer when dealing with failures. */
                 {
                     /* error recorded! */
                     mission_failure_acount++;
@@ -1118,13 +1119,11 @@ void state_machine_func(void)
                 mission_failure_acount--;
 
             }
-        	pose_pub.pose.position.x = current_pos.pose.position.x;	/* hover in current position. -libn */
-			pose_pub.pose.position.y = current_pos.pose.position.y;
-			pose_pub.pose.position.z = current_pos.pose.position.z;
-			if(ros::Time::now() - mission_last_time > ros::Duration(10))	/* just to keep safe. -libn */
-			{
-                current_mission_state = mission_return_home; // current_mission_state++;
-			}
+            else if(mission_failure_acount == 0)
+            {
+                ROS_INFO("All failure fixed, return to home.");
+                current_mission_state = mission_return_home;
+            }
 			break;
         case mission_force_return_home:
             pose_pub.pose.position.x = current_pos.pose.position.x;
