@@ -1311,7 +1311,7 @@ void state_machine_func(void)
                 {
                     /* force spray */
                     current_mission_state = mission_num_hover_spray;
-                    loop_conut = 0;
+                    loop_count = 0;
                 }
         		mission_last_time = ros::Time::now();
         		/* TODO: start spraying. -libn */
