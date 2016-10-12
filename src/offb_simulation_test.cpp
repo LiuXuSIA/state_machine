@@ -34,6 +34,7 @@
 
 #define SCAN_HEIGHT 1.5 /* constant height while scanning. */
 #define SCAN_MOVE_SPEED 2 /* error bewteen pos* and pos. */
+#define SCAN_VISION_DISTANCE 4
 
 #include <math.h>
 
@@ -869,7 +870,7 @@ void state_machine_func(void)
             velocity_control_enable = true;
             vel_pub.twist.linear.x = 0.0f;
 			vel_pub.twist.linear.y = 0.0f;
-            vel_pub.twist.linear.z = 2.0f;
+            vel_pub.twist.linear.z = 2.2f;
 			vel_pub.twist.angular.x = 0.0f;
 			vel_pub.twist.angular.y = 0.0f;
 			vel_pub.twist.angular.z = 0.0f;
@@ -907,8 +908,8 @@ void state_machine_func(void)
 
         /* add scan mission  --start. */
         case mission_scan_left_go:
-            pose_pub.pose.position.x = setpoint_L.pose.position.x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.y = setpoint_L.pose.position.y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = setpoint_L.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.y = setpoint_L.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = SCAN_HEIGHT;
             if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
                (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
@@ -925,8 +926,8 @@ void state_machine_func(void)
                }
             break;
         case mission_scan_right_move:
-            pose_pub.pose.position.x = setpoint_R.pose.position.x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.y = setpoint_R.pose.position.y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = setpoint_R.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.y = setpoint_R.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = SCAN_HEIGHT;
 
             /* limit error(x,y) between current position and destination. */
@@ -948,8 +949,8 @@ void state_machine_func(void)
                }
             break;
         case mission_scan_right_hover:
-            pose_pub.pose.position.x = setpoint_R.pose.position.x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.y = setpoint_R.pose.position.y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = setpoint_R.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.y = setpoint_R.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = SCAN_HEIGHT;
             if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 5 seconds. -libn */
             {
@@ -958,8 +959,8 @@ void state_machine_func(void)
             }
             break;
         case mission_scan_left_move:
-            pose_pub.pose.position.x = setpoint_L.pose.position.x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.y = setpoint_L.pose.position.y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = setpoint_L.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.y = setpoint_L.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = SCAN_HEIGHT;
 
             /* limit error(x,y) between current position and destination within [-1,1]. */
@@ -981,8 +982,8 @@ void state_machine_func(void)
                }
             break;
         case mission_scan_left_hover:
-            pose_pub.pose.position.x = setpoint_L.pose.position.x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.y = setpoint_L.pose.position.y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = setpoint_L.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.y = setpoint_L.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = SCAN_HEIGHT;
             if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 5 seconds. -libn */
             {
