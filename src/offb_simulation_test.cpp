@@ -637,7 +637,7 @@ int main(int argc, char **argv)
                 }
                 /* subtask timer(1 loop). -libn */
                 if(ros::Time::now() - mission_timer_start_time > ros::Duration((float)(loop*30.0f+50.0f)) &&
-                   ros::Time::now() - mission_timer_start_time < ros::Duration(MAX_FLIGHT_TIME) &&
+                   ros::Time::now() - mission_timer_start_time < ros::Duration(MAX_FLIGHT_TIME + mission_failure_acount * 30.0f) &&
                         loop <= 5)  /* stop subtask timer when dealing with failures. */
                 {
                     /* error recorded! */
@@ -1235,12 +1235,13 @@ void state_machine_func(void)
 			break;
         case mission_fix_failure:
             /* TODO: add mission_failure_acount_fixed. -libn */
-            if((ros::Time::now() - mission_timer_start_time < ros::Duration(MAX_FLIGHT_TIME))
+            if((ros::Time::now() - mission_timer_start_time < ros::Duration(MAX_FLIGHT_TIME + mission_failure_acount * 30.0f ))
                     && (mission_failure_acount != 0))
             {
                 current_mission_num = failure[mission_failure_acount-1].num;
                 /* deal with failures. */
-                if(mission_num_search < failure[mission_failure_acount-1].state < mission_arm_spread ||
+                if((mission_num_search < failure[mission_failure_acount-1].state &&
+                    failure[mission_failure_acount-1].state < mission_arm_spread) ||
                         failure[mission_failure_acount-1].state == mission_hover_before_spary)
                 {
                     current_mission_state = mission_num_search;
