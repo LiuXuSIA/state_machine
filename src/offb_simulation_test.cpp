@@ -214,7 +214,12 @@ void vel_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
 state_machine::DrawingBoard10 board10;
 void board_pos_cb(const state_machine::DrawingBoard10::ConstPtr& msg)
 {
-	board10 = *msg;
+    /* stop update while in operation. */
+    if(current_mission_state != mission_arm_spread &&
+            current_mission_state != mission_num_hover_spray)
+    {
+        board10 = *msg;
+    }
 
 //	ROS_INFO("\nboard_0 position: %d x = %f y = %f z = %f\n"
 //				"board_1 position: %d x = %f y = %f z = %f\n"
