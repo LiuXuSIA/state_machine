@@ -304,6 +304,7 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     fixed_target_return_m2p_data.spray_right_x = fixed_target_position_p2m_data.spray_right_x;
     fixed_target_return_m2p_data.spray_right_y = fixed_target_position_p2m_data.spray_right_y;
     fixed_target_return_m2p_data.spray_right_z = -FIXED_POS_HEIGHT;
+    fixed_target_return_m2p_pub.publish(fixed_target_return_m2p_data);
     #ifdef NO_ROS_DEBUG	
     ROS_INFO("publishing fixed_target_return_m2p(NED): %f\t%f\t%f\t",
             fixed_target_return_m2p_data.home_x,
