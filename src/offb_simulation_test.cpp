@@ -26,8 +26,8 @@
 #include <state_machine/VISION_NUM_SCAN_M2P.h>
 #include <state_machine/VISION_ONE_NUM_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
-#define SPRAY_DISTANCE 2.5  /* distance from UAV to drawing board while sparying. */
-#define VISION_SCAN_DISTANCE 3  /* distance from UAV to drawing board while hoveing and scanning. */
+#define SPRAY_DISTANCE 2  /* distance from UAV to drawing board while sparying. */
+#define VISION_SCAN_DISTANCE 2.5  /* distance from UAV to drawing board while hoveing and scanning. */
 
 #define SAFE_HEIGHT_DISTANCE 0.4  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
 #define FIXED_POS_HEIGHT 1.5    /* height of point: H,O,L,R. */
@@ -549,6 +549,8 @@ int main(int argc, char **argv)
                 camera_switch_pub.publish(camera_switch_data);
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
 
+//                current_mission_state = 12;
+
             }
             if(current_state.mode == "ALTCTL" && last_state.mode != "ALTCTL")
             {
@@ -559,11 +561,16 @@ int main(int argc, char **argv)
                 camera_switch_data.data = 2;
                 camera_switch_pub.publish(camera_switch_data);
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+
+//                current_mission_state = 13;
+
             }
             if(current_state.mode == "OFFBOARD" && last_state.mode != "OFFBOARD")
             {
                 last_state.mode = "OFFBOARD";
                 ROS_INFO("switch to mode: OFFBOARD");
+
+//                current_mission_state = 5;
 
             }
             if(current_state.armed && !last_state.armed)
@@ -653,6 +660,7 @@ int main(int argc, char **argv)
                 ROS_INFO("board: current_mission_num: %d\n"
                         "position:%5.3f %5.3f %5.3f",current_mission_num,board10.drawingboard[current_mission_num].x,
                         board10.drawingboard[current_mission_num].y,board10.drawingboard[current_mission_num].z);
+                ROS_INFO("spray time = %f",(float)task_status_change_p2m_data.spray_duration);
 
 
 
@@ -1040,12 +1048,25 @@ void state_machine_func(void)
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
+            if(loop == 3)
             {
-                current_mission_state = mission_arm_spread; // current_mission_state++;
-                mission_last_time = ros::Time::now();
-                /* TODO: start spraying. -libn */
+                if(ros::Time::now() - mission_last_time > ros::Duration(3))	/* hover for 5 seconds. -libn */
+                {
+                    current_mission_state = mission_arm_spread; // current_mission_state++;
+                    mission_last_time = ros::Time::now();
+                    /* TODO: start spraying. -libn */
 
+                }
+            }
+            else
+            {
+                if(ros::Time::now() - mission_last_time > ros::Duration(3))	/* hover for 5 seconds. -libn */
+                {
+                    current_mission_state = mission_arm_spread; // current_mission_state++;
+                    mission_last_time = ros::Time::now();
+                    /* TODO: start spraying. -libn */
+
+                }
             }
             break;
         case mission_arm_spread:
@@ -1074,7 +1095,7 @@ void state_machine_func(void)
             pose_pub.pose.position.x = current_pos.pose.position.x;	/* hover in current position. -libn */
             pose_pub.pose.position.y = current_pos.pose.position.y;
             pose_pub.pose.position.z = current_pos.pose.position.z;
-            if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* spray for 5 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(0.5f))	/* spray for 5 seconds. -libn */
             {
                 loop++;	/* switch to next loop. -libn */
                 if(loop > 5)
