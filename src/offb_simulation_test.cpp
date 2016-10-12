@@ -32,6 +32,9 @@
 #define SAFE_HEIGHT_DISTANCE 0.4  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
 #define FIXED_POS_HEIGHT 1.5    /* height of point: H,O,L,R. */
 
+#define SCAN_HEIGHT 1.5 /* constant height while scanning. */
+#define SCAN_MOVE_SPEED 2 /* error bewteen pos* and pos. */
+
 #include <math.h>
 
 #include <std_msgs/Int32.h>
@@ -63,7 +66,15 @@ static const int mission_fix_failure = 19;
 static const int mission_hover_after_stretch_back = 20;
 static const int mission_force_return_home = 21;
 
-int loop = 1;	/* loop calculator: loop = 1/2/3/4/5. -libn */
+/* state added for scanning mission. */
+static const int mission_scan_left_go = 31;
+static const int mission_scan_right_move = 32;
+static const int mission_scan_right_hover = 33;
+static const int mission_scan_left_move = 34;
+static const int mission_scan_left_hover = 35;
+static const int mission_scan_left2_hover = 36;
+
+int loop = 0;	/* loop calculator: loop = 0/1/2/3/4/5. -libn */
 // current mission state, initial state is to takeoff
 int current_mission_state = takeoff;
 ros::Time mission_last_time;	/* timer used in mission. -libn */
@@ -616,7 +627,7 @@ int main(int argc, char **argv)
             {
                 /* set time deadline. */
                 /* mission timer(5 loops). -libn */
-                if(ros::Time::now() - mission_timer_start_time > ros::Duration(MAX_FLIGHT_TIME)
+                if(ros::Time::now() - mission_timer_start_time > ros::Duration(MAX_FLIGHT_TIME + mission_failure_acount * 30.0f)
                         && force_home_enable == true)
                 {
                     force_home_enable = false; /* force once! */
@@ -889,9 +900,106 @@ void state_machine_func(void)
         	pose_pub.pose.position.z = setpoint_H.pose.position.z;
             if(ros::Time::now() - mission_last_time > ros::Duration(3))	/* hover for 5 seconds. -libn */
         	{
-                current_mission_state = mission_observe_point_go; // current_mission_state++;
+//                current_mission_state = mission_observe_point_go; // current_mission_state++;
+                current_mission_state = mission_scan_left_go; // current_mission_state++;
         	}
             break;
+
+        /* add scan mission  --start. */
+        case mission_scan_left_go:
+            pose_pub.pose.position.x = setpoint_L.pose.position.x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.y = setpoint_L.pose.position.y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.z = SCAN_HEIGHT;
+            if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
+               (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
+               (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 0.2))
+               {
+                current_mission_state = mission_scan_right_move; // current_mission_state++;
+                mission_last_time = ros::Time::now();
+
+                /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+                camera_switch_data.data = 2;
+                camera_switch_pub.publish(camera_switch_data);
+                ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+
+               }
+            break;
+        case mission_scan_right_move:
+            pose_pub.pose.position.x = setpoint_R.pose.position.x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.y = setpoint_R.pose.position.y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.z = SCAN_HEIGHT;
+
+            /* limit error(x,y) between current position and destination. */
+            if(abs(pose_pub.pose.position.x - current_pos.pose.position.x) > SCAN_MOVE_SPEED ||
+                abs(pose_pub.pose.position.y - current_pos.pose.position.y) > SCAN_MOVE_SPEED)
+            {
+                double error_temp[2] = {0,0};
+                error_limit(current_pos.pose.position.x,current_pos.pose.position.y,pose_pub.pose.position.x,pose_pub.pose.position.y,error_temp);
+                pose_pub.pose.position.x = current_pos.pose.position.x + SCAN_MOVE_SPEED*error_temp[0];
+                pose_pub.pose.position.y = current_pos.pose.position.y + SCAN_MOVE_SPEED*error_temp[1];
+            }
+
+            if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
+               (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
+               (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 0.2))
+               {
+                current_mission_state = mission_scan_right_hover; // current_mission_state++;
+                mission_last_time = ros::Time::now();
+               }
+            break;
+        case mission_scan_right_hover:
+            pose_pub.pose.position.x = setpoint_R.pose.position.x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.y = setpoint_R.pose.position.y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.z = SCAN_HEIGHT;
+            if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 5 seconds. -libn */
+            {
+                current_mission_state = mission_scan_left_move; // current_mission_state++;
+                mission_last_time = ros::Time::now();
+            }
+            break;
+        case mission_scan_left_move:
+            pose_pub.pose.position.x = setpoint_L.pose.position.x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.y = setpoint_L.pose.position.y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.z = SCAN_HEIGHT;
+
+            /* limit error(x,y) between current position and destination within [-1,1]. */
+            if(abs(pose_pub.pose.position.x - current_pos.pose.position.x) > SCAN_MOVE_SPEED ||
+                abs(pose_pub.pose.position.y - current_pos.pose.position.y) > SCAN_MOVE_SPEED)
+            {
+                double error_temp[2] = {0,0};
+                error_limit(current_pos.pose.position.x,current_pos.pose.position.y,pose_pub.pose.position.x,pose_pub.pose.position.y,error_temp);
+                pose_pub.pose.position.x = current_pos.pose.position.x + SCAN_MOVE_SPEED*error_temp[0];
+                pose_pub.pose.position.y = current_pos.pose.position.y + SCAN_MOVE_SPEED*error_temp[1];
+            }
+
+            if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
+               (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
+               (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 0.2))
+               {
+                current_mission_state = mission_scan_left_hover; // current_mission_state++;
+                mission_last_time = ros::Time::now();
+               }
+            break;
+        case mission_scan_left_hover:
+            pose_pub.pose.position.x = setpoint_L.pose.position.x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.y = setpoint_L.pose.position.y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.z = SCAN_HEIGHT;
+            if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 5 seconds. -libn */
+            {
+                current_mission_state = mission_observe_point_go; // current_mission_state++;
+                mission_last_time = ros::Time::now();
+                loop++;
+
+                /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
+                camera_switch_data.data = 0;
+                camera_switch_pub.publish(camera_switch_data);
+                ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+            }
+            break;
+
+        /* add scan mission  --stop. */
+
+
         case mission_observe_point_go:
         	if(loop > 5)
 			{
@@ -1016,7 +1124,7 @@ void state_machine_func(void)
 
 			if(relocate_valid)
 			{
-                if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 5 seconds. -libn */
+                if(ros::Time::now() - mission_last_time > ros::Duration(1))	/* hover for 5 seconds. -libn */
                 {
                     current_mission_state = mission_num_get_close; // current_mission_state++;
                     mission_last_time = ros::Time::now();
@@ -1050,7 +1158,7 @@ void state_machine_func(void)
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
             if(loop == 3)
             {
-                if(ros::Time::now() - mission_last_time > ros::Duration(3))	/* hover for 5 seconds. -libn */
+                if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 5 seconds. -libn */
                 {
                     current_mission_state = mission_arm_spread; // current_mission_state++;
                     mission_last_time = ros::Time::now();
@@ -1060,7 +1168,7 @@ void state_machine_func(void)
             }
             else
             {
-                if(ros::Time::now() - mission_last_time > ros::Duration(3))	/* hover for 5 seconds. -libn */
+                if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 5 seconds. -libn */
                 {
                     current_mission_state = mission_arm_spread; // current_mission_state++;
                     mission_last_time = ros::Time::now();
@@ -1073,7 +1181,7 @@ void state_machine_func(void)
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 5 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(7))	/* hover for 5 seconds. -libn */
         	{
                 current_mission_state = mission_num_hover_spray; // current_mission_state++;
         		mission_last_time = ros::Time::now();
@@ -1085,7 +1193,7 @@ void state_machine_func(void)
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* spray for 5 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(3))	/* spray for 5 seconds. -libn */
             {
                 current_mission_state = mission_hover_after_stretch_back; // current_mission_state++;
                 mission_last_time = ros::Time::now();
