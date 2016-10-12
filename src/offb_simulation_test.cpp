@@ -38,8 +38,8 @@
 #endif
 
 
-#define SPRAY_DISTANCE 2  /* distance from UAV to drawing board while sparying. */
-#define VISION_SCAN_DISTANCE 2.5  /* distance from UAV to drawing board while hoveing and scanning. */
+#define SPRAY_DISTANCE 2.2  /* distance from UAV to drawing board while sparying. */
+#define VISION_SCAN_DISTANCE 2.7  /* distance from UAV to drawing board while hoveing and scanning. */
 
 #define SAFE_HEIGHT_DISTANCE 0.4  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
 #define FIXED_POS_HEIGHT 1.5    /* height of point: H,O,L,R. */
@@ -1107,12 +1107,6 @@ void state_machine_func(void)
 
 
         case mission_observe_point_go:
-            if(loop == 5 &&
-              （ros::Time::now() - mission_timer_start_time > ros::Duration(180))
-            {
-                current_mission_state = mission_num_done;
-                break;
-            }
         	if(loop > 5)
 			{
                 current_mission_state = mission_num_done; // current_mission_state++;
@@ -1141,6 +1135,12 @@ void state_machine_func(void)
             }
             break;
         case mission_observe_num_wait:
+            if(loop == 5 &&
+              (ros::Time::now() - mission_timer_start_time > ros::Duration(180)))
+            {
+                current_mission_state = mission_num_done;
+                break;
+            }
         	pose_pub.pose.position.x = setpoint_A.pose.position.x;
 			pose_pub.pose.position.y = setpoint_A.pose.position.y;
 			pose_pub.pose.position.z = setpoint_A.pose.position.z;
@@ -1446,7 +1446,7 @@ void state_machine_func(void)
 			pose_pub.pose.position.x = setpoint_H.pose.position.x;
 			pose_pub.pose.position.y = setpoint_H.pose.position.y;
 			pose_pub.pose.position.z = setpoint_H.pose.position.z;
-            if(ros::Time::now() - mission_last_time > ros::Duration(5))	/* hover for 2 seconds. -libn */
+            if(ros::Time::now() - mission_last_time > ros::Duration(1))	/* hover for 2 seconds. -libn */
 			{
 				current_mission_state = land; // current_mission_state++;
 			}
