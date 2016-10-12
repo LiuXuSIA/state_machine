@@ -28,7 +28,7 @@
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
 
 /* on ros info msg */
-#define NO_ROS_DEBUG
+//#define NO_ROS_DEBUG
 
 /* select ROS rate */
 #ifdef NO_ROS_DEBUG
@@ -1107,6 +1107,12 @@ void state_machine_func(void)
 
 
         case mission_observe_point_go:
+            if(loop == 5 &&
+              （ros::Time::now() - mission_timer_start_time > ros::Duration(180))
+            {
+                current_mission_state = mission_num_done;
+                break;
+            }
         	if(loop > 5)
 			{
                 current_mission_state = mission_num_done; // current_mission_state++;
@@ -1294,24 +1300,42 @@ void state_machine_func(void)
             break;
         case mission_arm_spread:
             static int loop_count = 0;
+            static int acc_count = 0;   // enter 0.08 range
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            if(ros::Time::now() - mission_last_time > ros::Duration(1))
+            if((ros::Time::now() - mission_last_time > ros::Duration(5)) &&
+               (loop_count == 0))
+            {
+                loop_count++;
+            }
+            if((ros::Time::now() - mission_last_time > ros::Duration(0.5)) &&
+               (loop_count > 0))
         	{
-                if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&
-                   (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
-                   (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 0.2))
+                if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.08) &&
+                   (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.08) &&
+                   (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 0.08))
                 {
-                    current_mission_state = mission_num_hover_spray; // current_mission_state++;
+                    acc_count++;
+                    if(acc_count > 3)
+                    {
+                        current_mission_state = mission_num_hover_spray; // current_mission_state++;
+                        loop_count = 0;
+                        acc_count = 0;
+                    }
+                }
+                else
+                {
+                    acc_count = 0;
                 }
                 /* count for max time */
                 loop_count++;
-                if(loop_count == 5)
+                if(loop_count > 10)
                 {
                     /* force spray */
                     current_mission_state = mission_num_hover_spray;
                     loop_count = 0;
+                    acc_count = 0;
                 }
         		mission_last_time = ros::Time::now();
         		/* TODO: start spraying. -libn */
