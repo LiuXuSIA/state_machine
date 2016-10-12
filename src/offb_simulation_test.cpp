@@ -966,6 +966,7 @@ void state_machine_func(void)
                 if(scan_to_get_pos && board10.drawingboard[current_mission_num].valid)
                 {
                     current_mission_state = mission_num_locate;
+                    scan_to_get_pos = false;
                 }
             }
             break;
@@ -1128,11 +1129,11 @@ void state_machine_func(void)
 //						abs(current_pos.pose.position.y - board10.drawingboard[current_mission_num].y),
 //						abs(current_pos.pose.position.z - (board10.drawingboard[current_mission_num].z+3)));
 
-                if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
-                   (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
-                   (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 0.2))
+                if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 1) &&      // switch to next state
+                   (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 1) &&
+                   (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 1))
 				{
-                    current_mission_state = mission_num_locate; // current_mission_state++;
+                    current_mission_state = mission_num_get_close; // current_mission_state++;
 					mission_last_time = ros::Time::now();
 					ROS_INFO("mission switched well!");
 				}
