@@ -26,6 +26,18 @@
 #include <state_machine/VISION_NUM_SCAN_M2P.h>
 #include <state_machine/VISION_ONE_NUM_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
+
+/* on ros info msg */
+#define NO_ROS_DEBUG
+
+/* select ROS rate */
+#ifdef NO_ROS_DEBUG
+#define ROS_RATE 20.0
+#else
+#define ROS_RATE 10.0
+#endif
+
+
 #define SPRAY_DISTANCE 2  /* distance from UAV to drawing board while sparying. */
 #define VISION_SCAN_DISTANCE 2.5  /* distance from UAV to drawing board while hoveing and scanning. */
 
@@ -172,7 +184,9 @@ void SetpointIndexedCallback(const state_machine::Setpoint::ConstPtr& msg)
 //            setpoint_D.pose.position.z = setpoint_indexed.z;
             break;
         default:
+            #ifdef NO_ROS_DEBUG
             ROS_INFO("setpoint index error!");
+            #endif
             break;
     }
 
@@ -181,7 +195,9 @@ void SetpointIndexedCallback(const state_machine::Setpoint::ConstPtr& msg)
     deta_y = setpoint_R.pose.position.y - setpoint_L.pose.position.y;
     yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
     yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in ENU in rad within [-pi,pi]. */
+    #ifdef NO_ROS_DEBUG
     ROS_INFO("yaw*(ENU) calculated for test with send4setpoint running.");
+    #endif
     /* yaw* for controller. */
     pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
     pose_pub.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
@@ -190,8 +206,10 @@ void SetpointIndexedCallback(const state_machine::Setpoint::ConstPtr& msg)
 
     /* publish yaw_sp to pixhawk. */
     yaw_sp_calculated_m2p_pub.publish(yaw_sp_calculated_m2p_data);
+    #ifdef NO_ROS_DEBUG
     ROS_INFO("publishing yaw_sp_calculated_m2p(ENU): %f",
             yaw_sp_calculated_m2p_data.yaw_sp);
+    #endif
 
 }
 
@@ -263,10 +281,12 @@ state_machine::FIXED_TARGET_RETURN_M2P fixed_target_return_m2p_data;
 /* get 4 setpoints and calculate yaw*. */
 void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M::ConstPtr& msg){
 	fixed_target_position_p2m_data = *msg;
+    #ifdef NO_ROS_DEBUG
 	ROS_INFO("subscribing fixed_target_position_p2m: %5.3f %5.3f %5.3f",
             fixed_target_position_p2m_data.home_x,
             fixed_target_position_p2m_data.home_y,
             fixed_target_position_p2m_data.home_z);
+    #endif
 
 	/* publish messages to pixhawk. -libn */
     fixed_target_return_m2p_data.home_x = fixed_target_position_p2m_data.home_x;
@@ -284,11 +304,12 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     fixed_target_return_m2p_data.spray_right_x = fixed_target_position_p2m_data.spray_right_x;
     fixed_target_return_m2p_data.spray_right_y = fixed_target_position_p2m_data.spray_right_y;
     fixed_target_return_m2p_data.spray_right_z = -FIXED_POS_HEIGHT;
-	fixed_target_return_m2p_pub.publish(fixed_target_return_m2p_data);
+    #ifdef NO_ROS_DEBUG	
     ROS_INFO("publishing fixed_target_return_m2p(NED): %f\t%f\t%f\t",
             fixed_target_return_m2p_data.home_x,
             fixed_target_return_m2p_data.home_y,
             fixed_target_return_m2p_data.home_z);
+    #endif
 
     /* get 4 fixed_setpoint. */
     /* transform position from NED to ENU. */
@@ -330,7 +351,9 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     deta_y = setpoint_R.pose.position.y - setpoint_L.pose.position.y;
     yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
     yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in NED in rad within [-pi,pi]. */
+    #ifdef NO_ROS_DEBUG
     ROS_INFO("yaw*(ENU) calculated using fixed_position from GCS.");
+    #endif
     /* yaw* for controller. */
     pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
     pose_pub.pose.orientation.y = 0;			/* w = cos(theta/2), x = nx * sin(theta/2),  y = ny * sin(theta/2), z = nz * sin(theta/2) -libn */
@@ -340,8 +363,10 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     /* publish yaw_sp to pixhawk. */
     yaw_sp_pub2GCS.yaw_sp = wrap_pi(-(yaw_sp_calculated_m2p_data.yaw_sp - M_PI/2));
     yaw_sp_calculated_m2p_pub.publish(yaw_sp_pub2GCS);
+    #ifdef NO_ROS_DEBUG
     ROS_INFO("publishing yaw_sp_calculated_m2p(ENU): %f",
             yaw_sp_calculated_m2p_data.yaw_sp);
+    #endif
 
 }
 
@@ -353,10 +378,12 @@ state_machine::VISION_ONE_NUM_GET_M2P vision_one_num_get_m2p_data;
 state_machine::TASK_STATUS_CHANGE_P2M task_status_change_p2m_data;
 void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::ConstPtr& msg){
 	task_status_change_p2m_data = *msg;
+    #ifdef NO_ROS_DEBUG
 	ROS_INFO("subscribing task_status_change_p2m: %5.3f %d %d",
 				task_status_change_p2m_data.spray_duration,
 				task_status_change_p2m_data.task_status,
 				task_status_change_p2m_data.loop_value);
+    #endif
     task_status_monitor_m2p_data.spray_duration = task_status_change_p2m_data.spray_duration;
 }
 
@@ -364,7 +391,9 @@ std_msgs::Int32 vision_num_data;
 void vision_num_cb(const std_msgs::Int32::ConstPtr& msg){
     vision_num_data = *msg;
     current_mission_num = vision_num_data.data;
+    #ifdef NO_ROS_DEBUG
     ROS_INFO("subscribing vision_num_data = %d", vision_num_data.data);
+    #endif
 }
 
 std_msgs::Int32 camera_switch_data;
@@ -457,7 +486,9 @@ int main(int argc, char **argv)
         vel_pub.twist.angular.x = 0.0f;
         vel_pub.twist.angular.y = 0.0f;
         vel_pub.twist.angular.z = 0.0f;
+        #ifdef NO_ROS_DEBUG
         ROS_INFO("sending 100 setpoints, please wait 10 seconds!");
+        #endif
         //send a few setpoints before starting
         for(int i = 100; ros::ok() && i > 0; --i){
 //            local_pos_pub.publish(pose_pub);
@@ -474,8 +505,10 @@ int main(int argc, char **argv)
     last_state_display = current_state;
     last_state.mode = current_state.mode;
     last_state.armed = current_state.armed;
+    #ifdef NO_ROS_DEBUG
     ROS_INFO("current_state.mode = %s",current_state.mode.c_str());
     ROS_INFO("armed status: %d",current_state.armed);
+    #endif
 
     /* initialisation(loop once). */
     /* initialize: 4 fixed setpoints(A,L,R,D), yaw*, 10 board position,
@@ -505,8 +538,10 @@ int main(int argc, char **argv)
         yaw_sp_calculated_m2p_data.yaw_sp = 90*M_PI/180;   /* default yaw*(90 degree)(ENU) -> North! */
         /* publish yaw_sp to pixhawk. */
         yaw_sp_calculated_m2p_pub.publish(yaw_sp_calculated_m2p_data);
+        #ifdef NO_ROS_DEBUG
         ROS_INFO("publishing yaw_sp_calculated_m2p: %f",
                 yaw_sp_calculated_m2p_data.yaw_sp);
+        #endif
 
         /* yaw* for controller. */
         pose_pub.pose.orientation.x = 0;			/* orientation expressed using quaternion. -libn */
@@ -554,12 +589,16 @@ int main(int argc, char **argv)
             if(current_state.mode == "MANUAL" && last_state.mode != "MANUAL")
             {
                 last_state.mode = "MANUAL";
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("switch to mode: MANUAL");
+                #endif
                 /* start manual scanning. -libn */
                 /*  camera_switch/camera_switch_return: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
                 camera_switch_data.data = 1;
                 camera_switch_pub.publish(camera_switch_data);
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+                #endif
 
 //                current_mission_state = 12;
 
@@ -567,12 +606,16 @@ int main(int argc, char **argv)
             if(current_state.mode == "ALTCTL" && last_state.mode != "ALTCTL")
             {
                 last_state.mode = "ALTCTL";
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("switch to mode: ALTCTL");
+                #endif
                 /* start manual scanning. -libn */
                 /*  camera_switch/camera_switch_return: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
                 camera_switch_data.data = 2;
                 camera_switch_pub.publish(camera_switch_data);
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+                #endif
 
 //                current_mission_state = 13;
 
@@ -580,7 +623,9 @@ int main(int argc, char **argv)
             if(current_state.mode == "OFFBOARD" && last_state.mode != "OFFBOARD")
             {
                 last_state.mode = "OFFBOARD";
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("switch to mode: OFFBOARD");
+                #endif
 
 //                current_mission_state = 5;
 
@@ -589,7 +634,9 @@ int main(int argc, char **argv)
                     {
 
                 last_state.armed = current_state.armed;
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("UAV armed!");
+                #endif
             }
 
         }
@@ -597,7 +644,9 @@ int main(int argc, char **argv)
         {
             camera_switch_data.data = 0;    /* disable camere. */
             camera_switch_pub.publish(camera_switch_data);
+            #ifdef NO_ROS_DEBUG
             ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+            #endif
             current_mission_num = -1;    /* set current_mission_num as 0 as default. */
             last_mission_num = -1;   /* disable the initial mission_num gotten before takeoff. */
 
@@ -610,7 +659,9 @@ int main(int argc, char **argv)
 			{
 				if(land_client.call(landing_cmd) && landing_cmd.response.success)
 				{
+                    #ifdef NO_ROS_DEBUG
 					ROS_INFO("AUTO LANDING!");
+                    #endif
 				}
 				last_request = ros::Time::now();
 			}
@@ -619,7 +670,9 @@ int main(int argc, char **argv)
         /* state_machine start and mission state display. -libn */
 		if(current_state.mode == "OFFBOARD" && current_state.armed)	/* set message display delay(0.5s). -libn */
 		{
+            #ifdef NO_ROS_DEBUG
 			ROS_INFO("now I am in OFFBOARD and armed mode!");	/* state machine! -libn */
+            #endif
 
 			state_machine_func();
 
@@ -633,7 +686,9 @@ int main(int argc, char **argv)
                 {
                     force_home_enable = false; /* force once! */
                     current_mission_state = mission_force_return_home;	/* mission timeout. -libn */
+                    #ifdef NO_ROS_DEBUG
                     ROS_INFO("mission time out! -> return to home!");
+                    #endif
                     mission_last_time = ros::Time::now();   /* start counting time(for hovering). */
                 }
                 /* subtask timer(1 loop). -libn */
@@ -646,7 +701,9 @@ int main(int argc, char **argv)
                     failure[mission_failure_acount-1].num = current_mission_num;
                     failure[mission_failure_acount-1].state = current_mission_state;
                     loop++;
+                    #ifdef NO_ROS_DEBUG
                     ROS_INFO("loop timeout -> start next loop");
+                    #endif
                     current_mission_state = mission_observe_point_go;	/* loop timeout, forced to switch to next loop. -libn */
                     /* TODO: mission failure recorded(using switch/case). -libn */
 
@@ -655,17 +712,23 @@ int main(int argc, char **argv)
 
             if(1)   /* ROS_INFO display. */
             {
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("current loop: %d",loop);
                 ROS_INFO("current_mission_state: %d",current_mission_state);
+                #endif
                 if(velocity_control_enable)
                 {
+                    #ifdef NO_ROS_DEBUG
                     ROS_INFO("velocity*: %5.3f %5.3f %5.3f",vel_pub.twist.linear.x, vel_pub.twist.linear.y, vel_pub.twist.linear.z);
+                    #endif
                 }
                 else
                 {
+                    #ifdef NO_ROS_DEBUG
                     ROS_INFO("position*: %5.3f %5.3f %5.3f",pose_pub.pose.position.x,pose_pub.pose.position.y,pose_pub.pose.position.z);
+                    #endif
                 }
-
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("current position: %5.3f %5.3f %5.3f\n",current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
 
                 ROS_INFO("current_mission_num = %d",current_mission_num);
@@ -673,7 +736,7 @@ int main(int argc, char **argv)
                         "position:%5.3f %5.3f %5.3f",current_mission_num,board10.drawingboard[current_mission_num].x,
                         board10.drawingboard[current_mission_num].y,board10.drawingboard[current_mission_num].z);
                 ROS_INFO("spray time = %f",(float)task_status_change_p2m_data.spray_duration);
-
+                #endif
 
 
 
@@ -706,11 +769,14 @@ int main(int argc, char **argv)
 		{
 			if(current_state.mode != last_state_display.mode || last_state_display.armed != current_state.armed)
 			{
+                #ifdef NO_ROS_DEBUG
 				ROS_INFO("current_state.mode = %s",current_state.mode.c_str());
 				ROS_INFO("last_state_display.mode = %s",last_state_display.mode.c_str());
 				ROS_INFO("armed status: %d\n",current_state.armed);
+                #endif
 				last_state_display.armed = current_state.armed;
 				last_state_display.mode = current_state.mode;
+                #ifdef NO_ROS_DEBUG
 				ROS_INFO("current position: %5.3f %5.3f %5.3f", current_pos.pose.position.x, 	  	current_pos.pose.position.y, current_pos.pose.position.z);
 
 				ROS_INFO("setpoint_received:\n"
@@ -752,6 +818,7 @@ int main(int argc, char **argv)
                         board10.drawingboard[current_mission_num].y,board10.drawingboard[current_mission_num].z);
 //                ROS_INFO("SCREEN_HEIGHT = %d SAFE_HEIGHT_DISTANCE = %d",(int)SCREEN_HEIGHT,(int)SAFE_HEIGHT_DISTANCE);
                 ROS_INFO("SAFE_HEIGHT_DISTANCE = %d",(int)SAFE_HEIGHT_DISTANCE);
+                #endif
 
 			}
 		}
@@ -877,7 +944,9 @@ void state_machine_func(void)
             if(current_vel.twist.linear.z > 0.5 &&
                current_pos.pose.position.z > 0.8)
             {
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("current_vel.twist.linear.x = %f",current_vel.twist.linear.x);
+                #endif
 
                 current_mission_state = mission_hover_after_takeoff; // current_mission_state++;
                 mission_last_time = ros::Time::now();
@@ -890,7 +959,9 @@ void state_machine_func(void)
                 /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
                 camera_switch_data.data = 0;
                 camera_switch_pub.publish(camera_switch_data);
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+                #endif
 
             }
     		break;
@@ -921,7 +992,9 @@ void state_machine_func(void)
                 /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
                 camera_switch_data.data = 2;
                 camera_switch_pub.publish(camera_switch_data);
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+                #endif
 
                }
             break;
@@ -994,7 +1067,9 @@ void state_machine_func(void)
                 /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
                 camera_switch_data.data = 0;
                 camera_switch_pub.publish(camera_switch_data);
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+                #endif
             }
             break;
 
@@ -1017,7 +1092,9 @@ void state_machine_func(void)
                 /* camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
                 camera_switch_data.data = 1;
                 camera_switch_pub.publish(camera_switch_data);
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+                #endif
             }
             if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
                (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
@@ -1070,7 +1147,9 @@ void state_machine_func(void)
                     /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
                     camera_switch_data.data = 2;
                     camera_switch_pub.publish(camera_switch_data);
+                    #ifdef NO_ROS_DEBUG
                     ROS_INFO("send camera_switch_data = %d",(int)camera_switch_data.data);
+                    #endif
 
                     last_mission_num = current_mission_num;
                 }
@@ -1106,14 +1185,18 @@ void state_machine_func(void)
 				{
                     current_mission_state = mission_num_locate; // current_mission_state++;
 					mission_last_time = ros::Time::now();
+                    #ifdef NO_ROS_DEBUG
 					ROS_INFO("mission switched well!");
+                    #endif
 				}
         	}
         	else
         	{
         		/* TODO: add scanning method! -libn */
                 current_mission_state = mission_num_scan_again; // current_mission_state++;
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("fall into mission state: mission_num_scan_again");
+                #endif
         	}
 			break;
         case mission_num_locate:
@@ -1225,12 +1308,16 @@ void state_machine_func(void)
             if(FAILURE_REPAIR && mission_failure_acount != 0)
         	{
         		current_mission_state = mission_fix_failure; // current_mission_state++;
+                #ifdef NO_ROS_DEBUG
         		ROS_INFO("TODO: mission_fix_failure!");
+                #endif
         	}
         	else			/* mission is finished. -libn */
         	{
                 current_mission_state = mission_return_home; // current_mission_state++;
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("going to mission_return_home");
+                #endif
         		mission_last_time = ros::Time::now();
         	}
 			break;
@@ -1251,7 +1338,9 @@ void state_machine_func(void)
             }
             else if(mission_failure_acount == 0)
             {
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("All failure fixed, return to home.");
+                #endif
                 current_mission_state = mission_return_home;
             }
 			break;
@@ -1277,7 +1366,9 @@ void state_machine_func(void)
 			   (abs(current_pos.pose.position.z - setpoint_H.pose.position.z) < 0.2) &&
                (ros::Time::now() - mission_last_time > ros::Duration(1)))		/* Bug: mission_last_time is not necessary! -libn */
 			{
+                #ifdef NO_ROS_DEBUG
                 ROS_INFO("start mission_hover_only");
+                #endif
                 current_mission_state = mission_hover_only; // current_mission_state++;
 				mission_last_time = ros::Time::now();
 			}
