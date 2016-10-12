@@ -41,8 +41,10 @@ sensor_msgs::LaserScan board_scan;
 std_msgs::Int32 vision_num_data;
 std_msgs::Int32 vision_num_data_last;
 #define MIN_OBSERVE_TIMES 7
-#define MIN_DETECTION_TIMES 4  /* count_num > MIN_DETECTION_TIMES => num detected; else: num not detected. */
+#define MIN_DETECTION_TIMES_FAR 4  /* count_num > MIN_DETECTION_TIMES => num detected; else: num not detected. */
+#define MIN_DETECTION_TIMES_NEAR 2
 #define MAX_DETECTION_DISTANCE 0.5  /* max detected board distance between different loops. */
+
 
 int count_num = 0;
 int count_detection[10] = {0,0,0,0,0,0,0,0,0,0};
@@ -106,24 +108,38 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
             board10.drawingboard[num].y = board_scan.ranges[i*4 + 2] + current_pos.pose.position.y;
             board10.drawingboard[num].z = board_scan.ranges[i*4 + 3] + current_pos.pose.position.z;
             board10.drawingboard[num].valid = true;
+
+            /* get the same position for MIN_DETECTION_TIMES times at last. */
+            if(fabs(board10.drawingboard[num].x - board10_last.drawingboard[num].x) < MAX_DETECTION_DISTANCE
+                 && fabs(board10.drawingboard[num].y - board10_last.drawingboard[num].y) < MAX_DETECTION_DISTANCE)
+            {
+                count_detection[num]++;
+            }
+            else    count_detection[num] = 0;
+            float distance = sqrt(board10.drawingboard[num].x*board10.drawingboard[num].x+board10.drawingboard[num].y*board10.drawingboard[num].y);
+            if(distance >4)
+            {
+                if(count_detection[num] >= MIN_DETECTION_TIMES_FAR)
+                {
+                    /* store only stable vision message. */
+                    board10_pub.drawingboard[num] = board10.drawingboard[num];
+                    count_detection[num] = 0;
+                }
+            }
+            else
+            {
+                if(count_detection[num] >= MIN_DETECTION_TIMES_NEAR)
+                {
+                    /* store only stable vision message. */
+                    board10_pub.drawingboard[num] = board10.drawingboard[num];
+                    count_detection[num] = 0;
+                }
+            }
+
+
         }
 
-        /* get the same position for MIN_DETECTION_TIMES times at last. */
-        for(int j = 0; j < 10; ++j)
-        {
-            if(fabs(board10.drawingboard[j].x - board10_last.drawingboard[j].x) < MAX_DETECTION_DISTANCE
-                 && fabs(board10.drawingboard[j].y - board10_last.drawingboard[j].y) < MAX_DETECTION_DISTANCE)
-            {
-                count_detection[j]++;
-            }
-            else    count_detection[j] = 0;
-            if(count_detection[j] >= MIN_DETECTION_TIMES)
-            {
-                /* store only stable vision message. */
-                board10_pub.drawingboard[j] = board10.drawingboard[j];
-                count_detection[j] = 0;
-            }
-        }
+
 
         /* display and publish stable vision message. */
         board10_last = board10;
