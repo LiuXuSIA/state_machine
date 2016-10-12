@@ -35,12 +35,13 @@
 #define SCAN_HEIGHT 1.5 /* constant height while scanning. */
 #define SCAN_MOVE_SPEED 2 /* error bewteen pos* and pos. */
 #define SCAN_VISION_DISTANCE 4
+bool scan_to_get_pos = false;
 
 #include <math.h>
 
 #include <std_msgs/Int32.h>
 
-#define MAX_FLIGHT_TIME 220 /* max flight time of whole mission. */
+#define MAX_FLIGHT_TIME 240 /* max flight time of whole mission. */
 
 #include <state_machine/FailureRecord.h>
 #define FAILURE_REPAIR 1    /* FAILURE_REPAIR: 0: never repair errores; 1: repair errors. */
@@ -522,7 +523,7 @@ int main(int argc, char **argv)
         for(int co = 0; co<10; ++co)
         {
             /* set param valid true as default to make state machine able to run, and I am sure all numbers will be valid!(vision) */
-            board10.drawingboard[co].valid = true;  /* Normly it should be false as the default setting. */
+            board10.drawingboard[co].valid = false;  /* Normly it should be false as the default setting. */
             board10.drawingboard[co].x = 0.0f;
             board10.drawingboard[co].y = 0.0f;
             board10.drawingboard[co].z = 0.0f;  /* it's safe for we have SAFE_HEIGHT_DISTANCE. */
@@ -961,6 +962,11 @@ void state_machine_func(void)
             {
                 current_mission_state = mission_scan_left_move; // current_mission_state++;
                 mission_last_time = ros::Time::now();
+
+                if(scan_to_get_pos && board10.drawingboard[current_mission_num].valid)
+                {
+                    current_mission_state = mission_num_locate;
+                }
             }
             break;
         case mission_scan_left_move:
@@ -992,9 +998,26 @@ void state_machine_func(void)
             pose_pub.pose.position.z = SCAN_HEIGHT;
             if(ros::Time::now() - mission_last_time > ros::Duration(2))	/* hover for 5 seconds. -libn */
             {
-                current_mission_state = mission_observe_point_go; // current_mission_state++;
-                mission_last_time = ros::Time::now();
-                loop++;
+                if(scan_to_get_pos)
+                {
+                    if(board10.drawingboard[current_mission_num].valid)
+                    {
+                        current_mission_state = mission_num_search; // current_mission_state++;
+                        scan_to_get_pos = false;
+                    }
+                    else
+                    {
+                        current_mission_state = mission_scan_left_go; // current_mission_state++;
+                    }
+
+                }
+                else
+                {
+                    current_mission_state = mission_observe_point_go; // current_mission_state++;
+                    mission_last_time = ros::Time::now();
+                    loop++;
+                }
+
 
                 /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
                 camera_switch_data.data = 0;
@@ -1117,7 +1140,8 @@ void state_machine_func(void)
         	else
         	{
         		/* TODO: add scanning method! -libn */
-                current_mission_state = mission_num_scan_again; // current_mission_state++;
+                current_mission_state = mission_scan_left_go; // current_mission_state++;
+                scan_to_get_pos = true;
                 ROS_INFO("fall into mission state: mission_num_scan_again");
         	}
 			break;
