@@ -1010,15 +1010,15 @@ void state_machine_func(void)
             pose_pub.pose.position.y = setpoint_R.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = SCAN_HEIGHT;
 
-            /* limit error(x,y) between current position and destination. */
-            if(abs(pose_pub.pose.position.x - current_pos.pose.position.x) > SCAN_MOVE_SPEED ||
-                abs(pose_pub.pose.position.y - current_pos.pose.position.y) > SCAN_MOVE_SPEED)
-            {
-                double error_temp[2] = {0,0};
-                error_limit(current_pos.pose.position.x,current_pos.pose.position.y,pose_pub.pose.position.x,pose_pub.pose.position.y,error_temp);
-                pose_pub.pose.position.x = current_pos.pose.position.x + SCAN_MOVE_SPEED*error_temp[0];
-                pose_pub.pose.position.y = current_pos.pose.position.y + SCAN_MOVE_SPEED*error_temp[1];
-            }
+//            /* limit error(x,y) between current position and destination. */
+//            if(abs(pose_pub.pose.position.x - current_pos.pose.position.x) > SCAN_MOVE_SPEED ||
+//                abs(pose_pub.pose.position.y - current_pos.pose.position.y) > SCAN_MOVE_SPEED)
+//            {
+//                double error_temp[2] = {0,0};
+//                error_limit(current_pos.pose.position.x,current_pos.pose.position.y,pose_pub.pose.position.x,pose_pub.pose.position.y,error_temp);
+//                pose_pub.pose.position.x = current_pos.pose.position.x + SCAN_MOVE_SPEED*error_temp[0];
+//                pose_pub.pose.position.y = current_pos.pose.position.y + SCAN_MOVE_SPEED*error_temp[1];
+//            }
 
             if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
                (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
@@ -1049,15 +1049,15 @@ void state_machine_func(void)
             pose_pub.pose.position.y = setpoint_L.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = SCAN_HEIGHT;
 
-            /* limit error(x,y) between current position and destination within [-1,1]. */
-            if(abs(pose_pub.pose.position.x - current_pos.pose.position.x) > SCAN_MOVE_SPEED ||
-                abs(pose_pub.pose.position.y - current_pos.pose.position.y) > SCAN_MOVE_SPEED)
-            {
-                double error_temp[2] = {0,0};
-                error_limit(current_pos.pose.position.x,current_pos.pose.position.y,pose_pub.pose.position.x,pose_pub.pose.position.y,error_temp);
-                pose_pub.pose.position.x = current_pos.pose.position.x + SCAN_MOVE_SPEED*error_temp[0];
-                pose_pub.pose.position.y = current_pos.pose.position.y + SCAN_MOVE_SPEED*error_temp[1];
-            }
+//            /* limit error(x,y) between current position and destination within [-1,1]. */
+//            if(abs(pose_pub.pose.position.x - current_pos.pose.position.x) > SCAN_MOVE_SPEED ||
+//                abs(pose_pub.pose.position.y - current_pos.pose.position.y) > SCAN_MOVE_SPEED)
+//            {
+//                double error_temp[2] = {0,0};
+//                error_limit(current_pos.pose.position.x,current_pos.pose.position.y,pose_pub.pose.position.x,pose_pub.pose.position.y,error_temp);
+//                pose_pub.pose.position.x = current_pos.pose.position.x + SCAN_MOVE_SPEED*error_temp[0];
+//                pose_pub.pose.position.y = current_pos.pose.position.y + SCAN_MOVE_SPEED*error_temp[1];
+//            }
 
             if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
                (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
@@ -1274,28 +1274,52 @@ void state_machine_func(void)
                }
             break;
         case mission_hover_before_spary:
+            static int hover_count = 0;
+            static int hover_acc_count = 0;
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            if(loop == 3)
-            {
-                if(ros::Time::now() - mission_last_time > ros::Duration(7))	/* hover for 5 seconds. -libn */
-                {
-                    current_mission_state = mission_arm_spread; // current_mission_state++;
-                    mission_last_time = ros::Time::now();
-                    /* TODO: start spraying. -libn */
 
-                }
+            /*  */
+            if((ros::Time::now() - mission_last_time > ros::Duration(3)) &&
+               (hover_count == 0))
+            {
+                hover_count++;
             }
-            else
+            if((ros::Time::now() - mission_last_time > ros::Duration(0.5)) &&
+               (hover_count > 0))
             {
-                if(ros::Time::now() - mission_last_time > ros::Duration(7))	/* hover for 5 seconds. -libn */
+                if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.1) &&
+                   (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.1) &&
+                   (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 0.1))
                 {
-                    current_mission_state = mission_arm_spread; // current_mission_state++;
-                    mission_last_time = ros::Time::now();
-                    /* TODO: start spraying. -libn */
-
+                    hover_acc_count++;
+                    if(hover_acc_count > 5)
+                    {
+                        current_mission_state = mission_arm_spread; // current_mission_state++;
+                        hover_count = 0;
+                        hover_acc_count = 0;
+                        mission_last_time = ros::Time::now();
+                        break;
+                    }
                 }
+                else
+                {
+                    hover_acc_count = 0;
+                }
+                /* count for max time */
+                hover_count++;
+                if(hover_count > 10)
+                {
+                    /* force spray */
+                    current_mission_state = mission_arm_spread;
+                    hover_count = 0;
+                    hover_acc_count = 0;
+                    mission_last_time = ros::Time::now();
+                    break;
+                }
+                mission_last_time = ros::Time::now();
+                /* TODO: start spraying. -libn */
             }
             break;
         case mission_arm_spread:
@@ -1322,6 +1346,8 @@ void state_machine_func(void)
                         current_mission_state = mission_num_hover_spray; // current_mission_state++;
                         loop_count = 0;
                         acc_count = 0;
+                        mission_last_time = ros::Time::now();
+                        break;
                     }
                 }
                 else
@@ -1336,6 +1362,8 @@ void state_machine_func(void)
                     current_mission_state = mission_num_hover_spray;
                     loop_count = 0;
                     acc_count = 0;
+                    mission_last_time = ros::Time::now();
+                    break;
                 }
         		mission_last_time = ros::Time::now();
         		/* TODO: start spraying. -libn */
