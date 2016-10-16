@@ -670,13 +670,15 @@ int main(int argc, char **argv)
         // landing
 		if(current_state.armed && current_mission_state == land)	/* set landing mode until uav stops. -libn */
 		{
-			if(current_state.mode != "AUTO.LAND" && (ros::Time::now() - last_request > ros::Duration(5.0)))
+            if(current_state.mode != "MANUAL" &&
+               current_state.mode != "AUTO.LAND" &&
+               (ros::Time::now() - last_request > ros::Duration(5.0)))
 			{
 				if(land_client.call(landing_cmd) && landing_cmd.response.success)
 				{
-                    #ifdef NO_ROS_DEBUG
+//                    #ifdef NO_ROS_DEBUG
 					ROS_INFO("AUTO LANDING!");
-                    #endif
+//                    #endif
 				}
 				last_request = ros::Time::now();
 			}
@@ -1405,6 +1407,22 @@ void state_machine_func(void)
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
+
+            /* add height adjustment  --start. */
+            if(ros::Time::now() - mission_last_time > ros::Duration(1))	/* spray for 5 seconds. -libn */
+            {
+                pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
+                pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+                pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
+            }
+            else if(ros::Time::now() - mission_last_time > ros::Duration(1.2))
+            {
+                pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
+                pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+                pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE - 0.05f;  /* descend 2 cm for spray mission. */
+            }
+            /* add height adjustment  --stop. */
+
             if(ros::Time::now() - mission_last_time > ros::Duration(3))	/* spray for 5 seconds. -libn */
             {
                 current_mission_state = mission_hover_after_stretch_back; // current_mission_state++;
