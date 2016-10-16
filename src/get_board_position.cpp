@@ -28,7 +28,7 @@ std_msgs::Int32 camera_switch_data;
 void camera_switch_cb(const std_msgs::Int32::ConstPtr& msg)
 {
     camera_switch_data = *msg;
-    ROS_INFO("get camera_switch_data = %d",camera_switch_data.data);
+//    ROS_INFO("get camera_switch_data = %d",camera_switch_data.data);
 }
 
 /* send indexed setpoint. -libn <Aug 15, 2016 9:00:02 AM> */
@@ -55,7 +55,7 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
 	board_scan = *msg;
     int num;
 
-    ROS_INFO("vision message received!");
+//    ROS_INFO("vision message received!");
 
     /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
     if(camera_switch_data.data == 1 && board_scan.ranges[1] > 100 && board_scan.ranges[2] > 100)
@@ -75,7 +75,7 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
             if(count_num >= MIN_OBSERVE_TIMES)    /* get the same num for MIN_DETECTION_TIMES times at last. */
             {
                 vision_num_pub.publish(vision_num_data);
-                ROS_INFO("vision_num_data = %d",vision_num_data.data);
+//                ROS_INFO("vision_num_data = %d",vision_num_data.data);
                 count_num = 0;
             }
         }
@@ -144,29 +144,29 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
         /* display and publish stable vision message. */
         board10_last = board10;
         DrawingBoard_Position_pub.publish(board10_pub);
-        ROS_INFO("current pos:\n"
-                "x = %5.3f y = %5.3f z = %5.3f\n",
-                current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
-        ROS_INFO("\nboard_0 position: %d x = %f y = %f z = %f\n"
-                    "board_1 position: %d x = %f y = %f z = %f\n"
-                    "board_2 position: %d x = %f y = %f z = %f\n"
-                    "board_3 position: %d x = %f y = %f z = %f\n"
-                    "board_4 position: %d x = %f y = %f z = %f\n"
-                    "board_5 position: %d x = %f y = %f z = %f\n"
-                    "board_6 position: %d x = %f y = %f z = %f\n"
-                    "board_7 position: %d x = %f y = %f z = %f\n"
-                    "board_8 position: %d x = %f y = %f z = %f\n"
-                    "board_9 position: %d x = %f y = %f z = %f\n",
-                    board10_pub.drawingboard[0].valid,board10_pub.drawingboard[0].x,board10_pub.drawingboard[0].y,board10_pub.drawingboard[0].z,
-                    board10_pub.drawingboard[1].valid,board10_pub.drawingboard[1].x,board10_pub.drawingboard[1].y,board10_pub.drawingboard[1].z,
-                    board10_pub.drawingboard[2].valid,board10_pub.drawingboard[2].x,board10_pub.drawingboard[2].y,board10_pub.drawingboard[2].z,
-                    board10_pub.drawingboard[3].valid,board10_pub.drawingboard[3].x,board10_pub.drawingboard[3].y,board10_pub.drawingboard[3].z,
-                    board10_pub.drawingboard[4].valid,board10_pub.drawingboard[4].x,board10_pub.drawingboard[4].y,board10_pub.drawingboard[4].z,
-                    board10_pub.drawingboard[5].valid,board10_pub.drawingboard[5].x,board10_pub.drawingboard[5].y,board10_pub.drawingboard[5].z,
-                    board10_pub.drawingboard[6].valid,board10_pub.drawingboard[6].x,board10_pub.drawingboard[6].y,board10_pub.drawingboard[6].z,
-                    board10_pub.drawingboard[7].valid,board10_pub.drawingboard[7].x,board10_pub.drawingboard[7].y,board10_pub.drawingboard[7].z,
-                    board10_pub.drawingboard[8].valid,board10_pub.drawingboard[8].x,board10_pub.drawingboard[8].y,board10_pub.drawingboard[8].z,
-                    board10_pub.drawingboard[9].valid,board10_pub.drawingboard[9].x,board10_pub.drawingboard[9].y,board10_pub.drawingboard[9].z);
+//        ROS_INFO("current pos:\n"
+//                "x = %5.3f y = %5.3f z = %5.3f\n",
+//                current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
+//        ROS_INFO("\nboard_0 position: %d x = %f y = %f z = %f\n"
+//                    "board_1 position: %d x = %f y = %f z = %f\n"
+//                    "board_2 position: %d x = %f y = %f z = %f\n"
+//                    "board_3 position: %d x = %f y = %f z = %f\n"
+//                    "board_4 position: %d x = %f y = %f z = %f\n"
+//                    "board_5 position: %d x = %f y = %f z = %f\n"
+//                    "board_6 position: %d x = %f y = %f z = %f\n"
+//                    "board_7 position: %d x = %f y = %f z = %f\n"
+//                    "board_8 position: %d x = %f y = %f z = %f\n"
+//                    "board_9 position: %d x = %f y = %f z = %f\n",
+//                    board10_pub.drawingboard[0].valid,board10_pub.drawingboard[0].x,board10_pub.drawingboard[0].y,board10_pub.drawingboard[0].z,
+//                    board10_pub.drawingboard[1].valid,board10_pub.drawingboard[1].x,board10_pub.drawingboard[1].y,board10_pub.drawingboard[1].z,
+//                    board10_pub.drawingboard[2].valid,board10_pub.drawingboard[2].x,board10_pub.drawingboard[2].y,board10_pub.drawingboard[2].z,
+//                    board10_pub.drawingboard[3].valid,board10_pub.drawingboard[3].x,board10_pub.drawingboard[3].y,board10_pub.drawingboard[3].z,
+//                    board10_pub.drawingboard[4].valid,board10_pub.drawingboard[4].x,board10_pub.drawingboard[4].y,board10_pub.drawingboard[4].z,
+//                    board10_pub.drawingboard[5].valid,board10_pub.drawingboard[5].x,board10_pub.drawingboard[5].y,board10_pub.drawingboard[5].z,
+//                    board10_pub.drawingboard[6].valid,board10_pub.drawingboard[6].x,board10_pub.drawingboard[6].y,board10_pub.drawingboard[6].z,
+//                    board10_pub.drawingboard[7].valid,board10_pub.drawingboard[7].x,board10_pub.drawingboard[7].y,board10_pub.drawingboard[7].z,
+//                    board10_pub.drawingboard[8].valid,board10_pub.drawingboard[8].x,board10_pub.drawingboard[8].y,board10_pub.drawingboard[8].z,
+//                    board10_pub.drawingboard[9].valid,board10_pub.drawingboard[9].x,board10_pub.drawingboard[9].y,board10_pub.drawingboard[9].z);
 
     }
 }
