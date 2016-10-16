@@ -41,7 +41,7 @@
 #define SPRAY_DISTANCE 2.2  /* distance from UAV to drawing board while sparying. */
 #define VISION_SCAN_DISTANCE 2.7  /* distance from UAV to drawing board while hoveing and scanning. */
 
-#define SAFE_HEIGHT_DISTANCE 0.31  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
+#define SAFE_HEIGHT_DISTANCE 0.42  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
 #define FIXED_POS_HEIGHT 1.5    /* height of point: H,O,L,R. */
 
 #define SCAN_HEIGHT 1.5 /* constant height while scanning. */
@@ -1292,7 +1292,7 @@ void state_machine_func(void)
 //               (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 0.2))
             if(circle_distance(current_pos.pose.position.x,pose_pub.pose.position.x,
                                current_pos.pose.position.y,pose_pub.pose.position.y,
-                               current_pos.pose.position.z,pose_pub.pose.position.z) < 0.2)
+                               current_pos.pose.position.z,pose_pub.pose.position.z) < 0.15)
             {
                 current_mission_state = mission_hover_before_spary; // current_mission_state++;
             	mission_last_time = ros::Time::now();
@@ -1306,7 +1306,7 @@ void state_machine_func(void)
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
 
             /*  */
-            if((ros::Time::now() - mission_last_time > ros::Duration(3)) &&
+            if((ros::Time::now() - mission_last_time > ros::Duration(2)) &&
                (hover_count == 0))
             {
                 hover_count++;
@@ -1322,7 +1322,7 @@ void state_machine_func(void)
                                    current_pos.pose.position.z,pose_pub.pose.position.z) < 0.1)
                 {
                     hover_acc_count++;
-                    if(hover_acc_count > 5)
+                    if(hover_acc_count > 3)
                     {
                         current_mission_state = mission_arm_spread; // current_mission_state++;
                         hover_count = 0;
@@ -1356,7 +1356,7 @@ void state_machine_func(void)
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            if((ros::Time::now() - mission_last_time > ros::Duration(3)) &&
+            if((ros::Time::now() - mission_last_time > ros::Duration(1.5)) &&
                (loop_count == 0))
             {
                 loop_count++;
@@ -1369,7 +1369,7 @@ void state_machine_func(void)
 //                   (abs(current_pos.pose.position.z - pose_pub.pose.position.z) < 0.04))
                 if(circle_distance(current_pos.pose.position.x,pose_pub.pose.position.x,
                                    current_pos.pose.position.y,pose_pub.pose.position.y,
-                                   current_pos.pose.position.z,pose_pub.pose.position.z) < 0.04)
+                                   current_pos.pose.position.z,pose_pub.pose.position.z) < 0.05)
                 {
                     acc_count++;
                     if(acc_count > 5)
