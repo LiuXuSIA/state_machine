@@ -42,9 +42,10 @@
 #define VISION_SCAN_DISTANCE 2.7  /* distance from UAV to drawing board while hoveing and scanning. */
 
 #define SAFE_HEIGHT_DISTANCE 0.42  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
-#define FIXED_POS_HEIGHT 1.5    /* height of point: H,O,L,R. */
+#define FIXED_POS_HEIGHT 1    /* height of point: O,L,R. */
+#define TAKEOFF_HEIGHT 1.8  /* height of point H. */
 
-#define SCAN_HEIGHT 1.5 /* constant height while scanning. */
+#define SCAN_HEIGHT 1 /* constant height while scanning. */
 #define SCAN_MOVE_SPEED 2 /* error bewteen pos* and pos. */
 #define SCAN_VISION_DISTANCE 4
 bool scan_to_get_pos = false;
@@ -304,7 +305,7 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
 	/* publish messages to pixhawk. -libn */
     fixed_target_return_m2p_data.home_x = fixed_target_position_p2m_data.home_x;
     fixed_target_return_m2p_data.home_y = fixed_target_position_p2m_data.home_y;
-    fixed_target_return_m2p_data.home_z = -FIXED_POS_HEIGHT;
+    fixed_target_return_m2p_data.home_z = -TAKEOFF_HEIGHT;
 
     fixed_target_return_m2p_data.observe_x = fixed_target_position_p2m_data.observe_x;
     fixed_target_return_m2p_data.observe_y = fixed_target_position_p2m_data.observe_y;
@@ -500,9 +501,9 @@ int main(int argc, char **argv)
         vel_pub.twist.angular.x = 0.0f;
         vel_pub.twist.angular.y = 0.0f;
         vel_pub.twist.angular.z = 0.0f;
-        #ifdef NO_ROS_DEBUG
+//        #ifdef NO_ROS_DEBUG
         ROS_INFO("sending 100 setpoints, please wait 10 seconds!");
-        #endif
+//        #endif
         //send a few setpoints before starting
         for(int i = 100; ros::ok() && i > 0; --i){
 //            local_pos_pub.publish(pose_pub);
@@ -511,7 +512,7 @@ int main(int argc, char **argv)
             rate.sleep();
         }
     }
-
+    ROS_INFO("Initialization finished!");
 
     ros::Time last_request = ros::Time::now();
     ros::Time last_show_request = ros::Time::now();
@@ -531,7 +532,7 @@ int main(int argc, char **argv)
     {
         setpoint_H.pose.position.x = current_pos.pose.position.x;
         setpoint_H.pose.position.y = current_pos.pose.position.y;
-        setpoint_H.pose.position.z = FIXED_POS_HEIGHT;  /* it's better to choose z* = SAFE_HEIGHT_DISTANCE(no altitude lost). */
+        setpoint_H.pose.position.z = TAKEOFF_HEIGHT;  /* it's better to choose z* = SAFE_HEIGHT_DISTANCE(no altitude lost). */
 
         setpoint_A.pose.position.x = 0.0f;
         setpoint_A.pose.position.y = 0.0f;
