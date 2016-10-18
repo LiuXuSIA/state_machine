@@ -40,7 +40,7 @@ state_machine::DrawingBoard10 board10_pub; /* board10 for publish */
 sensor_msgs::LaserScan board_scan;
 std_msgs::Int32 vision_num_data;
 std_msgs::Int32 vision_num_data_last;
-#define MIN_OBSERVE_TIMES 7
+#define MIN_OBSERVE_TIMES 4 /* 5 times. */
 #define MIN_DETECTION_TIMES_FAR 4  /* count_num > MIN_DETECTION_TIMES => num detected; else: num not detected. */
 #define MIN_DETECTION_TIMES_NEAR 2
 #define MAX_DETECTION_DISTANCE 0.5  /* max detected board distance between different loops. */

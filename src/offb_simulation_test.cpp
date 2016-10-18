@@ -104,6 +104,7 @@ bool velocity_control_enable = true;
 ros::Time mission_timer_start_time;	/* timer to control the whole mission and 5 subtasks. -libn */
 bool mission_timer_enable = true;   /* start mission_timer. */
 bool force_home_enable = true;
+bool loop_timer_disable = false;
 
 /* 4 setpoints. -libn */
 geometry_msgs::PoseStamped setpoint_A;
@@ -709,22 +710,26 @@ int main(int argc, char **argv)
                     mission_last_time = ros::Time::now();   /* start counting time(for hovering). */
                 }
                 /* subtask timer(1 loop). -libn */
-                if(ros::Time::now() - mission_timer_start_time > ros::Duration((float)(loop*30.0f+50.0f)) &&
-                   ros::Time::now() - mission_timer_start_time < ros::Duration(MAX_FLIGHT_TIME + mission_failure_acount * 30.0f) &&
-                        loop <= 5)  /* stop subtask timer when dealing with failures. */
+                if(!loop_timer_disable)
                 {
-                    /* error recorded! */
-                    mission_failure_acount++;
-                    failure[mission_failure_acount-1].num = current_mission_num;
-                    failure[mission_failure_acount-1].state = current_mission_state;
-                    loop++;
-                    #ifdef NO_ROS_DEBUG
-                    ROS_INFO("loop timeout -> start next loop");
-                    #endif
-                    current_mission_state = mission_observe_point_go;	/* loop timeout, forced to switch to next loop. -libn */
-                    /* TODO: mission failure recorded(using switch/case). -libn */
+                    if(ros::Time::now() - mission_timer_start_time > ros::Duration((float)(loop*30.0f+50.0f)) &&
+                       ros::Time::now() - mission_timer_start_time < ros::Duration(MAX_FLIGHT_TIME + mission_failure_acount * 30.0f) &&
+                            loop <= 5)  /* stop subtask timer when dealing with failures. */
+                    {
+                        /* error recorded! */
+                        mission_failure_acount++;
+                        failure[mission_failure_acount-1].num = current_mission_num;
+                        failure[mission_failure_acount-1].state = current_mission_state;
+                        loop++;
+                        #ifdef NO_ROS_DEBUG
+                        ROS_INFO("loop timeout -> start next loop");
+                        #endif
+                        current_mission_state = mission_observe_point_go;	/* loop timeout, forced to switch to next loop. -libn */
+                        /* TODO: mission failure recorded(using switch/case). -libn */
 
+                    }
                 }
+
             }
 
             if(1)   /* ROS_INFO display. */
@@ -1408,6 +1413,7 @@ void state_machine_func(void)
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
 
+            loop_timer_disable = true;
             /* add height adjustment  --start. */
             if(ros::Time::now() - mission_last_time > ros::Duration(0.5))	/* spray for 5 seconds. -libn */
             {
@@ -1421,6 +1427,7 @@ void state_machine_func(void)
             {
                 current_mission_state = mission_hover_after_stretch_back; // current_mission_state++;
                 mission_last_time = ros::Time::now();
+                loop_timer_disable = false; /* enable loop_timer. */
             }
             break;
         case mission_hover_after_stretch_back:
