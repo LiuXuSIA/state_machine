@@ -42,10 +42,10 @@
 #define VISION_SCAN_DISTANCE 2.7  /* distance from UAV to drawing board while hoveing and scanning. */
 
 #define SAFE_HEIGHT_DISTANCE 0.42  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
-#define FIXED_POS_HEIGHT 1    /* height of point: O,L,R. */
+#define FIXED_POS_HEIGHT 1.4    /* height of point: O */
 #define TAKEOFF_HEIGHT 1.8  /* height of point H. */
 
-#define SCAN_HEIGHT 1 /* constant height while scanning. */
+#define SCAN_HEIGHT 1.6 /* constant height while scanning. */ //height of point: L, R
 #define SCAN_MOVE_SPEED 2 /* error bewteen pos* and pos. */
 #define SCAN_VISION_DISTANCE 4
 bool scan_to_get_pos = false;
@@ -314,11 +314,11 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
 
     fixed_target_return_m2p_data.spray_left_x = fixed_target_position_p2m_data.spray_left_x;
     fixed_target_return_m2p_data.spray_left_y = fixed_target_position_p2m_data.spray_left_y;
-    fixed_target_return_m2p_data.spray_left_z = -FIXED_POS_HEIGHT;
+    fixed_target_return_m2p_data.spray_left_z = -SCAN_HEIGHT;
 
     fixed_target_return_m2p_data.spray_right_x = fixed_target_position_p2m_data.spray_right_x;
     fixed_target_return_m2p_data.spray_right_y = fixed_target_position_p2m_data.spray_right_y;
-    fixed_target_return_m2p_data.spray_right_z = -FIXED_POS_HEIGHT;
+    fixed_target_return_m2p_data.spray_right_z = -SCAN_HEIGHT;
     fixed_target_return_m2p_pub.publish(fixed_target_return_m2p_data);
     #ifdef NO_ROS_DEBUG	
     ROS_INFO("publishing fixed_target_return_m2p(NED): %f\t%f\t%f\t",
@@ -541,11 +541,11 @@ int main(int argc, char **argv)
 
         setpoint_L.pose.position.x = 0.0f;
         setpoint_L.pose.position.y = 0.0f;
-        setpoint_L.pose.position.z = FIXED_POS_HEIGHT;
+        setpoint_L.pose.position.z = SCAN_HEIGHT;
 
         setpoint_R.pose.position.x = 0.0f;
         setpoint_R.pose.position.y = 0.0f;
-        setpoint_R.pose.position.z = FIXED_POS_HEIGHT;
+        setpoint_R.pose.position.z = SCAN_HEIGHT;
 
         setpoint_D.pose.position.x = 0.0f;
         setpoint_D.pose.position.y = 0.0f;
