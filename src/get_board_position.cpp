@@ -145,10 +145,9 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
             }
 
         }
-        // ！！！存在的问题！！！：
+        // ！！！！存在的问题！！！！：
         // 1. 根据和识别喷绘板的相对夹角，将一些识别数据放弃计数，但保留其原有计数量
         // 2. 在每次循环结束后，将没有识别的喷绘板计数置为0
-
 
         /* display and publish stable vision message. */
         board10_last = board10;
@@ -205,7 +204,6 @@ int main(int argc, char **argv)
         board10.drawingboard[i].y = 0.0f;
         board10.drawingboard[i].z = 0.0f;
         board10.drawingboard[i].valid = false;
-
     }
     board10_last = board10;
     board10_pub = board10;
