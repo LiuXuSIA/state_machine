@@ -79,6 +79,7 @@ add_executable(get_board_position 	src/get_board_position.cpp)
 #add_executable(get_board_position_receive 	src/get_board_position_receive.cpp)
 #add_executable(mavlink_sub_test src/mavlink_sub_msg.cpp)
 #add_executable(mavlink_pub_test src/mavlink_pub_msg.cpp)
+add_executable(state_machine_demo 	src/state_machine_demo.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -93,6 +94,7 @@ add_dependencies(get_board_position 	state_machine_generate_messages_cpp)
 #add_dependencies(get_board_position_receive 	state_machine_generate_messages_cpp)
 #add_dependencies(mavlink_sub_test state_machine_generate_messages_cpp)
 #add_dependencies(mavlink_pub_test state_machine_generate_messages_cpp)
+add_dependencies(state_machine_demo 	state_machine_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 #target_link_libraries(state_machine  			${catkin_LIBRARIES})
@@ -106,4 +108,5 @@ target_link_libraries(get_board_position  	${catkin_LIBRARIES})
 #target_link_libraries(get_board_position_receive  	${catkin_LIBRARIES})
 #target_link_libraries(mavlink_sub_test ${catkin_LIBRARIES})
 #target_link_libraries(mavlink_pub_test ${catkin_LIBRARIES})
+target_link_libraries(state_machine_demo  	${catkin_LIBRARIES})
 
