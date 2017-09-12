@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 		loop_rate.sleep();
 
         setpoint_indexed.index = 3;	/* 3rd setpoint(R). -libn <Aug 15, 2016 9:01:21 AM> */
-		setpoint_indexed.x = -2.0f;
+        setpoint_indexed.x = 2.0f;
 		setpoint_indexed.y = 2.0f;
         setpoint_indexed.z = 5.0f;  /* not necessary. */
 		setpoint_indexed_pub.publish(setpoint_indexed);
