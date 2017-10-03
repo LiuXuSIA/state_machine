@@ -58,7 +58,7 @@ bool scan_to_get_pos = false;
 // 固定的预扫速度，没用到
 #define SCAN_MOVE_SPEED 2 /* error bewteen pos* and pos. */
 // 最大飞行时间
-#define MAX_FLIGHT_TIME 240 /* max flight time of whole mission. */
+#define MAX_FLIGHT_TIME 540 /* max flight time of whole mission. */ //暂时没考虑超时修复的时间限制
 #define FAILURE_REPAIR 1    /* FAILURE_REPAIR: 0: never repair errores;
                                                1: repair errors. */
 
@@ -699,7 +699,7 @@ int main(int argc, char **argv)
                 // 总任务超时，就会强制回到home点，并进行降落
                 /* set time deadline. */
                 /* mission timer(5 loops). -libn */
-                if(ros::Time::now() - mission_timer_start_time > ros::Duration(MAX_FLIGHT_TIME + mission_failure_acount * 30.0f) &&
+                if(ros::Time::now() > mission_timer_start_time + ros::Duration(MAX_FLIGHT_TIME) &&
                    force_home_enable == true)
                 {
                     force_home_enable = false; /* force once! */
@@ -716,14 +716,13 @@ int main(int argc, char **argv)
                 if(!loop_timer_disable)
                 {
                     if(ros::Time::now() - mission_timer_start_time > ros::Duration((float)(loop*30.0f+50.0f)) &&
-                       ros::Time::now() - mission_timer_start_time < ros::Duration(MAX_FLIGHT_TIME + mission_failure_acount * 30.0f) &&
+                       ros::Time::now() < mission_timer_start_time + ros::Duration(MAX_FLIGHT_TIME) &&
                        loop <= 5)  /* stop subtask timer when dealing with failures. */
                     {
                         /* error recorded! */
                         mission_failure_acount++;
                         failure[mission_failure_acount-1].num = current_mission_num;
                         failure[mission_failure_acount-1].state = current_mission_state;
-                        loop++;
                         #ifdef NO_ROS_DEBUG
                             ROS_INFO("loop timeout -> start next loop");
                         #endif
@@ -1115,7 +1114,6 @@ void state_machine_func(void)
                 {
                     current_mission_state = mission_observe_point_go;
                     mission_last_time = ros::Time::now();
-                    loop++;
                 }
                 /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
                 camera_switch_data.data = 0;
@@ -1126,7 +1124,9 @@ void state_machine_func(void)
             }
         break;
         /* add scan mission  --stop. */
+        // 此任务状态，代表了一个新的子任务的开始
         case mission_observe_point_go:
+            loop++; //进入一次新的子任务循环
         	if(loop > 5)
 			{
                 current_mission_state = mission_num_done; //表示所有任务完成
@@ -1429,15 +1429,7 @@ void state_machine_func(void)
             pose_pub.pose.position.z = current_pos.pose.position.z;
             if(ros::Time::now() - mission_last_time > ros::Duration(0.5f))	/* spray for 5 seconds. -libn */
             {
-                loop++;	/* switch to next loop. -libn */ //这里loop值可能会出现6、7、8...因为需要修复问题子任务
-                if(loop > 5)
-                {
-                    current_mission_state = mission_num_done;
-                }
-                else
-                {
-                    current_mission_state = mission_observe_point_go;
-                }
+                current_mission_state = mission_observe_point_go;
             }
         break;
         case mission_num_done: //所有任务都已经完成，需要返航或者修复存在问题的子任务
@@ -1463,7 +1455,7 @@ void state_machine_func(void)
         break;
         case mission_fix_failure:
             /* TODO: add mission_failure_acount_fixed. -libn */
-            if((ros::Time::now() - mission_timer_start_time < ros::Duration(MAX_FLIGHT_TIME + mission_failure_acount * 30.0f )) &&
+            if((ros::Time::now() < mission_timer_start_time + ros::Duration(MAX_FLIGHT_TIME)) &&
                 (mission_failure_acount != 0))
             {
                 current_mission_num = failure[mission_failure_acount-1].num; //出现问题的子任务数字
