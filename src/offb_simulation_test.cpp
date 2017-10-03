@@ -581,8 +581,8 @@ int main(int argc, char **argv)
             board10.drawingboard[co].z = 0.0f;  /* it's safe for we have SAFE_HEIGHT_DISTANCE. */
         }
         // 默认的显示屏数字
-        current_mission_num = 0;    /* set current_mission_num as 0 as default. */
-        last_mission_num = 0;
+        current_mission_num = -1;    /* set current_mission_num as 0 as default. */
+        last_mission_num = -1;
 
         /* camera_switch: 0: mission closed;
          *                1: vision_one_num_get;
@@ -743,7 +743,26 @@ int main(int argc, char **argv)
                                 ROS_INFO("loop timeout -> start next loop");
                             #endif
                             current_mission_state = mission_observe_point_go;	/* loop timeout, forced to switch to next loop. -libn */
+                            current_mission_num = -1; //新的子任务，新的显示屏数字识别
                         }
+                    }
+                }
+
+                // 子任务定时器会在mission_observe_point_go中关掉，
+                // 在mission_observe_num_wait中识别到新的数字后重新开启，
+                // 如果在这期间没能识别到，需要在数字显示完成后，进入下一次的子任务
+                if((current_mission_state == mission_observe_point_go || current_mission_state == mission_observe_num_wait) &&
+                   loop <= 5 && ros::Time::now() > current_subtask_time + ros::Duration(SUB_PERIOD + 20))
+                {
+                    if(loop >= 1 && loop <= 4)
+                    {
+                        current_subtask_time = current_subtask_time + ros::Duration(60);
+                        current_mission_state = mission_observe_point_go;
+                    }
+                    if(loop ==5)
+                    {
+                        loop++;
+                        current_mission_state=mission_num_done;
                     }
                 }
             }
@@ -1175,13 +1194,6 @@ void state_machine_func(void)
             }
         break;
         case mission_observe_num_wait:
-            // 当前时最后一个数，并且在数字显示完之后也没有识别到
-            // 只能认为任务完成，没有补救办法
-            if(loop == 5 && (ros::Time::now() - mission_timer_start_time > ros::Duration(180)))
-            {
-                current_mission_state = mission_num_done;
-                break;
-            }
         	pose_pub.pose.position.x = setpoint_A.pose.position.x;
 			pose_pub.pose.position.y = setpoint_A.pose.position.y;
 			pose_pub.pose.position.z = setpoint_A.pose.position.z;
@@ -1211,7 +1223,7 @@ void state_machine_func(void)
 //			}
 			//time delay added(just for test! --delete it directly!)
             // 没检测到新的数字，会一直进行旋停
-            if(current_mission_num == last_mission_num)
+            if(current_mission_num == -1 || current_mission_num == last_mission_num)
             {
                 current_mission_state = mission_observe_num_wait; // stop mission_state++, avoid repeating spraying. ;
             }
@@ -1449,6 +1461,7 @@ void state_machine_func(void)
             if(ros::Time::now() - mission_last_time > ros::Duration(0.5f))	/* spray for 5 seconds. -libn */
             {
                 current_mission_state = mission_observe_point_go;
+                current_mission_num = -1; //新的子任务，新的显示屏数字识别
             }
         break;
         case mission_num_done: //所有任务都已经完成，需要返航或者修复存在问题的子任务
@@ -1543,9 +1556,9 @@ void state_machine_func(void)
 
 // ！！！！存在的问题！！！！：
 // 1. 宏定义ROS_RATE决定了大循环的运行频率，可以考虑使用该值
-// 2. current_mission_num的最初默认值设置为0,不太合适。虽然后面给赋值成为-1了
+// √ 2. current_mission_num的最初默认值设置为0,不太合适。虽然后面给赋值成为-1了
 // √ 3. 子任务超时，要记录故障任务状态，同时也应该判断current_mission_num是否更新，这会影响后面的补救策略
-// 4. 返回当前显示屏数字时，会保持上一loop的识别数字
+// √ 4. 返回当前显示屏数字时，会保持上一loop的识别数字
 // 5. 起飞旋停后，没有x、y方向的位置控制
 // 6. 喷涂阶段出现预扫时，右点旋停后会跳至状态mission_num_locate，左点旋停后会跳至状态mission_num_search，需要统一设置为mission_num_search
 // √ 7. 关于可修复子任务的判断，可以更完善一些
