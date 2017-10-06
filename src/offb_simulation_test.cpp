@@ -70,11 +70,11 @@ void state_machine_func(void);
 static const int takeoff = 1;
 static const int mission_hover_after_takeoff = 2;
 static const int mission_hover_only = 3;
-static const int mission_observe_point_go = 5;
-static const int mission_observe_num_wait = 6;    //可能可以修复
+static const int mission_observe_point_go = 5;    //不可修复
+static const int mission_observe_num_wait = 6;    //不可修复
 static const int mission_num_search = 8;          //可修复
-static const int mission_num_scan_again = 9;      //可修复
-static const int mission_num_locate = 10;         //可修复
+static const int mission_num_scan_again = 9;      //可修复（没用）
+static const int mission_num_locate = 10;         //可修复（没用）
 static const int mission_num_get_close = 11;      //可修复
 static const int mission_arm_spread = 12;         //可修复
 static const int mission_num_hover_spray = 13;    //不可能发生故障
@@ -1097,7 +1097,7 @@ void state_machine_func(void)
                 // 如果时喷涂阶段扫描到了需要的数字
                 if(scan_to_get_pos && board10.drawingboard[current_mission_num].valid)
                 {
-                    current_mission_state = mission_num_locate;
+                    current_mission_state = mission_num_search;
                     scan_to_get_pos = false;
                 }
             }
@@ -1560,6 +1560,6 @@ void state_machine_func(void)
 // √ 3. 子任务超时，要记录故障任务状态，同时也应该判断current_mission_num是否更新，这会影响后面的补救策略
 // √ 4. 返回当前显示屏数字时，会保持上一loop的识别数字
 // 5. 起飞旋停后，没有x、y方向的位置控制
-// 6. 喷涂阶段出现预扫时，右点旋停后会跳至状态mission_num_locate，左点旋停后会跳至状态mission_num_search，需要统一设置为mission_num_search
+// √ 6. 喷涂阶段出现预扫时，右点旋停后会跳至状态mission_num_locate，左点旋停后会跳至状态mission_num_search，需要统一设置为mission_num_search
 // √ 7. 关于可修复子任务的判断，可以更完善一些
 // 8. 子任务修复时，也可以引入时间的约束
