@@ -730,6 +730,7 @@ int main(int argc, char **argv)
                             ROS_INFO("loop timeout -> start spray task");
                             #endif
                             current_mission_state = mission_observe_point_go;
+                            loop++; //进入一次新的子任务循环
                         }
                         if((current_mission_state >= mission_num_search && current_mission_state <= mission_arm_spread) ||
                            current_mission_state == mission_hover_before_spary)
@@ -743,6 +744,7 @@ int main(int argc, char **argv)
                                 ROS_INFO("loop timeout -> start next loop");
                             #endif
                             current_mission_state = mission_observe_point_go;	/* loop timeout, forced to switch to next loop. -libn */
+                            loop++;
                             current_mission_num = -1; //新的子任务，新的显示屏数字识别
                         }
                     }
@@ -759,11 +761,11 @@ int main(int argc, char **argv)
                         current_subtask_time = current_subtask_time + ros::Duration(60);
                         current_mission_state = mission_observe_point_go;
                     }
-                    if(loop ==5)
+                    if(loop == 5)
                     {
-                        loop++;
                         current_mission_state=mission_num_done;
                     }
+                    loop++; //进入一次新的子任务循环
                 }
             }
 
@@ -1148,6 +1150,7 @@ void state_machine_func(void)
                 else //到达左点之后，会短暂旋停，之后飞向观察点
                 {
                     current_mission_state = mission_observe_point_go;
+                    loop++; //进入一次新的子任务循环
                     mission_last_time = ros::Time::now();
                 }
                 /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
@@ -1161,7 +1164,6 @@ void state_machine_func(void)
         /* add scan mission  --stop. */
         // 此任务状态，代表了一个新的子任务的开始
         case mission_observe_point_go:
-            loop++; //进入一次新的子任务循环
         	if(loop > 5)
 			{
                 current_mission_state = mission_num_done; //表示所有任务完成
@@ -1461,7 +1463,8 @@ void state_machine_func(void)
             if(ros::Time::now() - mission_last_time > ros::Duration(0.5f))	/* spray for 5 seconds. -libn */
             {
                 current_mission_state = mission_observe_point_go;
-                current_mission_num = -1; //新的子任务，新的显示屏数字识别
+                loop++; //进入一次新的子任务循环
+                current_mission_num = -1; //新的显示屏数字识别
             }
         break;
         case mission_num_done: //所有任务都已经完成，需要返航或者修复存在问题的子任务
