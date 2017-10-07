@@ -14,8 +14,7 @@
 #include <geometry_msgs/PoseStamped.h>
 
 #define MIN_OBSERVE_TIMES 4        /* 4 times. */ //显示屏数字的最小观测次数
-#define MIN_DETECTION_TIMES_FAR 4  /* count_num > MIN_DETECTION_TIMES => num detected; else: num not detected. */
-#define MIN_DETECTION_TIMES_NEAR 2
+#define MIN_DETECTION_TIMES 4  /* count_num > MIN_DETECTION_TIMES => num detected; else: num not detected. */
 #define MAX_DETECTION_DISTANCE 0.5  /* max detected board distance between different loops. */
                                     // 上一次与这一次检测到的数字在x、y方向的距离如果差别很大，就放弃获取
 
@@ -88,7 +87,6 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
                 count_num = 0;
             }
         }
-
     }
     // 2. 喷绘板信息
     if(camera_switch_data.data == 2 && board_scan.ranges[1] < 100 && board_scan.ranges[2] < 100)
@@ -117,37 +115,20 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
             board10.drawingboard[num].valid = true;
 
             /* get the same position for MIN_DETECTION_TIMES times at last. */
-            if(fabs(board10.drawingboard[num].x - board10_last.drawingboard[num].x) < MAX_DETECTION_DISTANCE
-                 && fabs(board10.drawingboard[num].y - board10_last.drawingboard[num].y) < MAX_DETECTION_DISTANCE)
+            if(sqrt((board10.drawingboard[num].x - board10_last.drawingboard[num].x)*(board10.drawingboard[num].x - board10_last.drawingboard[num].x)+
+                    (board10.drawingboard[num].y - board10_last.drawingboard[num].y)*(board10.drawingboard[num].y - board10_last.drawingboard[num].y)+
+                    (board10.drawingboard[num].z - board10_last.drawingboard[num].z)*(board10.drawingboard[num].z - board10_last.drawingboard[num].z)) < MAX_DETECTION_DISTANCE)
             {
                 count_detection[num]++;
             }
             else    count_detection[num] = 0;
-            // 根据距离不同（4m），设定不同的次数门限
-            float distance = sqrt(board10.drawingboard[num].x*board10.drawingboard[num].x+board10.drawingboard[num].y*board10.drawingboard[num].y);
-            if(distance >4)
+            if(count_detection[num] >= MIN_DETECTION_TIMES)
             {
-                if(count_detection[num] >= MIN_DETECTION_TIMES_FAR)
-                {
-                    /* store only stable vision message. */
-                    board10_pub.drawingboard[num] = board10.drawingboard[num];
-                    count_detection[num] = 0;
-                }
+                /* store only stable vision message. */
+                board10_pub.drawingboard[num] = board10.drawingboard[num];
+                count_detection[num] = 0;
             }
-            else
-            {
-                if(count_detection[num] >= MIN_DETECTION_TIMES_NEAR)
-                {
-                    /* store only stable vision message. */
-                    board10_pub.drawingboard[num] = board10.drawingboard[num];
-                    count_detection[num] = 0;
-                }
-            }
-
         }
-        // ！！！！存在的问题！！！！：
-        // 1. 根据和识别喷绘板的相对夹角，将一些识别数据放弃计数，但保留其原有计数量
-        // 2. 在每次循环结束后，将没有识别的喷绘板计数置为0
 
         /* display and publish stable vision message. */
         board10_last = board10;
