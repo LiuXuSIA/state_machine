@@ -93,7 +93,6 @@ static const int mission_scan_right_move = 32;
 static const int mission_scan_right_hover = 33;
 static const int mission_scan_left_move = 34;
 static const int mission_scan_left_hover = 35;
-static const int mission_scan_left2_hover = 36;
 
 // 下面两个变量配合表示任务状态
 int loop = 0;	/* loop calculator: loop = 0/1/2/3/4/5. -libn */
@@ -733,7 +732,8 @@ int main(int argc, char **argv)
                             loop++; //进入一次新的子任务循环
                         }
                         if((current_mission_state >= mission_num_search && current_mission_state <= mission_arm_spread) ||
-                           current_mission_state == mission_hover_before_spary)
+                           current_mission_state == mission_hover_before_spary ||
+                           (current_mission_state >= mission_scan_left_go && current_mission_state <= mission_scan_left_hover))
                         {
                             /* error recorded! */
                             mission_failure_acount++;
@@ -1497,12 +1497,17 @@ void state_machine_func(void)
                 current_mission_num = failure[mission_failure_acount-1].num; //出现问题的子任务数字
                 /* deal with failures. */
                 // 判断那些任务可以修复，哪些不能修复
-                if((mission_num_search <= failure[mission_failure_acount-1].state &&
-                    failure[mission_failure_acount-1].state <= mission_arm_spread) ||
-                   failure[mission_failure_acount-1].state == mission_hover_before_spary)
+                if(current_mission_num >=1 && current_mission_num <= 5)
                 {
-                    current_mission_state = mission_num_search; //如果有错误，将从loop==6开始开始弥补
-                                                                //在错误处理过程中只会受到总时间的制约，一直进行此错误的修复
+                    if((failure[mission_failure_acount-1].state >= mission_num_search &&
+                        failure[mission_failure_acount-1].state <= mission_arm_spread) ||
+                       failure[mission_failure_acount-1].state == mission_hover_before_spary ||
+                       (failure[mission_failure_acount-1].state >= mission_scan_left_go &&
+                        failure[mission_failure_acount-1].state <= mission_scan_left_hover))
+                    {
+                        current_mission_state = mission_num_search; //如果有错误，将从loop==6开始开始弥补
+                                                                    //在错误处理过程中只会受到总时间的制约，一直进行此错误的修复
+                    }
                 }
                 mission_failure_acount--;
             }
