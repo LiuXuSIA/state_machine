@@ -58,11 +58,12 @@ bool scan_to_get_pos = false;
 // 固定的预扫速度，没用到
 #define SCAN_MOVE_SPEED 2 /* error bewteen pos* and pos. */
 // 最大飞行时间
-#define MAX_FLIGHT_TIME 540 /* max flight time of whole mission. */ //暂时没考虑超时修复的时间限制
+#define MAX_FLIGHT_TIME 360 /* max flight time of whole mission. */ // 50 + 5 × 60 + 10(预留)
+// 每个子任务的执行周期
+#define SUB_PERIOD 50
 #define FAILURE_REPAIR 1    /* FAILURE_REPAIR: 0: never repair errores;
                                                1: repair errors. */
-// 每个子任务的执行周期，有一定的预留时间
-#define SUB_PERIOD 55
+#define REPAIR_TIME 30 //每一个超时修复所规定的时间限制
 
 // 任务状态机函数
 void state_machine_func(void);
@@ -132,6 +133,7 @@ geometry_msgs::TwistStamped vel_pub;	/* velocity setpoint to be published. -libn
 // 记录发生故障的数字与状态
 state_machine::FailureRecord failure[5];
 int mission_failure_acount = 0;
+int mission_failure_max = 0;
 
 // 订阅飞行状态和相应的回调函数
 state_machine::State current_state;
@@ -694,67 +696,71 @@ int main(int argc, char **argv)
             /***** 状态机函数 *****/
 			state_machine_func();
 
-            // 任务的时序控制，仿制子任务和总任务超时
-            /* system timer. TODO! */
-            if(1)
+            // 总任务超时，就会强制回到home点，并进行降落
+            /* set time deadline. */
+            /* mission timer(5 loops). -libn */
+            if(ros::Time::now() > mission_timer_start_time + ros::Duration(MAX_FLIGHT_TIME +
+                                                                           REPAIR_TIME * mission_failure_max) &&
+               force_home_enable == true)
             {
-                // 总任务超时，就会强制回到home点，并进行降落
-                /* set time deadline. */
-                /* mission timer(5 loops). -libn */
-                if(ros::Time::now() > mission_timer_start_time + ros::Duration(MAX_FLIGHT_TIME) &&
-                   force_home_enable == true)
-                {
-                    force_home_enable = false; /* force once! */
-                    current_mission_state = mission_force_return_home;	/* mission timeout. -libn */
-                    #ifdef NO_ROS_DEBUG
-                        ROS_INFO("mission time out! -> return to home!");
-                    #endif
-                    mission_last_time = ros::Time::now();   /* start counting time(for hovering). */
-                }
-
+                force_home_enable = false; /* force once! */
+                current_mission_state = mission_force_return_home;	/* mission timeout. -libn */
+                #ifdef NO_ROS_DEBUG
+                    ROS_INFO("mission time out! -> return to home!");
+                #endif
+                mission_last_time = ros::Time::now();   /* start counting time(for hovering). */
+            }
+            else //总任务没超时
+            {
                 // 如果子任务超时了，但是总任务没有超时，那就需要继续运行下一个子任务
                 // 记录当前子任务超时的任务状态和子任务数字，任务计数+1，要回到观察点
                 /* subtask timer(1 loop). -libn */
                 if(subtimer_start)
                 {
+                    // 处于正常的喷洒流程中
                     if(ros::Time::now() > current_subtask_time + ros::Duration(SUB_PERIOD) &&
-                       ros::Time::now() < mission_timer_start_time + ros::Duration(MAX_FLIGHT_TIME) &&
                        loop <= 5)  /* stop subtask timer when dealing with failures. */
                     {
-                        subtimer_start = false;
                         // 判断一些可强制回到观察点的情况
                         if(loop == 0)
                         {
                             #ifdef NO_ROS_DEBUG
                             ROS_INFO("loop timeout -> start spray task");
                             #endif
-                            current_mission_state = mission_observe_point_go;
-                            loop++; //进入一次新的子任务循环
                         }
-                        if((current_mission_state >= mission_num_search && current_mission_state <= mission_arm_spread) ||
-                           current_mission_state == mission_hover_before_spary ||
-                           (current_mission_state >= mission_scan_left_go && current_mission_state <= mission_scan_left_hover))
+                        else if((current_mission_state >= mission_num_search && current_mission_state <= mission_arm_spread) ||
+                                current_mission_state == mission_hover_before_spary ||
+                                (current_mission_state >= mission_scan_left_go && current_mission_state <= mission_scan_left_hover))
                         {
                             /* error recorded! */
                             mission_failure_acount++;
+                            mission_failure_max++;
                             failure[mission_failure_acount-1].num = current_mission_num;
                             failure[mission_failure_acount-1].state = current_mission_state;
                             /* TODO: mission failure recorded(using switch/case). -libn */
                             #ifdef NO_ROS_DEBUG
                                 ROS_INFO("loop timeout -> start next loop");
                             #endif
-                            current_mission_state = mission_observe_point_go;	/* loop timeout, forced to switch to next loop. -libn */
-                            loop++;
                             current_mission_num = -1; //新的子任务，新的显示屏数字识别
                         }
+                        current_mission_state = mission_observe_point_go;
+                        loop++; //进入一次新的子任务循环
+                        subtimer_start = false;
+                    }
+                    // 处于超时补救流程中
+                    if(ros::Time::now() > current_subtask_time + ros::Duration(REPAIR_TIME) &&
+                       loop >= 6)
+                    {
+                        current_mission_state = mission_num_done;
+                        loop++; //进入一次新的子任务循环
+                        subtimer_start = false;
                     }
                 }
-
                 // 子任务定时器会在mission_observe_point_go中关掉，
                 // 在mission_observe_num_wait中识别到新的数字后重新开启，
                 // 如果在这期间没能识别到，需要在数字显示完成后，进入下一次的子任务
                 if((current_mission_state == mission_observe_point_go || current_mission_state == mission_observe_num_wait) &&
-                   loop <= 5 && ros::Time::now() > current_subtask_time + ros::Duration(SUB_PERIOD + 20))
+                   loop <= 5 && ros::Time::now() > current_subtask_time + ros::Duration(SUB_PERIOD + 25))
                 {
                     if(loop >= 1 && loop <= 4)
                     {
@@ -763,9 +769,10 @@ int main(int argc, char **argv)
                     }
                     if(loop == 5)
                     {
-                        current_mission_state=mission_num_done;
+                        current_mission_state = mission_num_done;
                     }
                     loop++; //进入一次新的子任务循环
+                    subtimer_start = false;
                 }
             }
 
@@ -1151,6 +1158,7 @@ void state_machine_func(void)
                 {
                     current_mission_state = mission_observe_point_go;
                     loop++; //进入一次新的子任务循环
+                    subtimer_start = false;
                     mission_last_time = ros::Time::now();
                 }
                 /*  camera_switch: 0: mission closed; 1: vision_one_num_get; 2: vision_num_scan. -libn */
@@ -1167,9 +1175,9 @@ void state_machine_func(void)
         	if(loop > 5)
 			{
                 current_mission_state = mission_num_done; //表示所有任务完成
+                subtimer_start = false; //关闭子任务定时器
 				break;
-			}
-            subtimer_start = false; //开始回观察点，就不需要子任务定时器了
+            }
         	pose_pub.pose.position.x = setpoint_A.pose.position.x;
 			pose_pub.pose.position.y = setpoint_A.pose.position.y;
             pose_pub.pose.position.z = setpoint_A.pose.position.z;
@@ -1410,6 +1418,7 @@ void state_machine_func(void)
                     if(acc_count > 5)
                     {
                         current_mission_state = mission_num_hover_spray;
+                        subtimer_start = false; //在喷涂阶段，不受子任务定时器的影响
                         loop_count = 0;
                         acc_count = 0;
                         mission_last_time = ros::Time::now();
@@ -1426,6 +1435,7 @@ void state_machine_func(void)
                 {
                     /* force spray */
                     current_mission_state = mission_num_hover_spray;
+                    subtimer_start = false;
                     loop_count = 0;
                     acc_count = 0;
                     mission_last_time = ros::Time::now();
@@ -1439,7 +1449,6 @@ void state_machine_func(void)
             pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
             pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
-            subtimer_start = false; //在喷涂阶段，不受子任务定时器的影响
             /* add height adjustment  --start. */
             if(ros::Time::now() - mission_last_time > ros::Duration(0.5))	/* spray for 5 seconds. -libn */
             {
@@ -1464,11 +1473,11 @@ void state_machine_func(void)
             {
                 current_mission_state = mission_observe_point_go;
                 loop++; //进入一次新的子任务循环
+                subtimer_start = false;
                 current_mission_num = -1; //新的显示屏数字识别
             }
         break;
         case mission_num_done: //所有任务都已经完成，需要返航或者修复存在问题的子任务
-            current_subtask_time = ros::Time::now(); //所有喷涂子任务完成的时间进行记录，作为超时修复任务的开始时刻
         	pose_pub.pose.position.x = current_pos.pose.position.x;	/* hover in current position. -libn */
         	pose_pub.pose.position.y = current_pos.pose.position.y;
         	pose_pub.pose.position.z = current_pos.pose.position.z;
@@ -1490,9 +1499,10 @@ void state_machine_func(void)
         	}
         break;
         case mission_fix_failure:
+            current_subtask_time = ros::Time::now(); //超时修复任务的开始时刻
+            subtimer_start = true; //子任务定时器开启
             /* TODO: add mission_failure_acount_fixed. -libn */
-            if((ros::Time::now() < mission_timer_start_time + ros::Duration(MAX_FLIGHT_TIME)) &&
-                (mission_failure_acount != 0))
+            if(mission_failure_acount != 0)
             {
                 current_mission_num = failure[mission_failure_acount-1].num; //出现问题的子任务数字
                 /* deal with failures. */
@@ -1506,7 +1516,6 @@ void state_machine_func(void)
                         failure[mission_failure_acount-1].state <= mission_scan_left_hover))
                     {
                         current_mission_state = mission_num_search; //如果有错误，将从loop==6开始开始弥补
-                                                                    //在错误处理过程中只会受到总时间的制约，一直进行此错误的修复
                     }
                 }
                 mission_failure_acount--;
@@ -1527,7 +1536,7 @@ void state_machine_func(void)
             {
                 current_mission_state = mission_return_home;    /* force to return to home! */
             }
-            break;
+        break;
         case mission_return_home:
 			pose_pub.pose.position.x = setpoint_H.pose.position.x;
 			pose_pub.pose.position.y = setpoint_H.pose.position.y;
@@ -1547,7 +1556,7 @@ void state_machine_func(void)
                 current_mission_state = mission_hover_only;
 				mission_last_time = ros::Time::now();
 			}
-			break;
+        break;
         case mission_hover_only:
 			pose_pub.pose.position.x = setpoint_H.pose.position.x;
 			pose_pub.pose.position.y = setpoint_H.pose.position.y;
@@ -1556,9 +1565,9 @@ void state_machine_func(void)
 			{
                 current_mission_state = land;
 			}
-			break;
+        break;
         case land:
-			break;
+        break;
     }
 }
 
@@ -1570,4 +1579,4 @@ void state_machine_func(void)
 // 5. 起飞旋停后，没有x、y方向的位置控制
 // √ 6. 喷涂阶段出现预扫时，右点旋停后会跳至状态mission_num_locate，左点旋停后会跳至状态mission_num_search，需要统一设置为mission_num_search
 // √ 7. 关于可修复子任务的判断，可以更完善一些
-// 8. 子任务修复时，也可以引入时间的约束
+// √ 8. 子任务修复时，也可以引入时间的约束
