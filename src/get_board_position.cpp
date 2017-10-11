@@ -13,10 +13,16 @@
 #include <state_machine/DrawingBoard10.h>
 #include <geometry_msgs/PoseStamped.h>
 
-#define MIN_OBSERVE_TIMES 4        /* 4 times. */ //显示屏数字的最小观测次数
-#define MIN_DETECTION_TIMES 4  /* count_num > MIN_DETECTION_TIMES => num detected; else: num not detected. */
+#define MIN_OBSERVE_TIMES 3        /* 4 times. */ //显示屏数字的最小观测次数
+#define MIN_DETECTION_TIMES 2  /* count_num > MIN_DETECTION_TIMES => num detected; else: num not detected. */
 #define MAX_DETECTION_DISTANCE 0.5  /* max detected board distance between different loops. */
                                     // 上一次与这一次检测到的数字在x、y方向的距离如果差别很大，就放弃获取
+static struct {
+    double x;
+    double y;
+    double z;
+    int accuracy_level;
+} most_precisive[10],temp_precisive[10];
 
 ros::Time last_request;
 
@@ -91,11 +97,12 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
     // 2. 喷绘板信息
     if(camera_switch_data.data == 2 && board_scan.ranges[1] < 100 && board_scan.ranges[2] < 100)
     {
-        int amout = board_scan.ranges.size()/4; //4个数据是一组，包括：数字、x位置、y位置、z位置
+        float len = 5;
+        int amout = board_scan.ranges.size()/len; //4个数据是一组，包括：数字、x位置、y位置、z位置
         /* get vision current detection message. */
         for ( int i = 0; i < amout; ++i ) //amount表示识别的数字个数
         {
-            num = (int)board_scan.ranges[i*4];  /* No. of board detected. -libn */
+            num = (int)board_scan.ranges[i*len];  /* No. of board detected. -libn */
             if(num == 11)	break;	/* incomplete rectangle detected. -libn */
             else if(num >9 || num <0)
             {
@@ -107,11 +114,11 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
 //                	 "x = %f "
 //                	 "y = %f "
 //                	 "z = %f",
-//   				 num,board_scan.ranges[i*4 + 1],board_scan.ranges[i*4 + 1],board_scan.ranges[i*4 + 1]);
+//   				 num,board_scan.ranges[i*len + 1],board_scan.ranges[i*len + 1],board_scan.ranges[i*len + 1]);
             board10.drawingboard[num].num = num;
-            board10.drawingboard[num].x = board_scan.ranges[i*4 + 1] + current_pos.pose.position.x;
-            board10.drawingboard[num].y = board_scan.ranges[i*4 + 2] + current_pos.pose.position.y;
-            board10.drawingboard[num].z = board_scan.ranges[i*4 + 3] + current_pos.pose.position.z;
+            board10.drawingboard[num].x = board_scan.ranges[i*len + 1] + current_pos.pose.position.x;
+            board10.drawingboard[num].y = board_scan.ranges[i*len + 2] + current_pos.pose.position.y;
+            board10.drawingboard[num].z = board_scan.ranges[i*len + 3] + current_pos.pose.position.z;
             board10.drawingboard[num].valid = true;
 
             /* get the same position for MIN_DETECTION_TIMES times at last. */
@@ -122,10 +129,43 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
                 count_detection[num]++;
             }
             else    count_detection[num] = 0;
+
+            int accuracy = board_scan.ranges[i*len + 4];
+
+            if (((accuracy <= temp_precisive[num].accuracy_level) && accuracy > 0)
+            || temp_precisive[num].accuracy_level == 0) {
+                temp_precisive[num].x = board10.drawingboard[num].x;
+                temp_precisive[num].y = board10.drawingboard[num].y;
+                temp_precisive[num].z = board10.drawingboard[num].z;
+                temp_precisive[num].accuracy_level  = accuracy;
+
+            }
+
+            if ( count_detection[num] == 0 ) {
+                temp_precisive[num].accuracy_level = 0;
+            }
+
             if(count_detection[num] >= MIN_DETECTION_TIMES)
             {
+                if (((temp_precisive[num].accuracy_level <= most_precisive[num].accuracy_level) && accuracy > 0)
+                    || most_precisive[num].accuracy_level == 0) {
+                    most_precisive[num].x = temp_precisive[num].x;
+                    most_precisive[num].y = temp_precisive[num].y;
+                    most_precisive[num].z = temp_precisive[num].z;
+                    most_precisive[num].accuracy_level  = temp_precisive[num].accuracy_level;
+                    ROS_INFO("Num: %d; Position: %4.2f, %4.2f, %4.2f; Highest level: %d",num, 
+                        most_precisive[num].x,
+                        most_precisive[num].y,
+                        most_precisive[num].z,
+                        most_precisive[num].accuracy_level);
+                }
+
                 /* store only stable vision message. */
-                board10_pub.drawingboard[num] = board10.drawingboard[num];
+                board10_pub.drawingboard[num].num = num;
+                board10_pub.drawingboard[num].x = most_precisive[num].x;
+                board10_pub.drawingboard[num].y = most_precisive[num].y;
+                board10_pub.drawingboard[num].z = most_precisive[num].z;
+                board10_pub.drawingboard[num].valid = true;
                 count_detection[num] = 0;
             }
         }
@@ -163,7 +203,9 @@ int main(int argc, char **argv)
 {
 	ROS_INFO("I was alive.");
 	ros::init(argc, argv, "get_board_pos");
-	ros::NodeHandle nh;
+    ros::NodeHandle nh;
+    memset(most_precisive,0,sizeof(most_precisive));
+    memset(temp_precisive,0,sizeof(temp_precisive));
 
     // For 发布，句柄赋值
     DrawingBoard_Position_pub = nh.advertise<state_machine::DrawingBoard10>("DrawingBoard_Position10", 1);
