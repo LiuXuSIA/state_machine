@@ -13,8 +13,8 @@
 #include <state_machine/DrawingBoard10.h>
 #include <geometry_msgs/PoseStamped.h>
 
-#define MIN_OBSERVE_TIMES 3        /* 4 times. */ //显示屏数字的最小观测次数
-#define MIN_DETECTION_TIMES 2  /* count_num > MIN_DETECTION_TIMES => num detected; else: num not detected. */
+#define MIN_OBSERVE_TIMES 3         //显示屏数字的最小观测次数
+#define MIN_DETECTION_TIMES 2       /* count_num > MIN_DETECTION_TIMES => num detected; else: num not detected. */
 #define MAX_DETECTION_DISTANCE 0.5  /* max detected board distance between different loops. */
                                     // 上一次与这一次检测到的数字在x、y方向的距离如果差别很大，就放弃获取
 static struct {
@@ -120,6 +120,7 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
             board10.drawingboard[num].y = board_scan.ranges[i*len + 2] + current_pos.pose.position.y;
             board10.drawingboard[num].z = board_scan.ranges[i*len + 3] + current_pos.pose.position.z;
             board10.drawingboard[num].valid = true;
+            int accuracy = board_scan.ranges[i*len + 4]; //当前的喷绘板识别精度
 
             /* get the same position for MIN_DETECTION_TIMES times at last. */
             if(sqrt((board10.drawingboard[num].x - board10_last.drawingboard[num].x)*(board10.drawingboard[num].x - board10_last.drawingboard[num].x)+
@@ -130,34 +131,31 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
             }
             else    count_detection[num] = 0;
 
-            int accuracy = board_scan.ranges[i*len + 4];
-
-            if (((accuracy <= temp_precisive[num].accuracy_level) && accuracy > 0)
-            || temp_precisive[num].accuracy_level == 0) {
+            if (((accuracy <= temp_precisive[num].accuracy_level) && accuracy > 0) ||
+                temp_precisive[num].accuracy_level == 0) {
                 temp_precisive[num].x = board10.drawingboard[num].x;
                 temp_precisive[num].y = board10.drawingboard[num].y;
                 temp_precisive[num].z = board10.drawingboard[num].z;
                 temp_precisive[num].accuracy_level  = accuracy;
-
             }
-
             if ( count_detection[num] == 0 ) {
                 temp_precisive[num].accuracy_level = 0;
             }
 
             if(count_detection[num] >= MIN_DETECTION_TIMES)
             {
-                if (((temp_precisive[num].accuracy_level <= most_precisive[num].accuracy_level) && accuracy > 0)
-                    || most_precisive[num].accuracy_level == 0) {
+                if (((temp_precisive[num].accuracy_level > 0) &&
+                     (temp_precisive[num].accuracy_level <= most_precisive[num].accuracy_level)) ||
+                    most_precisive[num].accuracy_level == 0) {
                     most_precisive[num].x = temp_precisive[num].x;
                     most_precisive[num].y = temp_precisive[num].y;
                     most_precisive[num].z = temp_precisive[num].z;
                     most_precisive[num].accuracy_level  = temp_precisive[num].accuracy_level;
-                    ROS_INFO("Num: %d; Position: %4.2f, %4.2f, %4.2f; Highest level: %d",num, 
-                        most_precisive[num].x,
-                        most_precisive[num].y,
-                        most_precisive[num].z,
-                        most_precisive[num].accuracy_level);
+//                    ROS_INFO("Num: %d; Position: %4.2f, %4.2f, %4.2f; Highest level: %d",num,
+//                        most_precisive[num].x,
+//                        most_precisive[num].y,
+//                        most_precisive[num].z,
+//                        most_precisive[num].accuracy_level);
                 }
 
                 /* store only stable vision message. */
