@@ -70,7 +70,9 @@ int main(int argc, char **argv)
 
     // --初始化变量--
     // 起飞的期望速度
-    vel_take_off.twist.linear.z = 2; //速度跟踪，保持航向角
+    vel_take_off.twist.linear.x = 0;
+    vel_take_off.twist.linear.y = 0;
+    vel_take_off.twist.linear.z = 2.2; //速度跟踪，保持航向角
     // A点位置，东北天
     pose_a.pose.position.x = 0;
     pose_a.pose.position.y = 0;
@@ -84,8 +86,11 @@ int main(int argc, char **argv)
     pose_c.pose.position.y = 5;
     pose_c.pose.position.z = 5;
     // 姿态期望，主要是航向
-    float yaw_sp=M_PI_2;
-    pose_a.pose.orientation.x = 0; //机头将指向北
+    vel_take_off.twist.angular.x = 0.0f; //航向保持不变
+    vel_take_off.twist.angular.y = 0.0f;
+    vel_take_off.twist.angular.z = 0.0f;
+    float yaw_sp=M_PI_2; //机头将指向北
+    pose_a.pose.orientation.x = 0;
     pose_a.pose.orientation.y = 0;
     pose_a.pose.orientation.z = sin(yaw_sp/2);
     pose_a.pose.orientation.w = cos(yaw_sp/2);
@@ -98,7 +103,7 @@ int main(int argc, char **argv)
     pose_c.pose.orientation.z = sin(yaw_sp/2);
     pose_c.pose.orientation.w = cos(yaw_sp/2);
     // 降落参数设置landing_cmd
-    landing_cmd.request.min_pitch = 1.0; //降落保持航向角
+    landing_cmd.request.min_pitch = 1.0;
 
     // 用于消息发布
     vel_take_off_pub = nh.advertise<geometry_msgs::TwistStamped>("mavros/setpoint_velocity/cmd_vel", 10);
@@ -118,13 +123,14 @@ int main(int argc, char **argv)
         rate.sleep();
     }
 
-    // 开始之前先要进行期望位置的发送！！！
-    for(int i = 50; ros::ok() && i > 0; --i){
-        ROS_INFO("Sending msg before starting.");
-        local_pos_pub.publish(pose_a);
+    // 开始之前先要进行期望的发送！！！
+    ROS_INFO("Sending msg before starting.");
+    for(int i = 100; ros::ok() && i > 0; --i){
+        vel_take_off_pub.publish(vel_take_off); //因为起飞是使用速度环控制，所以这里也发布速度期望点
         ros::spinOnce();
         rate.sleep();
     }
+    ROS_INFO("Initialization finished!");
     last_request = ros::Time::now();
 
     while(ros::ok()){
@@ -155,7 +161,7 @@ void state_machine_func(void)
             }
             // 设定期望起飞速度
             vel_take_off_pub.publish(vel_take_off);
-            if(current_pos.pose.position.z > 3)
+            if(current_pos.pose.position.z > 4)
             {
                 current_pos_state = POS_A;
                 Shown = false;
