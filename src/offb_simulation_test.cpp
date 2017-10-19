@@ -41,6 +41,11 @@
     #define ROS_RATE 10.0
 #endif
 
+// 磁偏角修正
+#define DECLINATION 7.733333
+// 沈阳磁偏角为 7.7333333度(W)
+// 杭州磁偏角为 3.8333333度(W)
+
 // 宏定义
 // 喷洒时，会向前飞0.5m
 #define SPRAY_DISTANCE 2.2  /* distance from UAV to drawing board while sparying. */
@@ -396,7 +401,7 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     deta_y = setpoint_R.pose.position.y - setpoint_L.pose.position.y;
     yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
     // ENU下的航向期望！！！
-    yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in NED in rad within [-pi,pi]. */
+    yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2 + DECLINATION/180 * M_PI);
     #ifdef NO_ROS_DEBUG
         ROS_INFO("yaw*(ENU) calculated using fixed_position from GCS.");
     #endif
