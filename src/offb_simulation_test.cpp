@@ -42,7 +42,7 @@
 #endif
 
 // 磁偏角修正
-#define DECLINATION 7.733333
+#define DECLINATION 0
 // 沈阳磁偏角为 7.7333333度(W)
 // 杭州磁偏角为 3.8333333度(W)
 
@@ -399,9 +399,15 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     /* calculate yaw*. -libn */
     deta_x = setpoint_R.pose.position.x - setpoint_L.pose.position.x;
     deta_y = setpoint_R.pose.position.y - setpoint_L.pose.position.y;
-    yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
+    yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x); //范围为(-pi,pi]
     // ENU下的航向期望！！！
-    yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2 + DECLINATION/180 * M_PI);
+    if (yaw_sp_calculated_m2p_data.yaw_sp >= M_PI/2 &&
+        yaw_sp_calculated_m2p_data.yaw_sp <= -M_PI/2)
+        yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);
+    else
+        yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp - 3*M_PI/2);
+    // 磁偏角补偿
+    yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + DECLINATION/180 * M_PI);
     #ifdef NO_ROS_DEBUG
         ROS_INFO("yaw*(ENU) calculated using fixed_position from GCS.");
     #endif
