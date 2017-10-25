@@ -42,7 +42,7 @@
 #endif
 
 // 磁偏角修正
-#define DECLINATION 7.733333
+#define DECLINATION 0
 // 沈阳磁偏角为 7.7333333度(W)
 // 杭州磁偏角为 3.8333333度(W)
 
@@ -51,7 +51,7 @@
 #define SPRAY_DISTANCE 2.2  /* distance from UAV to drawing board while sparying. */
 #define VISION_SCAN_DISTANCE 2.7  /* distance from UAV to drawing board while hoveing and scanning. */
 // 为喷洒高度进行一个补偿
-#define SAFE_HEIGHT_DISTANCE 0.42  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
+#define SAFE_HEIGHT_DISTANCE 0.34  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
 // 固定的高度
 #define FIXED_POS_HEIGHT 1    /* height of point: O (A). */
 #define TAKEOFF_HEIGHT 1.8  /* height of point H. */
