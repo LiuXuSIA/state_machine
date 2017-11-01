@@ -133,6 +133,7 @@ state_machine::YAW_SP_CALCULATED_M2P yaw_sp_calculated_m2p_data,yaw_sp_pub2GCS;
 
 // 要发布的位置、速度期望
 geometry_msgs::PoseStamped pose_pub;
+float yaw_for_distance;
 geometry_msgs::TwistStamped vel_pub;	/* velocity setpoint to be published. -libn */
 
 // 记录发生故障的数字与状态
@@ -226,6 +227,7 @@ void SetpointIndexedCallback(const state_machine::Setpoint::ConstPtr& msg)
     deta_y = setpoint_R.pose.position.y - setpoint_L.pose.position.y;
     yaw_sp_calculated_m2p_data.yaw_sp = atan2(deta_y,deta_x);
     yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);    /* yaw* in ENU in rad within [-pi,pi]. */
+    yaw_for_distance = yaw_sp_calculated_m2p_data.yaw_sp;
     #ifdef NO_ROS_DEBUG
         ROS_INFO("yaw*(ENU) calculated for test with send4setpoint running.");
     #endif
@@ -406,8 +408,9 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + M_PI/2);
     else
         yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp - 3*M_PI/2);
+    yaw_for_distance = yaw_sp_calculated_m2p_data.yaw_sp;
     // 磁偏角补偿
-    yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + DECLINATION/180 * M_PI);
+    yaw_sp_calculated_m2p_data.yaw_sp = wrap_pi(yaw_sp_calculated_m2p_data.yaw_sp + DECLINATION/180.0 * M_PI);
     #ifdef NO_ROS_DEBUG
         ROS_INFO("yaw*(ENU) calculated using fixed_position from GCS.");
     #endif
@@ -571,6 +574,7 @@ int main(int argc, char **argv)
         setpoint_D.pose.position.z = FIXED_POS_HEIGHT;
 
         yaw_sp_calculated_m2p_data.yaw_sp = 90*M_PI/180;   /* default yaw*(90 degree)(ENU) -> North! */
+        yaw_for_distance = yaw_sp_calculated_m2p_data.yaw_sp;
         /* publish yaw_sp to pixhawk. */
         yaw_sp_calculated_m2p_pub.publish(yaw_sp_calculated_m2p_data);
         #ifdef NO_ROS_DEBUG
@@ -1057,8 +1061,8 @@ void state_machine_func(void)
         /* add scan mission  --start. */
         case mission_scan_left_go:
             // 保持一定的扫描距离SCAN_VISION_DISTANCE
-            pose_pub.pose.position.x = setpoint_L.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.y = setpoint_L.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = setpoint_L.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_for_distance);
+            pose_pub.pose.position.y = setpoint_L.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_for_distance);
             pose_pub.pose.position.z = SCAN_HEIGHT;
 //            if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
 //               (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
@@ -1081,8 +1085,8 @@ void state_machine_func(void)
         case mission_scan_right_move:
             // 向右移动，目标值设置为右喷绘点
             // 移动过程中，已在pix中限制了一个较小的速度环期望，保证平滑扫描
-            pose_pub.pose.position.x = setpoint_R.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.y = setpoint_R.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = setpoint_R.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_for_distance);
+            pose_pub.pose.position.y = setpoint_R.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_for_distance);
             pose_pub.pose.position.z = SCAN_HEIGHT;
 //            /* limit error(x,y) between current position and destination. */
 //            if(abs(pose_pub.pose.position.x - current_pos.pose.position.x) > SCAN_MOVE_SPEED ||
@@ -1106,8 +1110,8 @@ void state_machine_func(void)
             }
         break;
         case mission_scan_right_hover:
-            pose_pub.pose.position.x = setpoint_R.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.y = setpoint_R.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = setpoint_R.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_for_distance);
+            pose_pub.pose.position.y = setpoint_R.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_for_distance);
             pose_pub.pose.position.z = SCAN_HEIGHT;
             // 到达右点之后，会短暂旋停，之后会向左点移动
             if(ros::Time::now() - mission_last_time > ros::Duration(1))	/* hover for 5 seconds. -libn */
@@ -1123,8 +1127,8 @@ void state_machine_func(void)
             }
         break;
         case mission_scan_left_move:
-            pose_pub.pose.position.x = setpoint_L.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.y = setpoint_L.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = setpoint_L.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_for_distance);
+            pose_pub.pose.position.y = setpoint_L.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_for_distance);
             pose_pub.pose.position.z = SCAN_HEIGHT;
 //            /* limit error(x,y) between current position and destination within [-1,1]. */
 //            if(abs(pose_pub.pose.position.x - current_pos.pose.position.x) > SCAN_MOVE_SPEED ||
@@ -1148,8 +1152,8 @@ void state_machine_func(void)
             }
         break;
         case mission_scan_left_hover:
-            pose_pub.pose.position.x = setpoint_L.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);
-            pose_pub.pose.position.y = setpoint_L.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = setpoint_L.pose.position.x - SCAN_VISION_DISTANCE * cos(yaw_for_distance);
+            pose_pub.pose.position.y = setpoint_L.pose.position.y - SCAN_VISION_DISTANCE * sin(yaw_for_distance);
             pose_pub.pose.position.z = SCAN_HEIGHT;
             if(ros::Time::now() - mission_last_time > ros::Duration(1))	/* hover for 5 seconds. -libn */
             {
@@ -1281,8 +1285,8 @@ void state_machine_func(void)
 //
 //        		ROS_INFO("position*: %5.3f %5.3f %5.3f",pose_pub.pose.position.x,pose_pub.pose.position.y,pose_pub.pose.position.z);
 //				ROS_INFO("current position: %5.3f %5.3f %5.3f",current_pos.pose.position.x,current_pos.pose.position.y,current_pos.pose.position.z);
-                pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-                pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+                pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - VISION_SCAN_DISTANCE * cos(yaw_for_distance);	/* TODO:switch to different board positions. -libn */
+                pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - VISION_SCAN_DISTANCE * sin(yaw_for_distance);
                 pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE; //保持与数字的一定距离，并进行高度补偿
 //				ROS_INFO("distance: x = %5.3f y = %5.3f z = %5.3f\n",
 //						abs(current_pos.pose.position.x - board10.drawingboard[current_mission_num].x),
@@ -1314,8 +1318,8 @@ void state_machine_func(void)
         	}
         break;
         case mission_num_locate: //这个任务状态相当于上一任务状态的扩展，到达后旋停（作用不大）
-            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - VISION_SCAN_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - VISION_SCAN_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - VISION_SCAN_DISTANCE * cos(yaw_for_distance);	/* TODO:switch to different board positions. -libn */
+            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - VISION_SCAN_DISTANCE * sin(yaw_for_distance);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
             /* TODO:update the position of the drawing board.  -libn */
 			relocate_valid = true;
@@ -1338,8 +1342,8 @@ void state_machine_func(void)
         break;
         case mission_num_get_close:
             // 靠近喷绘板，以提高定位精度
-            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_for_distance);	/* TODO:switch to different board positions. -libn */
+            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_for_distance);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
 //            if((abs(current_pos.pose.position.x - pose_pub.pose.position.x) < 0.2) &&      // switch to next state
 //               (abs(current_pos.pose.position.y - pose_pub.pose.position.y) < 0.2) &&
@@ -1355,8 +1359,8 @@ void state_machine_func(void)
         case mission_hover_before_spary: //喷扫前的旋停，更新喷绘板的高精度位置
             static int hover_count = 0;
             static int hover_acc_count = 0;
-            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_for_distance);	/* TODO:switch to different board positions. -libn */
+            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_for_distance);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
             // 先旋停2s
             if((ros::Time::now() - mission_last_time > ros::Duration(2)) && (hover_count == 0))
@@ -1407,8 +1411,8 @@ void state_machine_func(void)
         case mission_arm_spread: //此状态下，喷绘板位置不再进行更新
             static int loop_count = 0;
             static int acc_count = 0;
-            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_for_distance);	/* TODO:switch to different board positions. -libn */
+            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_for_distance);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
             // 先旋停1.5s
             if((ros::Time::now() - mission_last_time > ros::Duration(1.5)) && (loop_count == 0))
@@ -1457,14 +1461,14 @@ void state_machine_func(void)
         	}
         break;
         case mission_num_hover_spray:
-            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+            pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_for_distance);	/* TODO:switch to different board positions. -libn */
+            pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_for_distance);
             pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE;
             /* add height adjustment  --start. */
             if(ros::Time::now() - mission_last_time > ros::Duration(0.5))	/* spray for 5 seconds. -libn */
             {
-                pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_sp_calculated_m2p_data.yaw_sp);	/* TODO:switch to different board positions. -libn */
-                pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_sp_calculated_m2p_data.yaw_sp);
+                pose_pub.pose.position.x = board10.drawingboard[current_mission_num].x - SPRAY_DISTANCE * cos(yaw_for_distance);	/* TODO:switch to different board positions. -libn */
+                pose_pub.pose.position.y = board10.drawingboard[current_mission_num].y - SPRAY_DISTANCE * sin(yaw_for_distance);
                 pose_pub.pose.position.z = board10.drawingboard[current_mission_num].z + SAFE_HEIGHT_DISTANCE - 0.05f; //飞机下移
             }
             /* add height adjustment  --stop. */
