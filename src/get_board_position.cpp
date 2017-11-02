@@ -12,7 +12,8 @@
 #include <state_machine/DrawingBoard.h>
 #include <state_machine/DrawingBoard10.h>
 #include <geometry_msgs/PoseStamped.h>
-
+#include <state_machine/TASK_STATUS_MONITOR_M2P.h>
+#include <state_machine/VISION_ONE_NUM_GET_M2P.h>
 #define MIN_OBSERVE_TIMES 3         //显示屏数字的最小观测次数
 #define MIN_DETECTION_TIMES 2       /* count_num > MIN_DETECTION_TIMES => num detected; else: num not detected. */
 #define MAX_DETECTION_DISTANCE 0.5  /* max detected board distance between different loops. */
@@ -57,6 +58,26 @@ void camera_switch_cb(const std_msgs::Int32::ConstPtr& msg)
 {
     camera_switch_data = *msg;
 //    ROS_INFO("get camera_switch_data = %d",camera_switch_data.data);
+}
+
+static bool force_update = true;
+void status_cb(const state_machine::TASK_STATUS_MONITOR_M2P::ConstPtr& msg)
+{
+    // if the uav is near enough, force update position infomation
+	if (msg->task_status == 18) { 
+		force_update = true;
+	} else {
+		force_update = false;
+	}
+
+}
+
+static int task_num = -1;
+void task_num_cb(const state_machine::VISION_ONE_NUM_GET_M2P::ConstPtr& msg)
+{
+    task_num = (int)(msg->num);
+    if (task_num < 0 || task_num > 9)
+        task_num = -1;
 }
 
 /* 任何视觉信息都通过该msg传输 */
@@ -144,6 +165,11 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
 
             if(count_detection[num] >= MIN_DETECTION_TIMES)
             {
+                // if force update the position of task number borad
+                if ((task_num == num) && force_update) {
+                    most_precisive[num].accuracy_level = 0;
+                }
+
                 if (((temp_precisive[num].accuracy_level > 0) &&
                      (temp_precisive[num].accuracy_level <= most_precisive[num].accuracy_level)) ||
                     most_precisive[num].accuracy_level == 0) {
@@ -216,6 +242,12 @@ int main(int argc, char **argv)
 	/* get pixhawk's local position. -libn */
     local_pos_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose", 10, pos_cb);
     camera_switch_sub = nh.subscribe<std_msgs::Int32>("camera_switch", 10, camera_switch_cb);
+		
+	ros::Subscriber state_machine_status_sub = nh.subscribe<state_machine::TASK_STATUS_MONITOR_M2P>
+    ("mavros/task_status_monitor_m2p", 1, status_cb);
+
+    ros::Subscriber task_num_sub = nh.subscribe<state_machine::VISION_ONE_NUM_GET_M2P>
+    ("mavros/vision_one_num_get_m2p", 1, task_num_cb);
 
     // 初始化赋值
     for(int i = 0; i < 10; i++)
