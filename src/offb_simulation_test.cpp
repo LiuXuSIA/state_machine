@@ -48,8 +48,8 @@
 
 // 宏定义
 // 喷洒时，会向前飞0.5m
-#define SPRAY_DISTANCE 2.2  /* distance from UAV to drawing board while sparying. */
-#define VISION_SCAN_DISTANCE 2.7  /* distance from UAV to drawing board while hoveing and scanning. */
+#define SPRAY_DISTANCE 2.0  /* distance from UAV to drawing board while sparying. */
+#define VISION_SCAN_DISTANCE 2.5  /* distance from UAV to drawing board while hoveing and scanning. */
 // 为喷洒高度进行一个补偿
 #define SAFE_HEIGHT_DISTANCE 0.34  /* distanche from drawing board's height to expected height: 0: real mission; >0: for safe. */
 // 固定的高度

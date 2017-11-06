@@ -177,11 +177,11 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
                     most_precisive[num].y = temp_precisive[num].y;
                     most_precisive[num].z = temp_precisive[num].z;
                     most_precisive[num].accuracy_level  = temp_precisive[num].accuracy_level;
-//                    ROS_INFO("Num: %d; Position: %4.2f, %4.2f, %4.2f; Highest level: %d",num,
-//                        most_precisive[num].x,
-//                        most_precisive[num].y,
-//                        most_precisive[num].z,
-//                        most_precisive[num].accuracy_level);
+                //    ROS_INFO("Num: %d; Position: %4.2f, %4.2f, %4.2f; Highest level: %d",num,
+                //        most_precisive[num].x,
+                //        most_precisive[num].y,
+                //        most_precisive[num].z,
+                //        most_precisive[num].accuracy_level);
                 }
 
                 /* store only stable vision message. */
