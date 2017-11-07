@@ -14,10 +14,16 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <state_machine/TASK_STATUS_MONITOR_M2P.h>
 #include <state_machine/VISION_ONE_NUM_GET_M2P.h>
+#include <state_machine/Attitude.h>
+
 #define MIN_OBSERVE_TIMES 3         //显示屏数字的最小观测次数
 #define MIN_DETECTION_TIMES 2       /* count_num > MIN_DETECTION_TIMES => num detected; else: num not detected. */
 #define MAX_DETECTION_DISTANCE 0.5  /* max detected board distance between different loops. */
                                     // 上一次与这一次检测到的数字在x、y方向的距离如果差别很大，就放弃获取
+
+#define MAX_ROLL_ANGLE 10.0f    // max roll angle for enabling number update
+#define MAX_PITCH_ANGLE 5.0f    // max pitch angle for enabling number update
+
 static struct {
     double x;
     double y;
@@ -80,6 +86,12 @@ void task_num_cb(const state_machine::VISION_ONE_NUM_GET_M2P::ConstPtr& msg)
         task_num = -1;
 }
 
+static state_machine::Attitude attitude;
+void att_cb(const state_machine::Attitude::ConstPtr& msg)
+{
+    attitude = *msg;
+}
+
 /* 任何视觉信息都通过该msg传输 */
 sensor_msgs::LaserScan board_scan;
 ros::Subscriber board_pos_sub;
@@ -99,7 +111,7 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
         if(num == 11)   ROS_INFO("incomplete rectangle detected");
         else if(num >9 || num <0)
         {
-            ROS_INFO("board num error!");
+            ROS_INFO("Display num error!");
         }
         else
         {
@@ -127,7 +139,7 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
             if(num == 11)	break;	/* incomplete rectangle detected. -libn */
             else if(num >9 || num <0)
             {
-                ROS_INFO("board num error!");
+                ROS_INFO("Board num error!");
                 break;
             }
 //            ROS_INFO("data received:\n"
@@ -165,6 +177,10 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
 
             if(count_detection[num] >= MIN_DETECTION_TIMES)
             {
+                if(fabsf(attitude.roll*180/3.14) > MAX_ROLL_ANGLE || fabsf(attitude.pitch*180/3.14) > MAX_PITCH_ANGLE) {
+                    temp_precisive[num].accuracy_level = 0;
+                    ROS_INFO("I am here");
+                }
                 // if force update the position of task number borad
                 if ((task_num == num) && force_update) {
                     most_precisive[num].accuracy_level = 0;
@@ -177,12 +193,14 @@ void board_pos_cb(const sensor_msgs::LaserScan::ConstPtr& msg)
                     most_precisive[num].y = temp_precisive[num].y;
                     most_precisive[num].z = temp_precisive[num].z;
                     most_precisive[num].accuracy_level  = temp_precisive[num].accuracy_level;
-                //    ROS_INFO("Num: %d; Position: %4.2f, %4.2f, %4.2f; Highest level: %d",num,
-                //        most_precisive[num].x,
-                //        most_precisive[num].y,
-                //        most_precisive[num].z,
-                //        most_precisive[num].accuracy_level);
                 }
+                ROS_INFO("Num: %d; Position: %4.2f, %4.2f, %4.2f; Highest level: %d",num,
+                most_precisive[num].x,
+                most_precisive[num].y,
+                most_precisive[num].z,
+                most_precisive[num].accuracy_level);
+                ROS_INFO("roll:%.2f; pitch:%.2f; yaw:%.2f", 
+                attitude.roll*180/3.14,attitude.pitch*180/3.14,attitude.yaw*180/3.14);
 
                 /* store only stable vision message. */
                 board10_pub.drawingboard[num].num = num;
@@ -248,6 +266,9 @@ int main(int argc, char **argv)
 
     ros::Subscriber task_num_sub = nh.subscribe<state_machine::VISION_ONE_NUM_GET_M2P>
     ("mavros/vision_one_num_get_m2p", 1, task_num_cb);
+
+    ros::Subscriber att_sub = nh.subscribe<state_machine::Attitude>
+    ("mavros/attitude", 1, att_cb);
 
     // 初始化赋值
     for(int i = 0; i < 10; i++)
