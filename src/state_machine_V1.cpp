@@ -44,13 +44,9 @@ bool velocity_control_enable = false;
 //every state need target position
 
 static const int takeoff = 1;
+static const int hover_after_takeoff = 2;
 static const int hover_only = 3;
-static const int position_A_go = 4;
-static const int position_A_hover = 5;
-static const int position_B_go = 4;
-static const int position_B_hover = 5;
-static const int position_C_go = 4;
-static const int position_C_hover = 5;
+static const int component_point_go = 4;
 static const int component_recognize = 5;
 static const int component_locate = 6;
 static const int attitude_adjust_before_suck = 7;
