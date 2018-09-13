@@ -4,6 +4,7 @@
 @author         liuxu
 @email          liuxu.ccc@gmail.com
 @description    a simple state machine for the drone race in 2018
+                takeoff-->A-->hover-->B-->hover-->C-->hover-->landing
 *************************************************************************/
 
 #include <ros/ros.h>

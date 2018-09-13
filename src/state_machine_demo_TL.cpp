@@ -1,9 +1,10 @@
 /*************************************************************************
-@file           state_machine_demo.cpp
-@date           2018/08/20 16:25
+@file           state_machine_demo_TL.cpp
+@date           2018/09/11 
 @author         liuxu
 @email          liuxu.ccc@gmail.com
 @description    a simple state machine for the drone race in 2018
+                takeoff-->honver-->landind
 *************************************************************************/
 
 #include <ros/ros.h>
