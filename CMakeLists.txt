@@ -32,8 +32,7 @@ add_message_files(
   YAW_SP_CALCULATED_M2P.msg
   FailureRecord.msg
   GRAB_STATUS_M2P.msg
-  VISITION_POSITION_GET_M2P.msg
-
+  VISION_POSITION_GET_M2P.msg
 )
 
 ## Generate services in the 'srv' folder
