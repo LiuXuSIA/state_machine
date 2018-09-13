@@ -9,4 +9,4 @@
 std_msgs/Header header
 
 uint64 timestamp   #timestamp
-unit8  grab_status #whether grab the box
+uint8  grab_status #whether grab the box
