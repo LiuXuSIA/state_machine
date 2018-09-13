@@ -121,7 +121,7 @@ void state_machine_fun(void)
         break;
         case land:
         {
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
                 if(current_state.mode != "AUTO.LAND" && 
                    (ros::Time::now() - landing_last_request > ros::Duration(5)))
