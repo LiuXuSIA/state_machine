@@ -9,7 +9,18 @@
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <state_machine/State.h>
+#include <state_machine/FIXED_TARGET_POSITION_P2M.h>
+#include <state_machine/FIXED_TARGET_RETURN_M2P.h>
+#include <state_machine/GRAB_STATUS_M2P.h>
+#include <state_machine/TASK_STATUS_CHANGE_P2M.h>
+#include <state_machine/TASK_STATUS_MONITOR_M2P.h>
+#include <state_machine/VISION_POSITION_GET_M2P.h>
+#include <state_machine/YAW_SP_CALCULATED_M2P.h>
 #include "math.h"
+
+/**************************for different debug**************************/
+#define communication_debug
+//#define orientation_debug
 
 /***************************variable definition*************************/
 
@@ -34,7 +45,8 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "offboard_node");
     ros::NodeHandle nh;
-
+    
+    #ifdef orientation_debug
     pose_pub.pose.position.x = 0;
     pose_pub.pose.position.y = 0;
     pose_pub.pose.position.z = 3;
@@ -46,6 +58,7 @@ int main(int argc, char **argv)
     pose_pub.pose.orientation.y = 0;
     pose_pub.pose.orientation.z = sin(yaw_sp/2);
     pose_pub.pose.orientation.w = cos(yaw_sp/2);
+    #endif
 
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
