@@ -15,6 +15,7 @@
 #include "math.h"
 
 /***************************function declare****************************/
+
 void state_machine_fun(void);
 
 /***************************variable definition*************************/
@@ -24,9 +25,6 @@ geometry_msgs::PoseStamped position_B;
 geometry_msgs::PoseStamped position_C;
 
 geometry_msgs::PoseStamped pose_pub;  //ENU
-geometry_msgs::TwistStamped vel_pub;
-
-bool velocity_control_enable = true;
 
 //state_machine state
 //every state need target position
@@ -65,11 +63,6 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
     current_position = *msg;
 }
 
-geometry_msgs::TwistStamped current_velocity;
-void velo_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
-{
-    current_velocity = *msg;
-}
 
 /*****************************main function*****************************/
 int main(int argc, char **argv)
@@ -77,13 +70,6 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "offboard_node");
     ros::NodeHandle nh;
 
-    //takeoff velocity
-    vel_pub.twist.linear.x = 0.0f;
-    vel_pub.twist.linear.y = 0.0f;
-    vel_pub.twist.linear.z = 2.0f;
-    vel_pub.twist.angular.x = 0.0f;
-    vel_pub.twist.angular.y = 0.0f;
-    vel_pub.twist.angular.z = 0.0f;
     //position of A
     position_A.pose.position.x = 0;
     position_A.pose.position.y = 0;
@@ -102,25 +88,23 @@ int main(int argc, char **argv)
     //A
     position_A.pose.orientation.x = 0;
     position_A.pose.orientation.y = 0;
-    position_A.pose.orientation.z = sin(yaw_sp/2);
-    position_A.pose.orientation.w = cos(yaw_sp/2);
+    position_A.pose.orientation.z = 0;
+    position_A.pose.orientation.w = 0;
     //B
     position_B.pose.orientation.x = 0;
     position_B.pose.orientation.y = 0;
-    position_B.pose.orientation.z = sin(yaw_sp/2);
-    position_B.pose.orientation.w = cos(yaw_sp/2);
+    position_B.pose.orientation.z = 0;
+    position_B.pose.orientation.w = 0;
     //C
     position_C.pose.orientation.x = 0;
     position_C.pose.orientation.y = 0;
-    position_C.pose.orientation.z = sin(yaw_sp/2);
-    position_C.pose.orientation.w = cos(yaw_sp/2);
+    position_C.pose.orientation.z = 0;
+    position_C.pose.orientation.w = 0;
 
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
-    ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity",10,velo_cb);
 
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
-    ros::Publisher local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("mavros/setpoint_velocity/cmd_vel",10);
     land_client = nh.serviceClient<state_machine::CommandTOL>("mavros/cmd/land");
     landing_cmd.request.min_pitch = 1.0;
     landing_last_request = ros::Time::now();
@@ -129,8 +113,8 @@ int main(int argc, char **argv)
 
     while(ros::ok() && !current_state.connected)
     {
-    	ros::spinOnce();
-    	rate.sleep();
+        ros::spinOnce();
+        rate.sleep();
     }
 
     ROS_INFO("Connect successfully!!");
@@ -138,34 +122,29 @@ int main(int argc, char **argv)
     ROS_INFO("send setpoint before takeoff,please wait");
 
     for(int i =100; ros::ok() && i > 0; i--)
-	{
-		local_vel_pub.publish(vel_pub);
-		ros::spinOnce();
-		rate.sleep();
-	}
+    {
+        local_pos_pub.publish(pose_pub);
+        ros::spinOnce();
+        rate.sleep();
+    }
 
     ROS_INFO("Initialization finished");
 
-	while(ros::ok())
-	{
+    while(ros::ok())
+    {
         if(current_state.mode == "OFFBOARD" && current_state.armed)
         {
             state_machine_fun();
             ROS_INFO("current_pos_state:%d",current_pos_state);
         }
-        if(velocity_control_enable)
-        {
-            local_vel_pub.publish(vel_pub);
-        }
-        else
-        {
-            local_pos_pub.publish(pose_pub);
-        }
-		ros::spinOnce();
-		rate.sleep();
-	}
 
-	return 0;
+        local_pos_pub.publish(pose_pub);
+
+        ros::spinOnce();
+        rate.sleep();
+    }
+
+    return 0;
 }
 
 /***********************************state_machine function***********************************/
@@ -175,11 +154,10 @@ void state_machine_fun(void)
     {
         case takeoff:
         {
-            if(current_position.pose.position.z > 2)
+            if(current_position.pose.position.z > 3)
             {
                 current_pos_state = position_A_go;
                 last_time = ros::Time::now();
-                velocity_control_enable = false;
             }
         }
         break;
@@ -197,7 +175,7 @@ void state_machine_fun(void)
         break;
         case position_A_hover:
         {
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
                 current_pos_state = position_B_go;
                 last_time = ros::Time::now();
@@ -218,7 +196,7 @@ void state_machine_fun(void)
         break;
         case position_B_hover:
         {
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
                 current_pos_state = position_C_go;
                 last_time = ros::Time::now();
@@ -239,7 +217,7 @@ void state_machine_fun(void)
         break;
         case position_C_hover:
         {
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
                 current_pos_state = return_home;
                 last_time = ros::Time::now();

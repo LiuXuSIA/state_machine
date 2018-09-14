@@ -1,6 +1,6 @@
 /*************************************************************************
 @file           state_machine_demo_TL.cpp
-@date           2018/09/11 
+@date           2018/09/14 
 @author         liuxu
 @email          liuxu.ccc@gmail.com
 @description    a simple state machine for the drone race in 2018
@@ -58,6 +58,13 @@ int main(int argc, char **argv)
     pose_pub.pose.position.x = 0;
     pose_pub.pose.position.y = 0;
     pose_pub.pose.position.z = 5;
+
+    float yaw_sp=M_PI_2;
+    
+    pose_pub.pose.orientation.x = 0;
+    pose_pub.pose.orientation.y = 0;
+    pose_pub.pose.orientation.z = sin(yaw_sp/2);
+    pose_pub.pose.orientation.w = cos(yaw_sp/2);
 
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
