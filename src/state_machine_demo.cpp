@@ -15,6 +15,7 @@
 #include "math.h"
 
 /***************************function declare****************************/
+
 void state_machine_fun(void);
 
 /***************************variable definition*************************/
@@ -26,7 +27,10 @@ geometry_msgs::PoseStamped position_C;
 geometry_msgs::PoseStamped pose_pub;  //ENU
 geometry_msgs::TwistStamped vel_pub;
 
-bool velocity_control_enable = true;
+ros::Publisher local_pos_pub;
+ros::Publisher local_vel_pub;
+
+//bool velocity_control_enable = true;
 
 //state_machine state
 //every state need target position
@@ -119,8 +123,8 @@ int main(int argc, char **argv)
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
     ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity",10,velo_cb);
 
-    ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
-    ros::Publisher local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("mavros/setpoint_velocity/cmd_vel",10);
+    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
+    local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("mavros/setpoint_velocity/cmd_vel",10);
     land_client = nh.serviceClient<state_machine::CommandTOL>("mavros/cmd/land");
     landing_cmd.request.min_pitch = 1.0;
     landing_last_request = ros::Time::now();
@@ -148,19 +152,9 @@ int main(int argc, char **argv)
 
 	while(ros::ok())
 	{
-        if(current_state.mode == "OFFBOARD" && current_state.armed)
-        {
-            state_machine_fun();
-            ROS_INFO("current_pos_state:%d",current_pos_state);
-        }
-        if(velocity_control_enable)
-        {
-            local_vel_pub.publish(vel_pub);
-        }
-        else
-        {
-            local_pos_pub.publish(pose_pub);
-        }
+        state_machine_fun();
+        ROS_INFO("current_pos_state:%d",current_pos_state);
+
 		ros::spinOnce();
 		rate.sleep();
 	}
@@ -175,20 +169,20 @@ void state_machine_fun(void)
     {
         case takeoff:
         {
-            if(current_position.pose.position.z > 2)
+            local_vel_pub.publish(vel_pub);
+            if(current_position.pose.position.z > 3)
             {
                 current_pos_state = position_A_go;
                 last_time = ros::Time::now();
-                velocity_control_enable = false;
             }
         }
         break;
         case position_A_go:
         {
-            pose_pub = position_A;
-            if (current_position.pose.position.x - position_A.pose.position.x < 0.1 &&
-                current_position.pose.position.y - position_A.pose.position.y < 0.1 &&
-                current_position.pose.position.z - position_A.pose.position.z < 0.1 )
+            local_pos_pub.publish(position_A);
+            if (abs(current_position.pose.position.x - position_A.pose.position.x) < 0.1 &&
+                abs(current_position.pose.position.y - position_A.pose.position.y) < 0.1 &&
+                abs(current_position.pose.position.z - position_A.pose.position.z) < 0.1 )
             {
                 current_pos_state = position_A_hover;
                 last_time = ros::Time::now();
@@ -197,7 +191,8 @@ void state_machine_fun(void)
         break;
         case position_A_hover:
         {
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            local_pos_pub.publish(position_A);
+            if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
                 current_pos_state = position_B_go;
                 last_time = ros::Time::now();
@@ -206,10 +201,10 @@ void state_machine_fun(void)
         break;
         case position_B_go:
         {
-            pose_pub = position_B;
-            if (current_position.pose.position.x - position_B.pose.position.x < 0.1 &&
-                current_position.pose.position.y - position_B.pose.position.y < 0.1 &&
-                current_position.pose.position.z - position_B.pose.position.z < 0.1 )
+            local_pos_pub.publish(position_B);
+            if (abs(current_position.pose.position.x - position_B.pose.position.x) < 0.1 &&
+                abs(current_position.pose.position.y - position_B.pose.position.y) < 0.1 &&
+                abs(current_position.pose.position.z - position_B.pose.position.z) < 0.1 )
             {
                 current_pos_state = position_B_hover;
                 last_time = ros::Time::now();
@@ -218,7 +213,8 @@ void state_machine_fun(void)
         break;
         case position_B_hover:
         {
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            local_pos_pub.publish(position_B);
+            if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
                 current_pos_state = position_C_go;
                 last_time = ros::Time::now();
@@ -227,10 +223,10 @@ void state_machine_fun(void)
         break;
         case position_C_go:
         {
-            pose_pub = position_C;
-            if (current_position.pose.position.x - position_C.pose.position.x < 0.1 &&
-                current_position.pose.position.y - position_C.pose.position.y < 0.1 &&
-                current_position.pose.position.z - position_C.pose.position.z < 0.1 )
+            local_pos_pub.publish(position_C);
+            if (abs(current_position.pose.position.x - position_C.pose.position.x) < 0.1 &&
+                abs(current_position.pose.position.y - position_C.pose.position.y) < 0.1 &&
+                abs(current_position.pose.position.z - position_C.pose.position.z) < 0.1 )
             {
                 current_pos_state = position_C_hover;
                 last_time = ros::Time::now();
@@ -239,7 +235,8 @@ void state_machine_fun(void)
         break;
         case position_C_hover:
         {
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            local_pos_pub.publish(position_C);
+            if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
                 current_pos_state = return_home;
                 last_time = ros::Time::now();
@@ -248,10 +245,10 @@ void state_machine_fun(void)
         break;
         case  return_home:
         {
-            pose_pub = position_A;
-            if (current_position.pose.position.x - position_A.pose.position.x < 0.1 &&
-                current_position.pose.position.y - position_A.pose.position.y < 0.1 &&
-                current_position.pose.position.z - position_A.pose.position.z < 0.1 )
+            local_pos_pub.publish(position_A);
+            if (abs(current_position.pose.position.x - position_A.pose.position.x) < 0.1 &&
+                abs(current_position.pose.position.y - position_A.pose.position.y) < 0.1 &&
+                abs(current_position.pose.position.z - position_A.pose.position.z) < 0.1 )
             {
                 current_pos_state = land;
                 last_time = ros::Time::now();
@@ -261,7 +258,7 @@ void state_machine_fun(void)
         case land:
         {
             if(current_state.mode != "AUTO.LAND" && 
-                   (ros::Time::now() - landing_last_request > ros::Duration(5)))
+                   (ros::Time::now() - landing_last_request > ros::Duration(10.0)))
                 {
                     if(land_client.call(landing_cmd) && landing_cmd.response.success)
                     {

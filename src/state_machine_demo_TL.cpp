@@ -20,6 +20,7 @@ void state_machine_fun(void);
 /***************************variable definition*************************/
 
 geometry_msgs::PoseStamped pose_pub;  //ENU
+ros::Publisher local_pos_pub;
 
 //state_machine state
 static const int takeoff = 1;
@@ -47,6 +48,8 @@ geometry_msgs::PoseStamped current_position;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_position = *msg;
+    ROS_INFO("current_position:%f",current_position.pose.position.z);
+    ROS_INFO("pose_pub:%f\n",pose_pub.pose.position.z);
 }
 
 /*****************************main function*****************************/
@@ -62,8 +65,7 @@ int main(int argc, char **argv)
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
     
-    ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
-    ros::Publisher local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("mavros/setpoint_velocity/cmd_vel",10);
+    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
     land_client = nh.serviceClient<state_machine::CommandTOL>("mavros/cmd/land");
     landing_cmd.request.min_pitch = 1.0;
     landing_last_request = ros::Time::now();
@@ -91,11 +93,9 @@ int main(int argc, char **argv)
 
 	while(ros::ok())
 	{
-        if(current_state.mode == "OFFBOARD" && current_state.armed)
-        {
-            state_machine_fun();
-        }
-        local_pos_pub.publish(pose_pub);
+        state_machine_fun();
+        ROS_INFO("current_pos_state:%d",current_pos_state);
+        
 		ros::spinOnce();
 		rate.sleep();
 	}
@@ -110,9 +110,10 @@ void state_machine_fun(void)
     {
         case takeoff:
         {
-            if (current_position.pose.position.x - pose_pub.pose.position.x < 0.1 &&
-                current_position.pose.position.y - pose_pub.pose.position.y < 0.1 &&
-                current_position.pose.position.z - pose_pub.pose.position.z < 0.1 )
+            local_pos_pub.publish(pose_pub);
+            if (abs(current_position.pose.position.x - pose_pub.pose.position.x) < 0.1 &&
+                abs(current_position.pose.position.y - pose_pub.pose.position.y) < 0.1 &&
+                abs(current_position.pose.position.z - pose_pub.pose.position.z) < 0.1 )
             {
                 current_pos_state = land;
                 last_time = ros::Time::now();
@@ -123,8 +124,9 @@ void state_machine_fun(void)
         {
             if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
-                if(current_state.mode != "AUTO.LAND" && 
-                   (ros::Time::now() - landing_last_request > ros::Duration(5)))
+                if(current_state.mode == "OFFBOARD"  && 
+                   current_state.mode != "AUTO.LAND" && 
+                   (ros::Time::now() - landing_last_request > ros::Duration(3.0)))
                 {
                     if(land_client.call(landing_cmd) && landing_cmd.response.success)
                     {
@@ -133,6 +135,8 @@ void state_machine_fun(void)
                     landing_last_request = ros::Time::now();
                 }
             }
+            else
+                local_pos_pub.publish(pose_pub);
         }
         break;
     }

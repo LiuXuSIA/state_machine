@@ -60,13 +60,6 @@ int main(int argc, char **argv)
     pose_pub.pose.position.y = 0;
     pose_pub.pose.position.z = 5;
 
-    float yaw_sp = M_PI_2;
-    
-    pose_pub.pose.orientation.x = 0;
-    pose_pub.pose.orientation.y = 0;
-    pose_pub.pose.orientation.z = sin(yaw_sp/2);
-    pose_pub.pose.orientation.w = cos(yaw_sp/2);
-
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
     
@@ -99,7 +92,7 @@ int main(int argc, char **argv)
 	while(ros::ok())
 	{
         state_machine_fun();
-    
+        
 		ros::spinOnce();
 		rate.sleep();
 	}
@@ -128,7 +121,8 @@ void state_machine_fun(void)
         {
             if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
-                if(current_state.mode != "AUTO.LAND" && 
+                if(current_state.mode == "OFFBOARD"  &&
+                   current_state.mode != "AUTO.LAND" && 
                    (ros::Time::now() - landing_last_request > ros::Duration(5)))
                 {
                     if(land_client.call(landing_cmd) && landing_cmd.response.success)
@@ -139,7 +133,14 @@ void state_machine_fun(void)
                 }
             }
             else
+            {
+                float yaw_sp = M_PI_2;
+                pose_pub.pose.orientation.x = 0;
+                pose_pub.pose.orientation.y = 0;
+                pose_pub.pose.orientation.z = sin(yaw_sp/2);
+                pose_pub.pose.orientation.w = cos(yaw_sp/2);
                 local_pos_pub.publish(pose_pub);
+            }
         }
         break;
     }
