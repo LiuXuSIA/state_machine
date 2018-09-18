@@ -111,9 +111,9 @@ void state_machine_fun(void)
         case takeoff:
         {
             local_pos_pub.publish(pose_pub);
-            if (abs(current_position.pose.position.x - pose_pub.pose.position.x) < 0.1 &&
-                abs(current_position.pose.position.y - pose_pub.pose.position.y) < 0.1 &&
-                abs(current_position.pose.position.z - pose_pub.pose.position.z) < 0.1 )
+            if (//abs(current_position.pose.position.x - pose_pub.pose.position.x) < 0.1 &&
+                //abs(current_position.pose.position.y - pose_pub.pose.position.y) < 0.1 &&
+                abs(current_position.pose.position.z - pose_pub.pose.position.z) < 1.0 )
             {
                 current_pos_state = land;
                 last_time = ros::Time::now();

@@ -43,10 +43,10 @@ geometry_msgs::PoseStamped current_position;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_position = *msg;
-    ROS_INFO("%f",current_position.pose.orientation.x);
-    ROS_INFO("%f",current_position.pose.orientation.y);
-    ROS_INFO("%f",current_position.pose.orientation.z);
-    ROS_INFO("%f",current_position.pose.orientation.w);
+    ROS_INFO("current_position.x:%f",current_position.pose.orientation.x);
+    ROS_INFO("current_position.y:%f",current_position.pose.orientation.y);
+    ROS_INFO("current_position.z:%f",current_position.pose.orientation.z);
+    ROS_INFO("current_position.w:%f",current_position.pose.orientation.w);
 }
 
 state_machine::FIXED_TARGET_POSITION_P2M fix_target_position;
@@ -62,23 +62,23 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     fix_target_return.construction_x = fix_target_position.construction_x;
     fix_target_return.construction_y = fix_target_position.construction_y;
     fix_target_return.construction_z = fix_target_position.construction_z;
-    ROS_INFO("%f",fix_target_return.home_x);
-    ROS_INFO("%f",fix_target_return.home_y);
-    ROS_INFO("%f",fix_target_return.home_z);
-    ROS_INFO("%f",fix_target_return.component_x);
-    ROS_INFO("%f",fix_target_return.component_y);
-    ROS_INFO("%f",fix_target_return.component_z);
-    ROS_INFO("%f",fix_target_return.construction_x);
-    ROS_INFO("%f",fix_target_return.construction_y);
-    ROS_INFO("%f",fix_target_return.construction_z);
+    ROS_INFO("fix_target_return.home_x:%f",fix_target_return.home_x);
+    ROS_INFO("fix_target_return.home_y:%f",fix_target_return.home_y);
+    ROS_INFO("fix_target_return.home_z:%f",fix_target_return.home_z);
+    ROS_INFO("fix_target_return.component_x:%f",fix_target_return.component_x);
+    ROS_INFO("fix_target_return.component_y:%f",fix_target_return.component_y);
+    ROS_INFO("fix_target_return.component_z:%f",fix_target_return.component_z);
+    ROS_INFO("fix_target_return.construction_x:%f",fix_target_return.construction_x);
+    ROS_INFO("fix_target_return.construction_y:%f",fix_target_return.construction_y);
+    ROS_INFO("fix_target_return.construction_z:%f",fix_target_return.construction_z);
 }
 
 state_machine::TASK_STATUS_CHANGE_P2M task_status_change;
 void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::ConstPtr& msg)
 {
     task_status_change = *msg;
-    ROS_INFO("%d",task_status_change.task_status);
-    ROS_INFO("%d",task_status_change.task_status);
+    ROS_INFO("task_status_change.task_status:%d",task_status_change.task_status);
+    ROS_INFO("task_status_change.loop_value:%d",task_status_change.loop_value);
 }
 
 
@@ -182,7 +182,7 @@ int main(int argc, char **argv)
         break;
     }
 
-    ros::spinOnce();
+    ros::spin();
 
 	return 0;
 }
