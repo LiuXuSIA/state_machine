@@ -180,9 +180,9 @@ void state_machine_fun(void)
         case position_A_go:
         {
             local_pos_pub.publish(position_A);
-            if (abs(current_position.pose.position.x - position_A.pose.position.x) < 0.1 &&
-                abs(current_position.pose.position.y - position_A.pose.position.y) < 0.1 &&
-                abs(current_position.pose.position.z - position_A.pose.position.z) < 0.1 )
+            if (abs(current_position.pose.position.x - position_A.pose.position.x) < 1.5 &&
+                abs(current_position.pose.position.y - position_A.pose.position.y) < 1.5 &&
+                abs(current_position.pose.position.z - position_A.pose.position.z) < 1.5 )
             {
                 current_pos_state = position_A_hover;
                 last_time = ros::Time::now();
@@ -202,9 +202,9 @@ void state_machine_fun(void)
         case position_B_go:
         {
             local_pos_pub.publish(position_B);
-            if (abs(current_position.pose.position.x - position_B.pose.position.x) < 0.1 &&
-                abs(current_position.pose.position.y - position_B.pose.position.y) < 0.1 &&
-                abs(current_position.pose.position.z - position_B.pose.position.z) < 0.1 )
+            if (abs(current_position.pose.position.x - position_B.pose.position.x) < 1.5 &&
+                abs(current_position.pose.position.y - position_B.pose.position.y) < 1.5 &&
+                abs(current_position.pose.position.z - position_B.pose.position.z) < 1.5 )
             {
                 current_pos_state = position_B_hover;
                 last_time = ros::Time::now();
@@ -224,9 +224,9 @@ void state_machine_fun(void)
         case position_C_go:
         {
             local_pos_pub.publish(position_C);
-            if (abs(current_position.pose.position.x - position_C.pose.position.x) < 0.1 &&
-                abs(current_position.pose.position.y - position_C.pose.position.y) < 0.1 &&
-                abs(current_position.pose.position.z - position_C.pose.position.z) < 0.1 )
+            if (abs(current_position.pose.position.x - position_C.pose.position.x) < 1.5 &&
+                abs(current_position.pose.position.y - position_C.pose.position.y) < 1.5 &&
+                abs(current_position.pose.position.z - position_C.pose.position.z) < 1.5 )
             {
                 current_pos_state = position_C_hover;
                 last_time = ros::Time::now();
@@ -246,9 +246,9 @@ void state_machine_fun(void)
         case  return_home:
         {
             local_pos_pub.publish(position_A);
-            if (abs(current_position.pose.position.x - position_A.pose.position.x) < 0.1 &&
-                abs(current_position.pose.position.y - position_A.pose.position.y) < 0.1 &&
-                abs(current_position.pose.position.z - position_A.pose.position.z) < 0.1 )
+            if (abs(current_position.pose.position.x - position_A.pose.position.x) < 1.5 &&
+                abs(current_position.pose.position.y - position_A.pose.position.y) < 1.5 &&
+                abs(current_position.pose.position.z - position_A.pose.position.z) < 1.5 )
             {
                 current_pos_state = land;
                 last_time = ros::Time::now();
