@@ -25,6 +25,7 @@
 /***************************variable definition*************************/
 
 geometry_msgs::PoseStamped pose_pub;  //ENU
+bool receive_flag = false;
 
 state_machine::FIXED_TARGET_RETURN_M2P fix_target_return;
 state_machine::GRAB_STATUS_M2P grab_status;
@@ -43,6 +44,7 @@ geometry_msgs::PoseStamped current_position;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_position = *msg;
+    
     ROS_INFO("current_position.x:%f",current_position.pose.position.x);
     ROS_INFO("current_position.y:%f",current_position.pose.position.y);
     ROS_INFO("current_position.z:%f",current_position.pose.position.z);
@@ -50,6 +52,7 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
     ROS_INFO("current_position.y:%f",current_position.pose.orientation.y);
     ROS_INFO("current_position.z:%f",current_position.pose.orientation.z);
     ROS_INFO("current_position.w:%f",current_position.pose.orientation.w);
+    
 }
 
 state_machine::FIXED_TARGET_POSITION_P2M fix_target_position;
@@ -74,6 +77,8 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     ROS_INFO("fix_target_return.construction_x:%f",fix_target_return.construction_x);
     ROS_INFO("fix_target_return.construction_y:%f",fix_target_return.construction_y);
     ROS_INFO("fix_target_return.construction_z:%f",fix_target_return.construction_z);
+
+    receive_flag = true;
 }
 
 state_machine::TASK_STATUS_CHANGE_P2M task_status_change;
@@ -158,10 +163,8 @@ int main(int argc, char **argv)
 
 	while(ros::ok())
 	{
-        local_pos_pub.publish(pose_pub);
-        ros::spinOnce();
-        rate.sleep();
-
+        while(receive_flag == false)
+            ros::spinOnce();
         fixed_target_pub.publish(fix_target_return);
 		ros::spinOnce();
 		rate.sleep();
@@ -182,7 +185,9 @@ int main(int argc, char **argv)
         ros::spinOnce();
         rate.sleep();
 
-        break;
+        receive_flag = false;
+
+        //break;
     }
 
     ros::spin();
