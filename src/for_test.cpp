@@ -43,6 +43,9 @@ geometry_msgs::PoseStamped current_position;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_position = *msg;
+    ROS_INFO("current_position.x:%f",current_position.pose.position.x);
+    ROS_INFO("current_position.y:%f",current_position.pose.position.y);
+    ROS_INFO("current_position.z:%f",current_position.pose.position.z);
     ROS_INFO("current_position.x:%f",current_position.pose.orientation.x);
     ROS_INFO("current_position.y:%f",current_position.pose.orientation.y);
     ROS_INFO("current_position.z:%f",current_position.pose.orientation.z);
