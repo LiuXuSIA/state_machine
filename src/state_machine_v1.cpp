@@ -1,10 +1,9 @@
 /*************************************************************************
-@file           state_machine_demo.cpp
-@date           2018/08/20 16:25
+@file           state_machine_v1.cpp
+@date           2018/09/24 11:01
 @author         liuxu
 @email          liuxu.ccc@gmail.com
-@description    a simple state machine for the drone race in 2018
-                takeoff-->A-->hover-->B-->hover-->C-->hover-->landing
+@description    fixed 3 position from GCS;distance measured by sensor
 *************************************************************************/
 
 
