@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   message_generation
+  serial
 )
 
 ## Generate messages in the 'msg' folder
@@ -33,6 +34,7 @@ add_message_files(
   FailureRecord.msg
   GRAB_STATUS_M2P.msg
   VISION_POSITION_GET_M2P.msg
+  Distance.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -54,7 +56,7 @@ generate_messages(
 
 
 catkin_package(
-CATKIN_DEPENDS roscpp std_msgs geometry_msgs message_runtime
+CATKIN_DEPENDS roscpp std_msgs geometry_msgs message_runtime serial
 )
 
 ###########
@@ -72,7 +74,8 @@ include_directories(
 #add_executable(state_machine 			src/state_machine.cpp)
 add_executable(send3point      src/send3point.cpp)
 add_executable(state_machine_demo     src/state_machine_demo.cpp)
-add_executable(state_machine_V1      src/state_machine_V1.cpp)
+add_executable(state_machine_v1.1      src/state_machine_v1.1.cpp)
+add_executable(state_machine_v1      src/state_machine_v1.cpp)
 add_executable(for_test     src/for_test.cpp)
 add_executable(state_machine_demo_TL     src/state_machine_demo_TL.cpp)
 add_executable(state_machine_demo_TLO     src/state_machine_demo_TLO.cpp)
@@ -82,6 +85,8 @@ add_executable(state_machine_demo_TLOS     src/state_machine_demo_TLOS.cpp)
 add_executable(state_machine_demo_NVOS     src/state_machine_demo_NVOS.cpp)
 add_executable(state_machine_demo_NO     src/state_machine_demo_NO.cpp)
 add_executable(state_machine_demo_COM     src/state_machine_demo_COM.cpp)
+add_executable(serial_test              src/serial_test.cpp)
+add_executable(distance_sensor              src/distance_sensor.cpp)
 #add_executable(send_expected_pos 		src/send_expected_pos.cpp)
 #add_executable(send10picture_position 	src/send10picture_position.cpp)
 #add_executable(pub_board_position 	src/pub_board_position.cpp)
@@ -95,7 +100,8 @@ add_executable(state_machine_demo_COM     src/state_machine_demo_COM.cpp)
 #add_dependencies(state_machine 			state_machine_generate_messages_cpp)
 add_dependencies(send3point      state_machine_generate_messages_cpp)
 add_dependencies(state_machine_demo      state_machine_generate_messages_cpp)
-add_dependencies(state_machine_V1      state_machine_generate_messages_cpp)
+add_dependencies(state_machine_v1.1      state_machine_generate_messages_cpp)
+add_dependencies(state_machine_v1      state_machine_generate_messages_cpp)
 add_dependencies(for_test      state_machine_generate_messages_cpp)
 add_dependencies(state_machine_demo_TL      state_machine_generate_messages_cpp)
 add_dependencies(state_machine_demo_TLO      state_machine_generate_messages_cpp)
@@ -105,6 +111,8 @@ add_dependencies(state_machine_demo_TLOS      state_machine_generate_messages_cp
 add_dependencies(state_machine_demo_NVOS      state_machine_generate_messages_cpp)
 add_dependencies(state_machine_demo_NO      state_machine_generate_messages_cpp)
 add_dependencies(state_machine_demo_COM      state_machine_generate_messages_cpp)
+add_dependencies(serial_test            state_machine_generate_messages_cpp)
+add_dependencies(distance_sensor            state_machine_generate_messages_cpp)
 #add_dependencies(send_expected_pos 		state_machine_generate_messages_cpp)
 #add_dependencies(send10picture_position state_machine_generate_messages_cpp)
 #add_dependencies(pub_board_position 	state_machine_generate_messages_cpp)
@@ -117,7 +125,8 @@ add_dependencies(state_machine_demo_COM      state_machine_generate_messages_cpp
 #target_link_libraries(state_machine  			${catkin_LIBRARIES})
 target_link_libraries(send3point       ${catkin_LIBRARIES})
 target_link_libraries(state_machine_demo       ${catkin_LIBRARIES})
-target_link_libraries(state_machine_V1       ${catkin_LIBRARIES})
+target_link_libraries(state_machine_v1.1       ${catkin_LIBRARIES})
+target_link_libraries(state_machine_v1       ${catkin_LIBRARIES})
 target_link_libraries(for_test       ${catkin_LIBRARIES})
 target_link_libraries(state_machine_demo_TL       ${catkin_LIBRARIES})
 target_link_libraries(state_machine_demo_TLO       ${catkin_LIBRARIES})
@@ -127,6 +136,8 @@ target_link_libraries(state_machine_demo_TLOS       ${catkin_LIBRARIES})
 target_link_libraries(state_machine_demo_NVOS       ${catkin_LIBRARIES})
 target_link_libraries(state_machine_demo_NO        ${catkin_LIBRARIES})
 target_link_libraries(state_machine_demo_COM        ${catkin_LIBRARIES})
+target_link_libraries(serial_test             ${catkin_LIBRARIES})
+target_link_libraries(distance_sensor             ${catkin_LIBRARIES})
 #target_link_libraries(send_expected_pos  		${catkin_LIBRARIES})
 #target_link_libraries(send10picture_position  	${catkin_LIBRARIES})
 #target_link_libraries(pub_board_position  	${catkin_LIBRARIES})
