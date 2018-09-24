@@ -1,9 +1,9 @@
 /*************************************************************************
 @file           state_machine_demo.cpp
-@date           2018/08/20 16:25
+@date           2018/09/15
 @author         liuxu
 @email          liuxu.ccc@gmail.com
-@description    a simple state machine for the drone race in 2018
+@description    just for some test
 *************************************************************************/
 
 #include <ros/ros.h>
