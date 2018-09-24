@@ -1,6 +1,6 @@
 /*******************************************************************************
 @file         send3point.cpp
-@date         20180821  08:35
+@date         2018/08/21  08:35
 @author       liuxu
 @email        lixu.ccc@gmail.com
 @description  send 3 position just for simulation
