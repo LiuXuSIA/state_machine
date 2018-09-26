@@ -35,6 +35,7 @@ add_message_files(
   GRAB_STATUS_M2P.msg
   VISION_POSITION_GET_M2P.msg
   Distance.msg
+  Vision_Position_Raw.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -87,6 +88,7 @@ add_executable(state_machine_demo_NO     src/state_machine_demo_NO.cpp)
 add_executable(state_machine_demo_COM     src/state_machine_demo_COM.cpp)
 add_executable(serial_test              src/serial_test.cpp)
 add_executable(distance_sensor              src/distance_sensor.cpp)
+add_executable(vision_position              src/vision_position.cpp)
 #add_executable(send_expected_pos 		src/send_expected_pos.cpp)
 #add_executable(send10picture_position 	src/send10picture_position.cpp)
 #add_executable(pub_board_position 	src/pub_board_position.cpp)
@@ -113,6 +115,7 @@ add_dependencies(state_machine_demo_NO      state_machine_generate_messages_cpp)
 add_dependencies(state_machine_demo_COM      state_machine_generate_messages_cpp)
 add_dependencies(serial_test            state_machine_generate_messages_cpp)
 add_dependencies(distance_sensor            state_machine_generate_messages_cpp)
+add_dependencies(vision_position            state_machine_generate_messages_cpp)
 #add_dependencies(send_expected_pos 		state_machine_generate_messages_cpp)
 #add_dependencies(send10picture_position state_machine_generate_messages_cpp)
 #add_dependencies(pub_board_position 	state_machine_generate_messages_cpp)
@@ -138,6 +141,7 @@ target_link_libraries(state_machine_demo_NO        ${catkin_LIBRARIES})
 target_link_libraries(state_machine_demo_COM        ${catkin_LIBRARIES})
 target_link_libraries(serial_test             ${catkin_LIBRARIES})
 target_link_libraries(distance_sensor             ${catkin_LIBRARIES})
+target_link_libraries(vision_position             ${catkin_LIBRARIES})
 #target_link_libraries(send_expected_pos  		${catkin_LIBRARIES})
 #target_link_libraries(send10picture_position  	${catkin_LIBRARIES})
 #target_link_libraries(pub_board_position  	${catkin_LIBRARIES})
