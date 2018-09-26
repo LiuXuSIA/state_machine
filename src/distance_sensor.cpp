@@ -62,7 +62,8 @@ int main (int argc, char** argv)
 
     while(ros::ok()) 
     { 
-        if(ser.available()){ 
+        if(ser.available())
+        { 
             ROS_INFO_STREAM("Reading:"); 
             std_msgs::String result; 
             state_machine::Distance distance;
