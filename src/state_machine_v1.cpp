@@ -24,6 +24,7 @@
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
 
 #include <state_machine/Distance.h> 
+#include <state_machine/Vision_Position_Raw.h> 
 
 
 /***************************function declare****************************/
@@ -44,6 +45,7 @@ geometry_msgs::TwistStamped vel_pub;
 ros::Publisher local_pos_pub;
 ros::Publisher local_vel_pub;
 ros::Publisher fixed_target_pub;
+ros::Publisher vision_position_pub;
 
 //bool velocity_control_enable = true;
 
@@ -183,6 +185,24 @@ void distance_cb(const state_machine::Distance::ConstPtr& msg)
     ROS_INFO("distance:%f",distance.distance);
 }
 
+state_machine::Vision_Position_Raw vision_position_raw;
+void vision_position_cb(const state_machine::Vision_Position_Raw::ConstPtr& msg)
+{
+    vision_position_raw = *msg;
+
+    vision_position_get.loop_value = loop;
+    vision_position_get.component_position_x = vision_position_raw.x;
+    vision_position_get.component_position_y = vision_position_raw.y;
+    vision_position_get.component_position_z = vision_position_raw.z;
+
+    vision_position_pub.publish(vision_position_get);
+
+    ROS_INFO("loop:%d",vision_position_get.loop_value);
+    ROS_INFO("x:%f",vision_position_get.component_position_x);
+    ROS_INFO("y:%f",vision_position_get.component_position_y);
+    ROS_INFO("z:%f",vision_position_get.component_position_z);
+}
+
 
 /*****************************main function*****************************/
 int main(int argc, char **argv)
@@ -205,6 +225,7 @@ int main(int argc, char **argv)
     ros::Subscriber fixed_target_sub = nh.subscribe<state_machine::FIXED_TARGET_POSITION_P2M>("mavros/fixed_target_position_p2m",10,fixed_target_position_p2m_cb);
     ros::Subscriber task_status_sub = nh.subscribe<state_machine::TASK_STATUS_CHANGE_P2M>("mavros/task_status_change_p2m",10,task_status_change_p2m_cb);
     ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
+    ros::Subscriber vision_position_sub = nh.subscribe<state_machine::Vision_Position_Raw>("vision_position",10,vision_position_cb);
 
     //topic publish
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
@@ -212,7 +233,7 @@ int main(int argc, char **argv)
     fixed_target_pub = nh.advertise<state_machine::FIXED_TARGET_RETURN_M2P>("mavros/fixed_target_return_m2p",10);
     ros::Publisher grab_status_pub = nh.advertise<state_machine::GRAB_STATUS_M2P>("mavros/grab_status_m2p",10);
     ros::Publisher task_status_pub = nh.advertise<state_machine::TASK_STATUS_MONITOR_M2P>("mavros/task_status_monitor_m2p",10);
-    ros::Publisher vision_position_pub = nh.advertise<state_machine::VISION_POSITION_GET_M2P>("mavros/vision_position_get_m2p",10);
+    vision_position_pub = nh.advertise<state_machine::VISION_POSITION_GET_M2P>("mavros/vision_position_get_m2p",10);
     ros::Publisher yaw_sp_pub = nh.advertise<state_machine::YAW_SP_CALCULATED_M2P>("mavros/yaw_sp_calculated_m2p",10);
 
     //land service
