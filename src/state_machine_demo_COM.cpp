@@ -162,7 +162,7 @@ int main(int argc, char **argv)
         state_machine_fun();
         ROS_INFO("current_pos_state:%d",current_pos_state);
 
-        task_status_monitor.task_status = current_pos_state;
+        task_status_monitor.task_status = 12;
         task_status_monitor.loop_value = loop;
         task_status_monitor.target_x = pose_pub.pose.position.y;
         task_status_monitor.target_y = pose_pub.pose.position.x;
