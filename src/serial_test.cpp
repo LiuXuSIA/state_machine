@@ -71,7 +71,8 @@ int main (int argc, char** argv)
 
     while(ros::ok()) 
     { 
-        if(ser.available()){ 
+        if(ser.available())
+        { 
             ROS_INFO_STREAM("Reading from serial port\n"); 
             std_msgs::String result; 
             vector<uint8_t> data_dis;
