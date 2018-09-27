@@ -1,9 +1,9 @@
 /*************************************************************************
-@file           state_machine_v1.cpp
+@file           state_machine_v1.1.cpp
 @date           2018/09/24 11:01
 @author         liuxu
 @email          liuxu.ccc@gmail.com
-@description    fixed 3 position from GCS;distance measured by sensor
+@description    fixed 3 position from GCS;distance measured by sensor;vision position
 *************************************************************************/
 
 
