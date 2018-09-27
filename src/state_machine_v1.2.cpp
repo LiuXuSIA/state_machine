@@ -1,5 +1,5 @@
 /*************************************************************************
-@file           state_machine_demo.cpp
+@file           state_machine_v1.2.cpp
 @date           2018/08/20 16:25
 @author         liuxu
 @email          liuxu.ccc@gmail.com
