@@ -1,9 +1,9 @@
 /*************************************************************************
-@file           state_machine_v1.cpp
+@file           state_machine_v1.0.cpp
 @date           2018/09/24 11:01
 @author         liuxu
 @email          liuxu.ccc@gmail.com
-@description    fixed 3 position from GCS;distance measured by sensor
+@description    fixed 3 position from GCS
 *************************************************************************/
 
 
@@ -22,9 +22,6 @@
 #include <state_machine/TASK_STATUS_MONITOR_M2P.h>
 #include <state_machine/VISION_POSITION_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
-
-#include <state_machine/Distance.h> 
-#include <state_machine/Vision_Position_Raw.h> 
 
 
 /***************************function declare****************************/
@@ -205,7 +202,7 @@ int main(int argc, char **argv)
     fixed_target_pub = nh.advertise<state_machine::FIXED_TARGET_RETURN_M2P>("mavros/fixed_target_return_m2p",10);
     ros::Publisher grab_status_pub = nh.advertise<state_machine::GRAB_STATUS_M2P>("mavros/grab_status_m2p",10);
     ros::Publisher task_status_pub = nh.advertise<state_machine::TASK_STATUS_MONITOR_M2P>("mavros/task_status_monitor_m2p",10);
-    vision_position_pub = nh.advertise<state_machine::VISION_POSITION_GET_M2P>("mavros/vision_position_get_m2p",10);
+    ros::Publisher vision_position_pub = nh.advertise<state_machine::VISION_POSITION_GET_M2P>("mavros/vision_position_get_m2p",10);
     ros::Publisher yaw_sp_pub = nh.advertise<state_machine::YAW_SP_CALCULATED_M2P>("mavros/yaw_sp_calculated_m2p",10);
 
     //land service
