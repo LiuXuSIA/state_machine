@@ -4,7 +4,7 @@
 @author         liuxu
 @email          liuxu.ccc@gmail.com
 @description    a simple state machine for the drone race in 2018
-                takeoff-->honver-->landind
+                takeoff-->hover-->landing
 *************************************************************************/
 
 #include <ros/ros.h>
@@ -20,11 +20,15 @@ void state_machine_fun(void);
 /***************************variable definition*************************/
 
 geometry_msgs::PoseStamped pose_pub;  //ENU
+geometry_msgs::TwistStamped vel_pub;
 ros::Publisher local_pos_pub;
+ros::Publisher local_vel_pub;
 
 //state_machine state
 static const int takeoff = 1;
-static const int land = 2;
+static const int target_go = 2;
+static const int hover = 3;
+static const int land = 4;
 
 //mission 
 int current_pos_state = takeoff;
@@ -48,8 +52,6 @@ geometry_msgs::PoseStamped current_position;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_position = *msg;
-    ROS_INFO("current_position:%f",current_position.pose.position.z);
-    ROS_INFO("pose_pub:%f\n",pose_pub.pose.position.z);
 }
 
 /*****************************main function*****************************/
@@ -57,6 +59,13 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "offboard_node");
     ros::NodeHandle nh;
+
+    vel_pub.twist.linear.x = 0.0f;
+    vel_pub.twist.linear.y = 0.0f;
+    vel_pub.twist.linear.z = 2.0f;
+    vel_pub.twist.angular.x = 0.0f;
+    vel_pub.twist.angular.y = 0.0f;
+    vel_pub.twist.angular.z = 0.0f;
 
     pose_pub.pose.position.x = 0;
     pose_pub.pose.position.y = 0;
@@ -66,6 +75,7 @@ int main(int argc, char **argv)
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
     
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
+    local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("mavros/setpoint_velocity/cmd_vel",10);
     land_client = nh.serviceClient<state_machine::CommandTOL>("mavros/cmd/land");
     landing_cmd.request.min_pitch = 1.0;
     landing_last_request = ros::Time::now();
@@ -84,7 +94,7 @@ int main(int argc, char **argv)
 
     for(int i =100; ros::ok() && i > 0; i--)
 	{
-		local_pos_pub.publish(pose_pub);
+		local_vel_pub.publish(vel_pub);
 		ros::spinOnce();
 		rate.sleep();
 	}
@@ -110,10 +120,29 @@ void state_machine_fun(void)
     {
         case takeoff:
         {
+            local_vel_pub.publish(vel_pub);
+            if(current_position.pose.position.z > 3)
+            {
+                current_pos_state = target_go;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case target_go:
+        {
             local_pos_pub.publish(pose_pub);
-            if (abs(current_position.pose.position.x - pose_pub.pose.position.x) < 1.5 &&
-                abs(current_position.pose.position.y - pose_pub.pose.position.y) < 1.5 &&
-                abs(current_position.pose.position.z - pose_pub.pose.position.z) < 1.5 )
+            if(abs(current_position.pose.position.x - pose_pub.pose.position.x) < 1 &&
+               abs(current_position.pose.position.y - pose_pub.pose.position.y) < 1 &&
+               abs(current_position.pose.position.z - pose_pub.pose.position.z) < 1 )
+            {
+                current_pos_state = hover;
+                last_time = ros::Time::now();
+            }
+        }
+        case hover:
+        {
+            local_pos_pub.publish(pose_pub);
+            if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
                 current_pos_state = land;
                 last_time = ros::Time::now();
@@ -122,9 +151,7 @@ void state_machine_fun(void)
         break;
         case land:
         {
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
-            {
-                if(current_state.mode == "OFFBOARD"  && 
+            if(current_state.mode == "OFFBOARD"  && 
                    current_state.mode != "AUTO.LAND" && 
                    (ros::Time::now() - landing_last_request > ros::Duration(3.0)))
                 {
@@ -134,9 +161,6 @@ void state_machine_fun(void)
                     }
                     landing_last_request = ros::Time::now();
                 }
-            }
-            else
-                local_pos_pub.publish(pose_pub);
         }
         break;
     }
