@@ -8,6 +8,7 @@
 
 
 /****************************header files********************************/
+//system
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
@@ -15,13 +16,16 @@
 #include <state_machine/State.h>
 #include "math.h"
 
+//custom gcs->pix->mavros
 #include <state_machine/FIXED_TARGET_POSITION_P2M.h>
-#include <state_machine/FIXED_TARGET_RETURN_M2P.h>
-#include <state_machine/GRAB_STATUS_M2P.h>
 #include <state_machine/TASK_STATUS_CHANGE_P2M.h>
+
+//custom mavros->pix->gcs
 #include <state_machine/TASK_STATUS_MONITOR_M2P.h>
 #include <state_machine/VISION_POSITION_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
+#include <state_machine/FIXED_TARGET_RETURN_M2P.h>
+#include <state_machine/GRAB_STATUS_M2P.h>
 
 #include <state_machine/Distance.h> 
 
@@ -37,6 +41,7 @@ geometry_msgs::PoseStamped position_componnet;
 geometry_msgs::PoseStamped position_construction;
 geometry_msgs::PoseStamped position_grab;
 geometry_msgs::PoseStamped position_place;
+geometry_msgs::PoseStamped position_judge;
 
 //topic
 geometry_msgs::PoseStamped pose_pub; 
@@ -58,13 +63,16 @@ static const int position_Com_hover = 5;
 static const int Com_get_close = 6;
 static const int componnet_grab = 7;
 static const int Com_leave = 8;
-static const int position_Con_go = 9;
-static const int position_Con_hover = 10;
-static const int place_point_get_close = 11;
-static const int componnet_place = 12;
-static const int place_done = 13;
-static const int return_home = 14;
-static const int land = 15;
+static const int grab_status_judge = 9;
+static const int position_Con_go = 10;
+static const int position_Con_hover = 11;
+static const int place_point_get_close = 12;
+static const int componnet_place = 13;
+static const int place_done = 14;
+static const int Con_leave = 15;
+static const int Con_hover = 16;
+static const int return_home = 17;
+static const int land = 18;
 
 //mission 
 int loop = 0;
@@ -88,9 +96,10 @@ state_machine::YAW_SP_CALCULATED_M2P yaw_sp_calculated;
 
 /*************************constant defunition***************************/
 
-#define TAKEOFF_HEIGHT      5
-#define TAKEOFF_VELOCITY    2
-#define OBSERVE_HEIGET      5
+#define TAKEOFF_HEIGHT      3.0
+#define TAKEOFF_VELOCITY    2.0
+#define OBSERVE_HEIGET      3.0
+#define CONSTRUCT_HEIGET    3.0
 #define BOX_HEIGET          0.25
 #define PLACE_HEIGET        0.5
 
@@ -129,7 +138,7 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
 
     fix_target_return.construction_x = fix_target_position.construction_x;
     fix_target_return.construction_y = fix_target_position.construction_y;
-    fix_target_return.construction_z = -OBSERVE_HEIGET;
+    fix_target_return.construction_z = -CONSTRUCT_HEIGET;
 
     ROS_INFO("fix_target_return.home_x:%f",fix_target_return.home_x);
     ROS_INFO("fix_target_return.home_y:%f",fix_target_return.home_y);
@@ -204,7 +213,7 @@ int main(int argc, char **argv)
     //takeoff velocity
     vel_pub.twist.linear.x = 0.0f;
     vel_pub.twist.linear.y = 0.0f;
-    vel_pub.twist.linear.z = 2.0f;
+    vel_pub.twist.linear.z = TAKEOFF_VELOCITY;
     vel_pub.twist.angular.x = 0.0f;
     vel_pub.twist.angular.y = 0.0f;
     vel_pub.twist.angular.z = 0.0f;
@@ -274,7 +283,7 @@ int main(int argc, char **argv)
         task_status_monitor.loop_value = loop;
         task_status_monitor.target_x = pose_pub.pose.position.y;
         task_status_monitor.target_y = pose_pub.pose.position.x;
-        task_status_monitor.target_z = pose_pub.pose.position.z;
+        task_status_monitor.target_z = -pose_pub.pose.position.z;
         task_status_pub.publish(task_status_monitor);
 
 		ros::spinOnce();
@@ -318,7 +327,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_home;
             local_pos_pub.publish(position_home);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = position_Com_go;
                 last_time = ros::Time::now();
@@ -342,7 +351,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_componnet;
             local_pos_pub.publish(position_componnet);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = Com_get_close;
                 last_time = ros::Time::now();
@@ -370,8 +379,8 @@ void state_machine_fun(void)
         case componnet_grab:
         {
             pose_pub = position_grab;
-            local_vel_pub.publish(position_grab);
-            if(ros::Time::now() - last_time > ros::Duration(10.0) > 5)
+            local_pos_pub.publish(position_grab);
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = Com_leave;
                 last_time = ros::Time::now();
@@ -381,10 +390,22 @@ void state_machine_fun(void)
         case Com_leave:
         {
             pose_pub = position_componnet;
-            local_pos_pub.publish(position_componnet);
-            if (abs(current_position.pose.position.x - position_componnet.pose.position.x) < 1 &&
-                abs(current_position.pose.position.y - position_componnet.pose.position.y) < 1 &&
-                abs(current_position.pose.position.z - position_componnet.pose.position.z) < 1 )
+            local_vel_pub.publish(vel_pub);
+            if (current_position.pose.position.z > 3 )
+            {
+                position_judge.pose.position.x = current_position.pose.position.x;
+                position_judge.pose.position.y = current_position.pose.position.y;
+                position_judge.pose.position.z = current_position.pose.position.z;
+                current_pos_state = grab_status_judge;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case grab_status_judge:
+        {
+            pose_pub = position_judge;
+            local_pos_pub.publish(position_judge);
+            if (ros::Time::now() - last_time > ros::Duration(3.0))
             {
                 if (distance.distance < 0.5)
                     current_pos_state = position_Con_go;
@@ -412,7 +433,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_construction;
             local_pos_pub.publish(position_construction);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = place_point_get_close;
                 last_time = ros::Time::now();
@@ -438,11 +459,36 @@ void state_machine_fun(void)
             local_pos_pub.publish(position_place);
             if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
-                current_pos_state = place_done;
+                current_pos_state = Con_leave;
                 loop = loop +1;
                 last_time = ros::Time::now();
             }
         }
+        break;
+        case Con_leave:
+        {
+            pose_pub = position_construction;
+            local_pos_pub.publish(position_construction);
+            if (abs(current_position.pose.position.x - position_construction.pose.position.x) < 1 &&
+                abs(current_position.pose.position.y - position_construction.pose.position.y) < 1 &&
+                abs(current_position.pose.position.z - position_construction.pose.position.z) < 1 )
+            {
+                current_pos_state = Con_hover;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case Con_hover:
+        {
+            pose_pub = position_construction;
+            local_pos_pub.publish(position_construction);
+            if(ros::Time::now() - last_time > ros::Duration(3.0))
+            {
+                current_pos_state = return_home;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
         case  return_home:
         {
             pose_pub = position_home;
