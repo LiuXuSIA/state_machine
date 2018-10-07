@@ -99,8 +99,8 @@ bool velocity_control_enable = true;
 /*************************constant defunition***************************/
 
 #define HOME_HEIGHT         3.0
-#define ASCEND_VELOCITY     2.0
-#define DESCEND_VELOCITY    2.0
+#define ASCEND_VELOCITY     1.0
+#define DESCEND_VELOCITY    0.3
 #define OBSERVE_HEIGET      3.0
 #define CONSTRUCT_HEIGET    3.0
 #define BOX_HEIGET          0.25
@@ -338,7 +338,7 @@ void state_machine_fun(void)
             velocity_control_enable = false;
             pose_pub = position_home;
             local_vel_pub.publish(vel_ascend);
-            if(current_position.pose.position.z > 4)
+            if(current_position.pose.position.z > 2)
             {
                 current_pos_state = position_H_go;
                 last_time = ros::Time::now();

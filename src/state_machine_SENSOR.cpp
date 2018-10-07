@@ -83,7 +83,7 @@ bool velocity_control_enable = true;
 
 #define HOME_HEIGHT            5
 #define ASCEND_VELOCITY        1.5
-#define DESCEND_VELOCITY       1.5
+#define DESCEND_VELOCITY       0.3
 #define OBSERVE_HEIGET         5
 #define CONSTRUCTION_HEIGET    5
 #define LOCATE_ACCURACY        1.0
