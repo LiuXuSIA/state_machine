@@ -18,6 +18,7 @@
 /***************************function declare****************************/
 
 void state_machine_fun(void);
+double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2);
 
 /***************************variable definition*************************/
 //position  ENU
@@ -58,6 +59,12 @@ state_machine::CommandTOL landing_cmd;
 ros::ServiceClient land_client;
 ros::Time landing_last_request;
 
+/*************************constant defunition***************************/
+
+#define TAKEOFF_VELOCITY    2.0
+#define LOCATE_ACCURACY     0.5
+
+
 /***************************callback function definition***************/
 state_machine::State current_state;
 void state_cb(const state_machine::State::ConstPtr& msg)
@@ -86,7 +93,7 @@ int main(int argc, char **argv)
     //takeoff velocity
     vel_pub.twist.linear.x = 0.0f;
     vel_pub.twist.linear.y = 0.0f;
-    vel_pub.twist.linear.z = 2.0f;
+    vel_pub.twist.linear.z = TAKEOFF_VELOCITY;
     vel_pub.twist.angular.x = 0.0f;
     vel_pub.twist.angular.y = 0.0f;
     vel_pub.twist.angular.z = 0.0f;
@@ -185,9 +192,9 @@ void state_machine_fun(void)
         {
             pose_pub = position_A;
             local_pos_pub.publish(position_A);
-            if (abs(current_position.pose.position.x - position_A.pose.position.x) < 1 &&
-                abs(current_position.pose.position.y - position_A.pose.position.y) < 1 &&
-                abs(current_position.pose.position.z - position_A.pose.position.z) < 1 )
+            if (Distance_of_Two(current_position.pose.position.x,position_A.pose.position.x,
+                                current_position.pose.position.y,position_A.pose.position.y,
+                                current_position.pose.position.z,position_A.pose.position.z) < LOCATE_ACCURACY)
             {
                 current_pos_state = position_A_hover;
                 last_time = ros::Time::now();
@@ -198,7 +205,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_A;
             local_pos_pub.publish(position_A);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = position_B_go;
                 last_time = ros::Time::now();
@@ -209,9 +216,9 @@ void state_machine_fun(void)
         {
             pose_pub = position_B;
             local_pos_pub.publish(position_B);
-            if (abs(current_position.pose.position.x - position_B.pose.position.x) < 1 &&
-                abs(current_position.pose.position.y - position_B.pose.position.y) < 1 &&
-                abs(current_position.pose.position.z - position_B.pose.position.z) < 1 )
+            if (Distance_of_Two(current_position.pose.position.x,position_B.pose.position.x,
+                                current_position.pose.position.y,position_B.pose.position.y,
+                                current_position.pose.position.z,position_B.pose.position.z) < LOCATE_ACCURACY)
             {
                 current_pos_state = position_B_hover;
                 last_time = ros::Time::now();
@@ -222,7 +229,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_B;
             local_pos_pub.publish(position_B);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = position_C_go;
                 last_time = ros::Time::now();
@@ -233,9 +240,9 @@ void state_machine_fun(void)
         {
             pose_pub = position_C;
             local_pos_pub.publish(position_C);
-            if (abs(current_position.pose.position.x - position_C.pose.position.x) < 1 &&
-                abs(current_position.pose.position.y - position_C.pose.position.y) < 1 &&
-                abs(current_position.pose.position.z - position_C.pose.position.z) < 1 )
+            if (Distance_of_Two(current_position.pose.position.x,position_C.pose.position.x,
+                                current_position.pose.position.y,position_C.pose.position.y,
+                                current_position.pose.position.z,position_C.pose.position.z) < LOCATE_ACCURACY)
             {
                 current_pos_state = position_C_hover;
                 last_time = ros::Time::now();
@@ -246,7 +253,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_C;
             local_pos_pub.publish(position_C);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = return_home;
                 last_time = ros::Time::now();
@@ -257,9 +264,9 @@ void state_machine_fun(void)
         {
             pose_pub = position_A;
             local_pos_pub.publish(position_A);
-            if (abs(current_position.pose.position.x - position_A.pose.position.x) < 1 &&
-                abs(current_position.pose.position.y - position_A.pose.position.y) < 1 &&
-                abs(current_position.pose.position.z - position_A.pose.position.z) < 1 )
+            if (Distance_of_Two(current_position.pose.position.x,position_A.pose.position.x,
+                                current_position.pose.position.y,position_A.pose.position.y,
+                                current_position.pose.position.z,position_A.pose.position.z) < LOCATE_ACCURACY )
             {
                 current_pos_state = land;
                 last_time = ros::Time::now();
@@ -269,7 +276,7 @@ void state_machine_fun(void)
         case land:
         {
             if(current_state.mode != "AUTO.LAND" && 
-                   (ros::Time::now() - landing_last_request > ros::Duration(10.0)))
+                   (ros::Time::now() - landing_last_request > ros::Duration(5.0)))
                 {
                     if(land_client.call(landing_cmd) && landing_cmd.response.success)
                     {
@@ -280,4 +287,11 @@ void state_machine_fun(void)
         }
         break;
     }
+}
+
+/**************************************function definition**************************************/
+
+double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2)
+{
+    return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
 }
