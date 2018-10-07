@@ -8,6 +8,7 @@
 
 #include <ros/ros.h>
 #include <state_machine/State.h>
+#include <state_machine/TASK_STATUS_MONITOR_M2P.h>
 
 /***************************function declare****************************/
 void state_machine_fun(void);
@@ -20,10 +21,13 @@ static const int grab = 10;
 static const int release = 17;
 
 //mission 
+int loop = 0;
 int current_pos_state = initial;
 
 //time
 ros::Time last_time;
+
+state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor;
 
 state_machine::State current_state;
 void state_cb(const state_machine::State::ConstPtr& msg)
@@ -38,6 +42,8 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
+    ros::Publisher task_status_pub = nh.advertise<state_machine::TASK_STATUS_MONITOR_M2P>("mavros/task_status_monitor_m2p",10);
+
 
     ros::Rate rate(10.0);
 
@@ -57,6 +63,13 @@ int main(int argc, char **argv)
 
 		ros::spinOnce();
 		rate.sleep();
+
+        task_status_monitor.task_status = current_pos_state;
+        task_status_monitor.loop_value = loop;
+        task_status_monitor.target_x = 0;
+        task_status_monitor.target_y = 0;
+        task_status_monitor.target_z = 0;
+        task_status_pub.publish(task_status_monitor);
 	}
 
 	return 0;
