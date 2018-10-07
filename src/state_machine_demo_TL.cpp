@@ -16,6 +16,7 @@
 
 /***************************function declare****************************/
 void state_machine_fun(void);
+double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2);
 
 /***************************variable definition*************************/
 
@@ -41,6 +42,12 @@ state_machine::CommandTOL landing_cmd;
 ros::ServiceClient land_client;
 ros::Time landing_last_request;
 
+/*************************constant defunition***************************/
+
+#define ASCEND_VELOCITY     2.0
+#define LOCATE_ACCURACY     0.5
+
+
 /***************************callback function definition***************/
 state_machine::State current_state;
 void state_cb(const state_machine::State::ConstPtr& msg)
@@ -62,7 +69,7 @@ int main(int argc, char **argv)
 
     vel_pub.twist.linear.x = 0.0f;
     vel_pub.twist.linear.y = 0.0f;
-    vel_pub.twist.linear.z = 2.0f;
+    vel_pub.twist.linear.z = ASCEND_VELOCITY;
     vel_pub.twist.angular.x = 0.0f;
     vel_pub.twist.angular.y = 0.0f;
     vel_pub.twist.angular.z = 0.0f;
@@ -131,9 +138,9 @@ void state_machine_fun(void)
         case target_go:
         {
             local_pos_pub.publish(pose_pub);
-            if(abs(current_position.pose.position.x - pose_pub.pose.position.x) < 1 &&
-               abs(current_position.pose.position.y - pose_pub.pose.position.y) < 1 &&
-               abs(current_position.pose.position.z - pose_pub.pose.position.z) < 1 )
+            if(Distance_of_Two(current_position.pose.position.x,pose_pub.pose.position.x,
+                               current_position.pose.position.y,pose_pub.pose.position.y,
+                               current_position.pose.position.z,pose_pub.pose.position.z) < LOCATE_ACCURACY)
             {
                 current_pos_state = hover;
                 last_time = ros::Time::now();
@@ -142,7 +149,7 @@ void state_machine_fun(void)
         case hover:
         {
             local_pos_pub.publish(pose_pub);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(6.0))
             {
                 current_pos_state = land;
                 last_time = ros::Time::now();
@@ -164,4 +171,11 @@ void state_machine_fun(void)
         }
         break;
     }
+}
+
+/**************************************function definition**************************************/
+//Euclidean distance between two point
+double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2)
+{
+    return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
 }
