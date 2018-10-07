@@ -16,8 +16,8 @@ void state_machine_fun(void);
 
 //state_machine state
 static const int initial = 1;
-static const int grab = 7;
-static const int release = 13;
+static const int grab = 10;
+static const int release = 17;
 
 //mission 
 int current_pos_state = initial;
