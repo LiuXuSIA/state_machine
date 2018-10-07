@@ -27,7 +27,7 @@
 /***************************function declare****************************/
 
 void state_machine_fun(void);
-
+double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2);
 
 /***************************variable definition*************************/
 //position  ENU
@@ -78,9 +78,11 @@ state_machine::YAW_SP_CALCULATED_M2P yaw_sp_calculated;
 
 /*************************constant defunition***************************/
 
-#define TAKEOFF_HEIGHT      5
-#define TAKEOFF_VELOCITY    2
-#define OBSERVE_HEIGET      5
+#define HOME_HEIGHT            5
+#define TAKEOFF_VELOCITY       2
+#define OBSERVE_HEIGET         5
+#define CONSTRUCTION_HEIGET    5
+#define LOCATE_ACCURACY        0.5
 
 
 /***************************callback function definition***************/
@@ -109,15 +111,15 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
 
     fix_target_return.home_x = fix_target_position.home_x;
     fix_target_return.home_y = fix_target_position.home_y;
-    fix_target_return.home_z = TAKEOFF_HEIGHT;
+    fix_target_return.home_z = -HOME_HEIGHT;
 
     fix_target_return.component_x = fix_target_position.component_x;
     fix_target_return.component_y = fix_target_position.component_y;
-    fix_target_return.component_z = OBSERVE_HEIGET;
+    fix_target_return.component_z = -OBSERVE_HEIGET;
 
     fix_target_return.construction_x = fix_target_position.construction_x;
     fix_target_return.construction_y = fix_target_position.construction_y;
-    fix_target_return.construction_z = OBSERVE_HEIGET;
+    fix_target_return.construction_z = -CONSTRUCTION_HEIGET;
 
     ROS_INFO("fix_target_return.home_x:%f",fix_target_return.home_x);
     ROS_INFO("fix_target_return.home_y:%f",fix_target_return.home_y);
@@ -137,7 +139,7 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     //position of home
     position_home.pose.position.x = fix_target_position.home_y;
     position_home.pose.position.y = fix_target_position.home_x;
-    position_home.pose.position.z = TAKEOFF_HEIGHT;
+    position_home.pose.position.z = HOME_HEIGHT;
     //position of componnet
     position_componnet.pose.position.x = fix_target_position.component_y;
     position_componnet.pose.position.y = fix_target_position.component_x;
@@ -145,7 +147,7 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     //position of construction
     position_construction.pose.position.x = fix_target_position.construction_y;
     position_construction.pose.position.y = fix_target_position.construction_x;
-    position_construction.pose.position.z = OBSERVE_HEIGET;
+    position_construction.pose.position.z = CONSTRUCTION_HEIGET;
     
     //adjust angular,face north
     float yaw_sp=M_PI_2;
@@ -184,7 +186,7 @@ int main(int argc, char **argv)
     //takeoff velocity
     vel_pub.twist.linear.x = 0.0f;
     vel_pub.twist.linear.y = 0.0f;
-    vel_pub.twist.linear.z = 2.0f;
+    vel_pub.twist.linear.z = TAKEOFF_VELOCITY;
     vel_pub.twist.angular.x = 0.0f;
     vel_pub.twist.angular.y = 0.0f;
     vel_pub.twist.angular.z = 0.0f;
@@ -241,7 +243,7 @@ int main(int argc, char **argv)
         task_status_monitor.loop_value = loop;
         task_status_monitor.target_x = pose_pub.pose.position.y;
         task_status_monitor.target_y = pose_pub.pose.position.x;
-        task_status_monitor.target_z = pose_pub.pose.position.z;
+        task_status_monitor.target_z = -pose_pub.pose.position.z;
         task_status_pub.publish(task_status_monitor);
 
 		ros::spinOnce();
@@ -272,9 +274,9 @@ void state_machine_fun(void)
         {
             local_pos_pub.publish(position_home);
             pose_pub = position_home;
-            if (abs(current_position.pose.position.x - position_home.pose.position.x) < 1 &&
-                abs(current_position.pose.position.y - position_home.pose.position.y) < 1 &&
-                abs(current_position.pose.position.z - position_home.pose.position.z) < 1 )
+            if (Distance_of_Two(current_position.pose.position.x,position_home.pose.position.x,
+                                current_position.pose.position.y,position_home.pose.position.y,
+                                current_position.pose.position.z,position_home.pose.position.z) < LOCATE_ACCURACY)
             {
                 current_pos_state = position_H_hover;
                 last_time = ros::Time::now();
@@ -285,7 +287,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_home;
             local_pos_pub.publish(position_home);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = position_Com_go;
                 last_time = ros::Time::now();
@@ -296,9 +298,9 @@ void state_machine_fun(void)
         {
             pose_pub = position_componnet;
             local_pos_pub.publish(position_componnet);
-            if (abs(current_position.pose.position.x - position_componnet.pose.position.x) < 1 &&
-                abs(current_position.pose.position.y - position_componnet.pose.position.y) < 1 &&
-                abs(current_position.pose.position.z - position_componnet.pose.position.z) < 1 )
+            if (Distance_of_Two(current_position.pose.position.x,position_componnet.pose.position.x,
+                                current_position.pose.position.y,position_componnet.pose.position.y,
+                                current_position.pose.position.z,position_componnet.pose.position.z) < LOCATE_ACCURACY)
             {
                 current_pos_state = position_Com_hover;
                 last_time = ros::Time::now();
@@ -309,7 +311,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_componnet;
             local_pos_pub.publish(position_componnet);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = position_Con_go;
                 last_time = ros::Time::now();
@@ -320,9 +322,9 @@ void state_machine_fun(void)
         {
             pose_pub = position_construction;
             local_pos_pub.publish(position_construction);
-            if (abs(current_position.pose.position.x - position_construction.pose.position.x) < 1 &&
-                abs(current_position.pose.position.y - position_construction.pose.position.y) < 1 &&
-                abs(current_position.pose.position.z - position_construction.pose.position.z) < 1 )
+            if (Distance_of_Two(current_position.pose.position.x,position_construction.pose.position.x,
+                                current_position.pose.position.y,position_construction.pose.position.y,
+                                current_position.pose.position.z,position_construction.pose.position.z) < LOCATE_ACCURACY)
             {
                 current_pos_state = position_Con_hover;
                 last_time = ros::Time::now();
@@ -333,7 +335,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_construction;
             local_pos_pub.publish(position_construction);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = return_home;
                 last_time = ros::Time::now();
@@ -344,9 +346,9 @@ void state_machine_fun(void)
         {
             pose_pub = position_home;
             local_pos_pub.publish(position_home);
-            if (abs(current_position.pose.position.x - position_home.pose.position.x) < 1 &&
-                abs(current_position.pose.position.y - position_home.pose.position.y) < 1 &&
-                abs(current_position.pose.position.z - position_home.pose.position.z) < 1 )
+            if (Distance_of_Two(current_position.pose.position.x,position_home.pose.position.x,
+                                current_position.pose.position.y,position_home.pose.position.y,
+                                current_position.pose.position.z,position_home.pose.position.z) < LOCATE_ACCURACY)
             {
                 current_pos_state = land;
                 last_time = ros::Time::now();
@@ -367,4 +369,11 @@ void state_machine_fun(void)
         }
         break;
     }
+}
+
+/**************************************function definition**************************************/
+
+double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2)
+{
+    return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
 }
