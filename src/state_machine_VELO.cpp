@@ -15,22 +15,25 @@
 #include "math.h"
 
 /***************************function declare****************************/
+
 void state_machine_fun(void);
+double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2);
+
 
 /***************************variable definition*************************/
 
 geometry_msgs::PoseStamped pose_pub;  //ENU
-geometry_msgs::TwistStamped vel_pub_up;
-geometry_msgs::TwistStamped vel_pub_down;
+geometry_msgs::TwistStamped vel_ascend;
+geometry_msgs::TwistStamped vel_descend;
 ros::Publisher local_pos_pub;
 ros::Publisher local_vel_pub;
 
 //state_machine state
 static const int takeoff = 1;
 static const int target_go = 2;
-static const int hover_1 = 3;
-static const int fall = 4;
-static const int hover_2 = 5;
+static const int hover_ascend = 3;
+static const int descend = 4;
+static const int hover_descend = 5;
 static const int land = 6;
 
 //mission 
@@ -43,6 +46,13 @@ ros::Time last_time;
 state_machine::CommandTOL landing_cmd;
 ros::ServiceClient land_client;
 ros::Time landing_last_request;
+
+/*************************constant defunition***************************/
+
+#define ASCEND_VELOCITY    2.0
+#define DESCEND_VELOCITY   0.5
+#define LOCATE_ACCURACY    0.5
+
 
 /***************************callback function definition***************/
 state_machine::State current_state;
@@ -63,19 +73,19 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "offboard_node");
     ros::NodeHandle nh;
 
-    vel_pub_up.twist.linear.x = 0.0f;
-    vel_pub_up.twist.linear.y = 0.0f;
-    vel_pub_up.twist.linear.z = 2.0f;
-    vel_pub_up.twist.angular.x = 0.0f;
-    vel_pub_up.twist.angular.y = 0.0f;
-    vel_pub_up.twist.angular.z = 0.0f;
+    vel_ascend.twist.linear.x = 0.0f;
+    vel_ascend.twist.linear.y = 0.0f;
+    vel_ascend.twist.linear.z = ASCEND_VELOCITY;
+    vel_ascend.twist.angular.x = 0.0f;
+    vel_ascend.twist.angular.y = 0.0f;
+    vel_ascend.twist.angular.z = 0.0f;
 
-    vel_pub_down.twist.linear.x = 0.0f;
-    vel_pub_down.twist.linear.y = 0.0f;
-    vel_pub_down.twist.linear.z = -0.5f;
-    vel_pub_down.twist.angular.x = 0.0f;
-    vel_pub_down.twist.angular.y = 0.0f;
-    vel_pub_down.twist.angular.z = 0.0f;
+    vel_descend.twist.linear.x = 0.0f;
+    vel_descend.twist.linear.y = 0.0f;
+    vel_descend.twist.linear.z = -DESCEND_VELOCITY;
+    vel_descend.twist.angular.x = 0.0f;
+    vel_descend.twist.angular.y = 0.0f;
+    vel_descend.twist.angular.z = 0.0f;
 
     pose_pub.pose.position.x = 0;
     pose_pub.pose.position.y = 0;
@@ -104,7 +114,7 @@ int main(int argc, char **argv)
 
     for(int i =100; ros::ok() && i > 0; i--)
 	{
-		local_vel_pub.publish(vel_pub_up);
+		local_vel_pub.publish(vel_ascend);
 		ros::spinOnce();
 		rate.sleep();
 	}
@@ -130,7 +140,7 @@ void state_machine_fun(void)
     {
         case takeoff:
         {
-            local_vel_pub.publish(vel_pub_up);
+            local_vel_pub.publish(vel_ascend);
             if(current_position.pose.position.z > 3)
             {
                 current_pos_state = target_go;
@@ -141,31 +151,31 @@ void state_machine_fun(void)
         case target_go:
         {
             local_pos_pub.publish(pose_pub);
-            if(abs(current_position.pose.position.x - pose_pub.pose.position.x) < 1 &&
-               abs(current_position.pose.position.y - pose_pub.pose.position.y) < 1 &&
-               abs(current_position.pose.position.z - pose_pub.pose.position.z) < 1 )
+            if(Distance_of_Two(current_position.pose.position.x,pose_pub.pose.position.x,
+                               current_position.pose.position.y,pose_pub.pose.position.y,
+                               current_position.pose.position.z,pose_pub.pose.position.z) < LOCATE_ACCURACY)
             {
-                current_pos_state = hover_1;
+                current_pos_state = hover_ascend;
                 last_time = ros::Time::now();
             }
         }
-        case hover_1:
+        case hover_ascend:
         {
             local_pos_pub.publish(pose_pub);
-            if(ros::Time::now() - last_time > ros::Duration(6.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
-                current_pos_state = fall;
+                current_pos_state = descend;
                 last_time = ros::Time::now();
             }
         }
         break;
-        case fall:
+        case descend:
         {
-            local_vel_pub.publish(vel_pub_down);
+            local_vel_pub.publish(vel_descend);
 
             if(current_position.pose.position.z < 3)
             {
-                current_pos_state = hover_2;
+                current_pos_state = hover_descend;
 
                 pose_pub.pose.position.x = current_position.pose.position.x;
                 pose_pub.pose.position.y = current_position.pose.position.y;
@@ -175,10 +185,10 @@ void state_machine_fun(void)
             }
         }
         break;
-        case hover_2:
+        case hover_descend:
         {
             local_pos_pub.publish(pose_pub);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = land;
                 last_time = ros::Time::now();
@@ -200,4 +210,11 @@ void state_machine_fun(void)
         }
         break;
     }
+}
+
+/**************************************function definition**************************************/
+
+double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2)
+{
+    return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
 }
