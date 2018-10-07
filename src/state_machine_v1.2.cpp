@@ -156,6 +156,8 @@ state_machine::TASK_STATUS_CHANGE_P2M task_status_change;
 void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::ConstPtr& msg)
 {
     task_status_change = *msg;
+    current_mission_state = task_status_change.task_status;
+    loop = task_status_change.loop;
 }
 
 state_machine::FIXED_TARGET_POSITION_P2M fix_target_position;
@@ -705,9 +707,9 @@ void state_machine_fun(void)
                         accuracy_count = 0;
                         hover_count = 0;
 
-                        position_place.pose.position.x = position_construction.pose.position.x;
-                        position_place.pose.position.y = position_construction.pose.position.y;
-                        position_place.pose.position.z = PLACE_HEIGET + BOX_HEIGET*loop;
+                        position_to_place.pose.position.x = position_construction.pose.position.x;
+                        position_to_place.pose.position.y = position_construction.pose.position.y;
+                        position_to_place.pose.position.z = PLACE_HEIGET + BOX_HEIGET*loop;
 
                         mission_last_time = ros::Time::now();
                         break;
@@ -725,9 +727,9 @@ void state_machine_fun(void)
                 accuracy_count = 0;
                 hover_count = 0;
                 
-                position_place.pose.position.x = position_construction.pose.position.x;
-                position_place.pose.position.y = position_construction.pose.position.y;
-                position_place.pose.position.z = PLACE_HEIGET + BOX_HEIGET*loop;
+                position_to_place.pose.position.x = position_construction.pose.position.x;
+                position_to_place.pose.position.y = position_construction.pose.position.y;
+                position_to_place.pose.position.z = PLACE_HEIGET + BOX_HEIGET*loop;
 
                 mission_last_time = ros::Time::now();
                 break;
@@ -736,11 +738,11 @@ void state_machine_fun(void)
         break;
         case place_point_get_close:
         {
-            pose_pub = position_place;
-            local_pos_pub.publish(position_place);
-            if (Distance_of_Two(current_position.pose.position.x,position_place.pose.position.x,
-                                current_position.pose.position.y,position_place.pose.position.y,
-                                current_position.pose.position.z,position_place.pose.position.z) < 0.2 )
+            pose_pub = position_to_place;
+            local_pos_pub.publish(position_to_place);
+            if (Distance_of_Two(current_position.pose.position.x,position_to_place.pose.position.x,
+                                current_position.pose.position.y,position_to_place.pose.position.y,
+                                current_position.pose.position.z,position_to_place.pose.position.z) < 0.2 )
             {
                 current_mission_state = place_point_adjust;
                 mission_last_time = ros::Time::now();
@@ -749,17 +751,17 @@ void state_machine_fun(void)
         break;
         case place_point_adjust:
         {
-            pose_target = position_place;
-            local_pos_pub.publish(position_place);
+            pose_target = position_to_place;
+            local_pos_pub.publish(position_to_place);
             if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && hover_count == 0)
             {
                 hover_count++;
             }
             if (ros::Time::now() - mission_last_time > ros::Duration(0.5) && hover_count > 0)
             {
-                if (Distance_of_Two(current_position.pose.position.x,position_place.pose.position.x,
-                                    current_position.pose.position.y,position_place.pose.position.y,
-                                    current_position.pose.position.z,position_place.pose.position.z) < 0.1)
+                if (Distance_of_Two(current_position.pose.position.x,position_to_place.pose.position.x,
+                                    current_position.pose.position.y,position_to_place.pose.position.y,
+                                    current_position.pose.position.z,position_to_place.pose.position.z) < 0.1)
                 {
                     accuracy_count++;
                     if(accuracy_count > 3)
@@ -790,8 +792,8 @@ void state_machine_fun(void)
         case componnet_place:
         {
             static int place_count = 0;
-            pose_target = position_place;
-            local_pos_pub.publish(position_place);
+            pose_target = position_to_place;
+            local_pos_pub.publish(position_to_place);
             if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && place_count == 0)
             {
                 place_count++;
@@ -826,15 +828,15 @@ void state_machine_fun(void)
         case place_status_judge:
         {
             static int place_judge_count = 0;
-            pose_target = position_judge;
-            local_pos_pub.publish(position_judge);
+            pose_target = position_to_component;
+            local_pos_pub.publish(position_to_component);
             if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && place_judge_count == 0)
             {
                 place_judge_count++;
             }
             if (ros::Time::now() - mission_last_time > ros::Duration(0.5) && place_judge_count >0)
             {
-                if (distance.distance > 0.5)
+                if (distance.distance > 1.0)
                     {
                         place_judge_count++;
                         if(place_judge_count > 3)
