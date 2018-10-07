@@ -75,14 +75,16 @@ state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor;
 state_machine::VISION_POSITION_GET_M2P vision_position_get;
 state_machine::YAW_SP_CALCULATED_M2P yaw_sp_calculated;
 
+//velocity send
+bool velocity_control_enable = true;
 
 /*************************constant defunition***************************/
 
 #define HOME_HEIGHT            5
-#define TAKEOFF_VELOCITY       2
+#define ASCEND_VELOCITY        1.5
 #define OBSERVE_HEIGET         5
 #define CONSTRUCTION_HEIGET    5
-#define LOCATE_ACCURACY        0.5
+#define LOCATE_ACCURACY        1.0
 
 
 /***************************callback function definition***************/
@@ -186,7 +188,7 @@ int main(int argc, char **argv)
     //takeoff velocity
     vel_pub.twist.linear.x = 0.0f;
     vel_pub.twist.linear.y = 0.0f;
-    vel_pub.twist.linear.z = TAKEOFF_VELOCITY;
+    vel_pub.twist.linear.z = ASCEND_VELOCITY;
     vel_pub.twist.angular.x = 0.0f;
     vel_pub.twist.angular.y = 0.0f;
     vel_pub.twist.angular.z = 0.0f;
@@ -236,8 +238,22 @@ int main(int argc, char **argv)
 
 	while(ros::ok())
 	{
-        state_machine_fun();
-        ROS_INFO("current_pos_state:%d",current_pos_state);
+        static bool display_falg = true;
+        
+        if(current_state.mode == "OFFBOARD" && current_state.armed)
+        {
+            state_machine_fun();
+            ROS_INFO("current_pos_state:%d",current_pos_state);
+        }
+        else if(velocity_control_enable == true)
+        {
+            local_vel_pub.publish(vel_pub);
+            if(display_falg == true)
+            {
+                ROS_INFO("Wait for switch to offboard...");
+                display_falg = false;
+            }
+        }
 
         task_status_monitor.task_status = current_pos_state;
         task_status_monitor.loop_value = loop;

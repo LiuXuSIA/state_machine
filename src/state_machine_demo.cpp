@@ -61,7 +61,7 @@ ros::Time landing_last_request;
 
 /*************************constant defunition***************************/
 
-#define TAKEOFF_VELOCITY    2.0
+#define ASCEND_VELOCITY     2.0
 #define LOCATE_ACCURACY     0.5
 
 
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     //takeoff velocity
     vel_pub.twist.linear.x = 0.0f;
     vel_pub.twist.linear.y = 0.0f;
-    vel_pub.twist.linear.z = TAKEOFF_VELOCITY;
+    vel_pub.twist.linear.z = ASCEND_VELOCITY;
     vel_pub.twist.angular.x = 0.0f;
     vel_pub.twist.angular.y = 0.0f;
     vel_pub.twist.angular.z = 0.0f;

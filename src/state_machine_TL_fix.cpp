@@ -1,11 +1,11 @@
 /*************************************************************************
-@file           state_machine_demo_SERSOR.cpp
-@date           2018/09/11 
+@file           state_machine_TL_fix.cpp
+@date           2018/10/7 20:19
 @author         liuxu
 @email          liuxu.ccc@gmail.com
-@description    a simple state machine for the drone race in 2018
-                takeoff-->hover-->landing
+@description    fixed 3 position from GCS
 *************************************************************************/
+
 
 /****************************header files********************************/
 #include <ros/ros.h>
@@ -23,8 +23,6 @@
 #include <state_machine/VISION_POSITION_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
 
-#include <state_machine/Distance.h> 
-
 
 /***************************function declare****************************/
 
@@ -36,12 +34,10 @@ double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, do
 geometry_msgs::PoseStamped position_home;
 geometry_msgs::PoseStamped position_componnet;
 geometry_msgs::PoseStamped position_construction;
-geometry_msgs::PoseStamped position_hover_2;
 
 //topic
 geometry_msgs::PoseStamped pose_pub; 
-geometry_msgs::TwistStamped vel_ascend;
-geometry_msgs::TwistStamped vel_descend;
+geometry_msgs::TwistStamped vel_pub;
 
 ros::Publisher local_pos_pub;
 ros::Publisher local_vel_pub;
@@ -52,10 +48,8 @@ ros::Publisher fixed_target_pub;
 //state_machine state,every state need target position
 static const int takeoff = 1;
 static const int target_go = 2;
-static const int hover_1 = 3;
-static const int fall = 4;
-static const int hover_2 = 5;
-static const int land = 6;
+static const int hover = 3;
+static const int land = 4;
 
 //mission 
 int loop = 0;
@@ -83,7 +77,6 @@ bool velocity_control_enable = true;
 
 #define HOME_HEIGHT            5
 #define ASCEND_VELOCITY        1.5
-#define DESCEND_VELOCITY       1.5
 #define OBSERVE_HEIGET         5
 #define CONSTRUCTION_HEIGET    5
 #define LOCATE_ACCURACY        1.0
@@ -180,13 +173,6 @@ void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::Cons
     ROS_INFO("task_status_change.loop_value:%d",task_status_change.loop_value);
 }
 
-state_machine::Distance distance;
-void distance_cb(const state_machine::Distance::ConstPtr& msg)
-{
-    distance = *msg;
-    ROS_INFO("distance:%f",distance.distance);
-}
-
 
 /*****************************main function*****************************/
 int main(int argc, char **argv)
@@ -195,19 +181,12 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     //takeoff velocity
-    vel_ascend.twist.linear.x = 0.0f;
-    vel_ascend.twist.linear.y = 0.0f;
-    vel_ascend.twist.linear.z = ASCEND_VELOCITY;
-    vel_ascend.twist.angular.x = 0.0f;
-    vel_ascend.twist.angular.y = 0.0f;
-    vel_ascend.twist.angular.z = 0.0f;
-
-    vel_descend.twist.linear.x = 0.0f;
-    vel_descend.twist.linear.y = 0.0f;
-    vel_descend.twist.linear.z = -DESCEND_VELOCITY;
-    vel_descend.twist.angular.x = 0.0f;
-    vel_descend.twist.angular.y = 0.0f;
-    vel_descend.twist.angular.z = 0.0f;
+    vel_pub.twist.linear.x = 0.0f;
+    vel_pub.twist.linear.y = 0.0f;
+    vel_pub.twist.linear.z = ASCEND_VELOCITY;
+    vel_pub.twist.angular.x = 0.0f;
+    vel_pub.twist.angular.y = 0.0f;
+    vel_pub.twist.angular.z = 0.0f;
      
     //topic  subscribe
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
@@ -235,8 +214,8 @@ int main(int argc, char **argv)
 
     while(ros::ok() && !current_state.connected)
     {
-        ros::spinOnce();
-        rate.sleep();
+    	ros::spinOnce();
+    	rate.sleep();
     }
 
     ROS_INFO("Connect successfully!!");
@@ -244,16 +223,16 @@ int main(int argc, char **argv)
     ROS_INFO("send setpoint before takeoff,please wait");
 
     for(int i =100; ros::ok() && i > 0; i--)
-    {
-        local_vel_pub.publish(vel_ascend);
-        ros::spinOnce();
-        rate.sleep();
-    }
+	{
+		local_vel_pub.publish(vel_pub);
+		ros::spinOnce();
+		rate.sleep();
+	}
 
     ROS_INFO("Initialization finished");
 
-    while(ros::ok())
-    {
+	while(ros::ok())
+	{
         static bool display_falg = true;
 
         if(current_state.mode == "OFFBOARD" && current_state.armed)
@@ -263,7 +242,7 @@ int main(int argc, char **argv)
         }
         else if(velocity_control_enable == true)
         {
-            local_vel_pub.publish(vel_ascend);
+            local_vel_pub.publish(vel_pub);
             if(display_falg == true)
             {
                 ROS_INFO("Wait for switch to offboard...");
@@ -279,11 +258,11 @@ int main(int argc, char **argv)
         task_status_monitor.target_z = -pose_pub.pose.position.z;
         task_status_pub.publish(task_status_monitor);
 
-        ros::spinOnce();
-        rate.sleep();
-    }
+		ros::spinOnce();
+		rate.sleep();
+	}
 
-    return 0;
+	return 0;
 }
 
 
@@ -296,7 +275,7 @@ void state_machine_fun(void)
         {
             velocity_control_enable = false;
             pose_pub = position_home;
-            local_vel_pub.publish(vel_ascend);
+            local_vel_pub.publish(vel_pub);
             if(current_position.pose.position.z > 4)
             {
                 current_pos_state = target_go;
@@ -312,41 +291,16 @@ void state_machine_fun(void)
                                 current_position.pose.position.y,position_home.pose.position.y,
                                 current_position.pose.position.z,position_home.pose.position.z) < LOCATE_ACCURACY)
             {
-                current_pos_state = hover_1;
+                current_pos_state = hover;
                 last_time = ros::Time::now();
             }
         }
         break;
-        case hover_1:
+        case hover:
         {
             pose_pub = position_home;
             local_pos_pub.publish(position_home);
             if(ros::Time::now() - last_time > ros::Duration(5.0))
-            {
-                current_pos_state = fall;
-                last_time = ros::Time::now();
-            }
-        }
-        break;
-        case fall:
-        {
-            local_vel_pub.publish(vel_descend);
-            if(distance.distance < 1.0)
-            {
-                current_pos_state = hover_2;
-
-                position_hover_2.pose.position.x = current_position.pose.position.x;
-                position_hover_2.pose.position.y - current_position.pose.position.y;
-                position_hover_2.pose.position.z - current_position.pose.position.z;
-
-                last_time = ros::Time::now();
-            }
-        }
-        break;
-        case hover_2:
-        {
-            local_pos_pub.publish(position_hover_2);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
                 current_pos_state = land;
                 last_time = ros::Time::now();
@@ -356,7 +310,7 @@ void state_machine_fun(void)
         case land:
         {
             if(current_state.mode != "AUTO.LAND" && 
-              (ros::Time::now() - landing_last_request > ros::Duration(3.0)))
+              (ros::Time::now() - landing_last_request > ros::Duration(10.0)))
             {
                 if(land_client.call(landing_cmd) && landing_cmd.response.success)
                 {
