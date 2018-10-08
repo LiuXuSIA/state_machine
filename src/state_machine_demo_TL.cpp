@@ -44,7 +44,7 @@ ros::Time landing_last_request;
 
 /*************************constant defunition***************************/
 
-#define ASCEND_VELOCITY     2.0
+#define ASCEND_VELOCITY     1.5
 #define LOCATE_ACCURACY     0.5
 
 
@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 
     pose_pub.pose.position.x = 0;
     pose_pub.pose.position.y = 0;
-    pose_pub.pose.position.z = 5;
+    pose_pub.pose.position.z = 3;
 
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
@@ -128,7 +128,7 @@ void state_machine_fun(void)
         case takeoff:
         {
             local_vel_pub.publish(vel_pub);
-            if(current_position.pose.position.z > 3)
+            if(current_position.pose.position.z > 1.5)
             {
                 current_pos_state = target_go;
                 last_time = ros::Time::now();
