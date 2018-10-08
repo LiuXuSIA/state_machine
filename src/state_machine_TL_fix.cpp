@@ -250,6 +250,18 @@ int main(int argc, char **argv)
             }
         }
 
+        if(current_state.armed && current_pos_state == land)
+        {
+            if(current_state.mode != "MANUAL" && current_state.mode != "AUTO.LAND" && 
+              (ros::Time::now() - landing_last_request > ros::Duration(5.0)))
+                {
+                    if(land_client.call(landing_cmd) && landing_cmd.response.success)
+                    {
+                        ROS_INFO("AUTO LANDING");
+                    }
+                    landing_last_request = ros::Time::now();
+                }
+        }
 
         task_status_monitor.task_status = current_pos_state;
         task_status_monitor.loop_value = loop;
@@ -308,17 +320,6 @@ void state_machine_fun(void)
         }
         break;
         case land:
-        {
-            if(current_state.mode != "AUTO.LAND" && 
-              (ros::Time::now() - landing_last_request > ros::Duration(10.0)))
-            {
-                if(land_client.call(landing_cmd) && landing_cmd.response.success)
-                {
-                    ROS_INFO("AUTO LANDING");
-                }
-                landing_last_request = ros::Time::now();
-            }
-        }
         break;
     }
 }
