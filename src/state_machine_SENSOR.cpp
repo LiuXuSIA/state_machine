@@ -86,7 +86,7 @@ bool velocity_control_enable = true;
 #define DESCEND_VELOCITY       0.3
 #define OBSERVE_HEIGET         5
 #define CONSTRUCTION_HEIGET    5
-#define LOCATE_ACCURACY        1.0
+#define LOCATE_ACCURACY        0.5
 
 
 /***************************callback function definition***************/
@@ -215,6 +215,7 @@ int main(int argc, char **argv)
     ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity",10,velo_cb);
     ros::Subscriber fixed_target_sub = nh.subscribe<state_machine::FIXED_TARGET_POSITION_P2M>("mavros/fixed_target_position_p2m",10,fixed_target_position_p2m_cb);
     ros::Subscriber task_status_sub = nh.subscribe<state_machine::TASK_STATUS_CHANGE_P2M>("mavros/task_status_change_p2m",10,task_status_change_p2m_cb);
+    ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
 
     //topic publish
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
@@ -343,13 +344,13 @@ void state_machine_fun(void)
         case fall:
         {
             local_vel_pub.publish(vel_descend);
-            if(distance.distance < 1.0)
+            if(distance.distance < 2.0)
             {
                 current_pos_state = hover_2;
 
                 position_hover_2.pose.position.x = current_position.pose.position.x;
-                position_hover_2.pose.position.y - current_position.pose.position.y;
-                position_hover_2.pose.position.z - current_position.pose.position.z;
+                position_hover_2.pose.position.y = current_position.pose.position.y;
+                position_hover_2.pose.position.z = current_position.pose.position.z;
 
                 last_time = ros::Time::now();
             }

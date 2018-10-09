@@ -14,3 +14,4 @@ uint8   loop_value    #loop number of current task, 0~5
 float32 target_x      #current target X position (NED), in m
 float32 target_y      #current target Y position (NED), in m
 float32 target_z      #current target Z position (NED), in m
+float32 sensor_distance

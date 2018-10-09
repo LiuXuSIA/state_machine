@@ -290,6 +290,7 @@ void state_machine_fun(void)
     {
         case takeoff:
         {
+            velocity_control_enable = false;
             pose_pub = position_home;
             local_vel_pub.publish(vel_pub);
             if(current_position.pose.position.z > 3)

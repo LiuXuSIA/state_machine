@@ -51,9 +51,11 @@ ros::Publisher vision_position_pub;
 
 //state_machine state,every state need target position
 static const int takeoff = 1;
-static const int target_go = 2;
-static const int hover = 3;
-static const int land = 4;
+static const int position_H_go = 2;
+static const int position_H_hover = 3;
+static const int position_Com_go = 4;
+static const int position_Com_hover = 5;
+static const int land = 6;
 
 //mission 
 int loop = 0;
@@ -81,9 +83,9 @@ bool velocity_control_enable = true;
 
 #define HOME_HEIGHT            2.5
 #define ASCEND_VELOCITY        1.5
-#define OBSERVE_HEIGET         5
-#define CONSTRUCTION_HEIGET    5
-#define LOCATE_ACCURACY        1.0
+#define OBSERVE_HEIGET         2.5
+#define CONSTRUCTION_HEIGET    2.5
+#define LOCATE_ACCURACY        0.5
 
 
 /***************************callback function definition***************/
@@ -300,12 +302,12 @@ void state_machine_fun(void)
             local_vel_pub.publish(vel_pub);
             if(current_position.pose.position.z > 1)
             {
-                current_pos_state = target_go;
+                current_pos_state = position_H_go;
                 last_time = ros::Time::now();
             }
         }
         break;
-        case target_go:
+        case position_H_go:
         {
             local_pos_pub.publish(position_home);
             pose_pub = position_home;
@@ -313,15 +315,39 @@ void state_machine_fun(void)
                                 current_position.pose.position.y,position_home.pose.position.y,
                                 current_position.pose.position.z,position_home.pose.position.z) < LOCATE_ACCURACY)
             {
-                current_pos_state = hover;
+                current_pos_state = position_H_hover;
                 last_time = ros::Time::now();
             }
         }
         break;
-        case hover:
+        case position_H_hover:
         {
             pose_pub = position_home;
             local_pos_pub.publish(position_home);
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            {
+                current_pos_state = position_Com_go;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case position_Com_go:
+        {
+            pose_pub = position_componnet;
+            local_pos_pub.publish(position_componnet);
+            if (Distance_of_Two(current_position.pose.position.x,position_componnet.pose.position.x,
+                                current_position.pose.position.y,position_componnet.pose.position.y,
+                                current_position.pose.position.z,position_componnet.pose.position.z) < LOCATE_ACCURACY)
+            {
+                current_pos_state = position_Com_hover;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+         case position_Com_hover:
+        {
+            pose_pub = position_componnet;
+            local_pos_pub.publish(position_componnet);
         }
         break;
         case land:

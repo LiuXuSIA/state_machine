@@ -18,6 +18,8 @@
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
 #include "math.h"
 
+#include <state_machine/Distance.h> 
+
 /**************************for different debug**************************/
 #define communication_debug
 //#define orientation_debug
@@ -78,6 +80,8 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     ROS_INFO("fix_target_return.construction_y:%f",fix_target_return.construction_y);
     ROS_INFO("fix_target_return.construction_z:%f",fix_target_return.construction_z);
 
+    task_status_monitor.task_status = 17;
+
     receive_flag = true;
 }
 
@@ -89,6 +93,13 @@ void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::Cons
     ROS_INFO("task_status_change.loop_value:%d",task_status_change.loop_value);
 }
 
+state_machine::Distance distance;
+void distance_cb(const state_machine::Distance::ConstPtr& msg)
+{
+    distance = *msg;
+    task_status_monitor.sensor_distance = distance.distance;
+    //ROS_INFO("distance:%f",distance.distance);
+}
 
 
 /*****************************main function*****************************/
@@ -110,7 +121,7 @@ int main(int argc, char **argv)
 
     grab_status.grab_status = 2;
 
-    task_status_monitor.task_status = 3;
+    task_status_monitor.task_status = 10;
     task_status_monitor.loop_value = 3;
     task_status_monitor.target_x = 3;
     task_status_monitor.target_y = 3;
@@ -129,7 +140,8 @@ int main(int argc, char **argv)
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
     ros::Subscriber fixed_target_sub = nh.subscribe<state_machine::FIXED_TARGET_POSITION_P2M>("mavros/fixed_target_position_p2m",10,fixed_target_position_p2m_cb);
     ros::Subscriber task_status_sub = nh.subscribe<state_machine::TASK_STATUS_CHANGE_P2M>("mavros/task_status_change_p2m",10,task_status_change_p2m_cb);
-    
+    ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
+
     //publish
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
     ros::Publisher fixed_target_pub = nh.advertise<state_machine::FIXED_TARGET_RETURN_M2P>("mavros/fixed_target_return_m2p",10);
@@ -163,8 +175,16 @@ int main(int argc, char **argv)
 
 	while(ros::ok())
 	{
+        
+
         while(receive_flag == false)
+        {
+
+            task_status_pub.publish(task_status_monitor);
             ros::spinOnce();
+            rate.sleep();
+        }
+
         fixed_target_pub.publish(fix_target_return);
 		ros::spinOnce();
 		rate.sleep();
