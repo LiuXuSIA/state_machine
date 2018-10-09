@@ -352,7 +352,7 @@ void state_machine_fun(void)
             velocity_control_enable = false;
             pose_pub = position_home;
             local_vel_pub.publish(vel_ascend);
-            if(current_position.pose.position.z > 1.5)
+            if(current_position.pose.position.z > 3.5)
             {
                 current_pos_state = position_H_go;
                 last_time = ros::Time::now();
