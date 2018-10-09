@@ -311,6 +311,22 @@ int main(int argc, char **argv)
             }
         }
 
+        if(distance.distance > 1.0)
+        {
+            grab_status.grab_status = 0;
+            grab_status_pub.publish(grab_status);
+        }
+        else if(current_pos_state == Com_get_close || current_pos_state == componnet_grab)
+        {
+            grab_status.grab_status = 0;
+            grab_status_pub.publish(grab_status);
+        }
+        else
+        {
+            grab_status.grab_status = 1;
+            grab_status_pub.publish(grab_status);
+        }
+
         task_status_monitor.task_status = current_pos_state;
         task_status_monitor.loop_value = loop;
         task_status_monitor.target_x = pose_pub.pose.position.y;
