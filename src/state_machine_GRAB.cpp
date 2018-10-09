@@ -96,11 +96,11 @@ bool velocity_control_enable = true;
 
 /*************************constant defunition***************************/
 
-#define HOME_HEIGHT         3.0
-#define ASCEND_VELOCITY     1.0
+#define HOME_HEIGHT         5.0
+#define ASCEND_VELOCITY     1.5
 #define DESCEND_VELOCITY    0.3
-#define OBSERVE_HEIGET      3.0
-#define CONSTRUCT_HEIGET    3.0
+#define OBSERVE_HEIGET      5.0
+#define CONSTRUCT_HEIGET    5.0
 #define BOX_HEIGET          0.25
 #define PLACE_HEIGET        0.5
 #define LOCATE_ACCURACY     0.5
