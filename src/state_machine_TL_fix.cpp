@@ -34,6 +34,8 @@ double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, do
 geometry_msgs::PoseStamped position_home;
 geometry_msgs::PoseStamped position_componnet;
 geometry_msgs::PoseStamped position_construction;
+geometry_msgs::PoseStamped position_hover2;
+geometry_msgs::PoseStamped position_hover3;
 
 //topic
 geometry_msgs::PoseStamped pose_pub; 
@@ -49,7 +51,11 @@ ros::Publisher fixed_target_pub;
 static const int takeoff = 1;
 static const int target_go = 2;
 static const int hover = 3;
-static const int land = 4;
+static const int go_hover2 = 4;
+static const int hover2 = 5;
+static const int go_hover3 = 6;
+static const int hover3 = 7;
+static const int land = 8;
 
 //mission 
 int loop = 0;
@@ -79,7 +85,7 @@ bool velocity_control_enable = true;
 #define ASCEND_VELOCITY        1.5
 #define OBSERVE_HEIGET         5
 #define CONSTRUCTION_HEIGET    5
-#define LOCATE_ACCURACY        1.0
+#define LOCATE_ACCURACY        0.4
 
 
 /***************************callback function definition***************/
@@ -145,24 +151,32 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     position_construction.pose.position.x = fix_target_position.construction_y;
     position_construction.pose.position.y = fix_target_position.construction_x;
     position_construction.pose.position.z = CONSTRUCTION_HEIGET;
+
+    position_hover2.pose.position.x = position_home.pose.position.x;
+    position_hover2.pose.position.y = position_home.pose.position.y;
+    position_hover2.pose.position.z = position_home.pose.position.z - 1.0;
+
+    position_hover3.pose.position.x = position_home.pose.position.x;
+    position_hover3.pose.position.y = position_home.pose.position.y;
+    position_hover3.pose.position.z = position_home.pose.position.z - 2.0;
     
-    //adjust angular,face north
-    float yaw_sp=M_PI_2;
-    //home
-    position_home.pose.orientation.x = 0;
-    position_home.pose.orientation.y = 0;
-    position_home.pose.orientation.z = sin(yaw_sp/2);
-    position_home.pose.orientation.w = cos(yaw_sp/2);
-    //componnet
-    position_componnet.pose.orientation.x = 0;
-    position_componnet.pose.orientation.y = 0;
-    position_componnet.pose.orientation.z = sin(yaw_sp/2);
-    position_componnet.pose.orientation.w = cos(yaw_sp/2);
-    //construction
-    position_construction.pose.orientation.x = 0;
-    position_construction.pose.orientation.y = 0;
-    position_construction.pose.orientation.z = sin(yaw_sp/2);
-    position_construction.pose.orientation.w = cos(yaw_sp/2);
+    // //adjust angular,face north
+    // float yaw_sp=M_PI_2;
+    // //home
+    // position_home.pose.orientation.x = 0;
+    // position_home.pose.orientation.y = 0;
+    // position_home.pose.orientation.z = sin(yaw_sp/2);
+    // position_home.pose.orientation.w = cos(yaw_sp/2);
+    // //componnet
+    // position_componnet.pose.orientation.x = 0;
+    // position_componnet.pose.orientation.y = 0;
+    // position_componnet.pose.orientation.z = sin(yaw_sp/2);
+    // position_componnet.pose.orientation.w = cos(yaw_sp/2);
+    // //construction
+    // position_construction.pose.orientation.x = 0;
+    // position_construction.pose.orientation.y = 0;
+    // position_construction.pose.orientation.z = sin(yaw_sp/2);
+    // position_construction.pose.orientation.w = cos(yaw_sp/2);
 }
 
 state_machine::TASK_STATUS_CHANGE_P2M task_status_change;
@@ -312,7 +326,55 @@ void state_machine_fun(void)
         {
             pose_pub = position_home;
             local_pos_pub.publish(position_home);
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            {
+                current_pos_state = go_hover2;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case go_hover2:
+        {
+            local_pos_pub.publish(position_hover2);
+            pose_pub = position_hover2;
+            if (Distance_of_Two(current_position.pose.position.x,position_hover2.pose.position.x,
+                                current_position.pose.position.y,position_hover2.pose.position.y,
+                                current_position.pose.position.z,position_hover2.pose.position.z) < LOCATE_ACCURACY)
+            {
+                current_pos_state = hover2;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case hover2:
+        {
+            pose_pub = position_hover2;
+            local_pos_pub.publish(position_hover2);
+            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            {
+                current_pos_state = go_hover3;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case go_hover3:
+        {
+            local_pos_pub.publish(position_hover3);
+            pose_pub = position_hover3;
+            if (Distance_of_Two(current_position.pose.position.x,position_hover3.pose.position.x,
+                                current_position.pose.position.y,position_hover3.pose.position.y,
+                                current_position.pose.position.z,position_hover3.pose.position.z) < LOCATE_ACCURACY)
+            {
+                current_pos_state = hover3;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case hover3:
+        {
+            pose_pub = position_hover3;
+            local_pos_pub.publish(position_hover3);
+            if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
                 current_pos_state = land;
                 last_time = ros::Time::now();
