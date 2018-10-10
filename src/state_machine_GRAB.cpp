@@ -43,6 +43,7 @@ geometry_msgs::PoseStamped position_grab;
 geometry_msgs::PoseStamped position_place;
 geometry_msgs::PoseStamped position_judge;
 geometry_msgs::PoseStamped position_of_safe;
+geometry_msgs::PoseStamped position_before_grab;
 
 //topic
 geometry_msgs::PoseStamped pose_pub; 
@@ -97,14 +98,15 @@ bool velocity_control_enable = true;
 
 /*************************constant defunition***************************/
 
-#define HOME_HEIGHT         5.0
-#define ASCEND_VELOCITY     1.5
-#define DESCEND_VELOCITY    0.3
-#define OBSERVE_HEIGET      5.0
-#define CONSTRUCT_HEIGET    5.0
-#define BOX_HEIGET          0.25
-#define PLACE_HEIGET        0.5
-#define LOCATE_ACCURACY     0.4
+#define HOME_HEIGHT             5.0
+#define ASCEND_VELOCITY         1.5
+#define DESCEND_VELOCITY        0.3
+#define OBSERVE_HEIGET          5.0
+#define CONSTRUCT_HEIGET        5.0
+#define BOX_HEIGET              0.25
+#define PLACE_HEIGET            0.7
+#define LOCATE_ACCURACY         0.4
+#define LOCATE_ACCURACY_GRAB    0.2
 
 
 /***************************callback function definition***************/
@@ -173,11 +175,11 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
 
     position_grab.pose.position.x = position_componnet.pose.position.x;
     position_grab.pose.position.y = position_componnet.pose.position.y;
-    position_grab.pose.position.z = -fix_target_position.component_z + 0.3;
+    position_grab.pose.position.z = -fix_target_position.component_z + 0.27;
 
     position_place.pose.position.x = position_componnet.pose.position.x;
     position_place.pose.position.y = position_componnet.pose.position.y;
-    position_place.pose.position.z = -fix_target_position.component_z + 0.8;
+    position_place.pose.position.z = -fix_target_position.component_z + PLACE_HEIGET;
     
     // //adjust angular,face north
     // float yaw_sp=M_PI_2;
@@ -463,22 +465,11 @@ void state_machine_fun(void)
         break;
         case Com_get_close:
         {
-            pose_pub = position_componnet;
-            local_vel_pub.publish(vel_descend);
-            if (current_position.pose.position.z < 1.5)    //need modified
-            {
-                current_pos_state = Com_get_fit;
-                last_time = ros::Time::now();
-            }
-        }
-        break;
-        case Com_get_fit:
-        {
             local_pos_pub.publish(position_grab);
             pose_pub = position_grab;
             if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
                                 current_position.pose.position.y,position_grab.pose.position.y,
-                                current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY)
+                                current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_GRAB)
             {
                 current_pos_state = componnet_grab;
                 last_time = ros::Time::now();
