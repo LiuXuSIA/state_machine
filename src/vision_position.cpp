@@ -13,20 +13,51 @@
 #include <std_msgs/Float32.h>
 #include <state_machine/Vision_Position_Raw.h>
 
+#include <state_machine/Attitude.h>
+#include "math.h"
+
 
 serial::Serial ser; 
 
 state_machine::Vision_Position_Raw vision_position_raw;
+
+float R[3][3] = {0};
+
+state_machine::Attitude current_attitude;
+void attitude_cb(const state_machine::Attitude::ConstPtr& msg)
+{
+    current_attitude = *msg;
+
+    R[0][0] = cos(current_attitude.pitch) * cos(current_attitude.yaw);
+    R[0][1] = sin(current_attitude.roll) * sin(current_attitude.pitch) * cos(current_attitude.yaw) -
+              cos(current_attitude.roll) * sin(current_attitude.yaw);
+    R[0][2] = cos(current_attitude.roll) * sin(current_attitude.pitch) * cos(current_attitude.yaw) +
+              sin(current_attitude.roll) * sin(current_attitude.yaw);
+
+    R[1][0] = cos(current_attitude.pitch) * sin(current_attitude.yaw);
+    R[1][1] = sin(current_attitude.roll) * sin(current_attitude.pitch) * sin(current_attitude.yaw) +
+              cos(current_attitude.roll) * cos(current_attitude.yaw);
+    R[1][2] = cos(current_attitude.roll) * sin(current_attitude.pitch) * sin(current_attitude.yaw) -
+              sin(current_attitude.roll) * cos(current_attitude.yaw);
+
+    R[2][0] = -sin(current_attitude.pitch);
+    R[2][1] = sin(current_attitude.roll) * cos(current_attitude.pitch);
+    R[2][2]= cos(current_attitude.roll) * cos(current_attitude.pitch);
+
+}
 
 int main (int argc, char** argv) 
 { 
     ros::init(argc, argv, "vision_position_node"); 
 
     ros::NodeHandle nh;  
-
+    
+    //for coordinate exchange
+    ros::Subscriber pose_sub = nh.subscribe<state_machine::Attitude>("mavros/attitude",10,attitude_cb);
+    //vision_position
     ros::Publisher vision_position_pub = nh.advertise<state_machine::Vision_Position_Raw>("vision_position", 10); 
 
-    ros::Rate rate(10.0); 
+    ros::Rate rate(20.0); 
 
     try 
     { 
@@ -74,15 +105,18 @@ int main (int argc, char** argv)
                 ROS_INFO("z:%f",position_z);
                 ROS_INFO("d:%f",position_d);
 
-                vision_position_raw.x = position_x/1000;
-                vision_position_raw.y = position_y/1000;
-                vision_position_raw.z = position_z/1000;
+                ros::spinOnce(); 
+
+                vision_position_raw.x = (R[0][0] * position_x + R[0][1] * position_y + R[0][2] * position_z)/1000;
+                vision_position_raw.y = (R[1][0] * position_x + R[1][1] * position_y + R[1][2] * position_z)/1000;
+                vision_position_raw.z = (R[2][0] * position_x + R[2][1] * position_y + R[2][2] * position_z)/1000;
+
+
 
                 vision_position_pub.publish(vision_position_raw);
             }
         } 
 
-        ros::spinOnce(); 
         rate.sleep(); 
     } 
 } 

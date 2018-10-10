@@ -83,10 +83,10 @@ bool velocity_control_enable = true;
 
 #define HOME_HEIGHT            5
 #define ASCEND_VELOCITY        1.5
-#define DESCEND_VELOCITY       0.1
+#define DESCEND_VELOCITY       0.3
 #define OBSERVE_HEIGET         5
 #define CONSTRUCTION_HEIGET    5
-#define LOCATE_ACCURACY        1.5
+#define LOCATE_ACCURACY        0.5
 
 
 /***************************callback function definition***************/
@@ -285,20 +285,6 @@ int main(int argc, char **argv)
                 }
         }
 
-        if(current_pos_state = fall)
-        {
-            if(distance.distance < 2.0)
-            {
-                current_pos_state = hover_2;
-
-                position_hover_2.pose.position.x = current_position.pose.position.x;
-                position_hover_2.pose.position.y = current_position.pose.position.y;
-                position_hover_2.pose.position.z = current_position.pose.position.z;
-
-                last_time = ros::Time::now();
-            }
-        }
-
         task_status_monitor.task_status = current_pos_state;
         task_status_monitor.loop_value = loop;
         task_status_monitor.target_x = pose_pub.pose.position.y;
@@ -346,12 +332,34 @@ void state_machine_fun(void)
         break;
         case hover_1:
         {
+            static int distance_count = 0;
+            static float distance_average = 0;
+
             pose_pub = position_home;
             local_pos_pub.publish(position_home);
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+
+            position_hover_2.pose.position.x = position_home.pose.position.x;
+            position_hover_2.pose.position.y = position_home.pose.position.y;
+            position_hover_2.pose.position.z = current_position.pose.position.z - distance.distance + 0.5;
+
+            if(ros::Time::now() - last_time > ros::Duration(2.0) && distance_count == 0)
             {
-                current_pos_state = fall;
-                last_time = ros::Time::now();
+                distance_count++;
+            }
+            if(ros::Time::now() - last_time > ros::Duration(0.5) && distance_count > 0)
+            {
+                distance_average = (distance_average * distance_count + distance.distance)/(++distance_count);
+                if(distance_count > 30)
+                {
+                    position_hover_2.pose.position.x = position_home.pose.position.x;
+                    position_hover_2.pose.position.y = position_home.pose.position.y;
+                    position_hover_2.pose.position.z = current_position.pose.position.z - distance_average + 0.5;
+                    distance_average = 0;
+                    distance_count = 0;
+                    current_pos_state = fall;
+                    last_time = ros::Time::now();
+                    break;
+                }               
             }
         }
         break;
