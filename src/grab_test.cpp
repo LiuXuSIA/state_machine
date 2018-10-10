@@ -69,6 +69,7 @@ int main(int argc, char **argv)
         task_status_monitor.target_x = 0;
         task_status_monitor.target_y = 0;
         task_status_monitor.target_z = 0;
+        task_status_monitor.sensor_distance = 0;
         task_status_pub.publish(task_status_monitor);
 	}
 
@@ -91,7 +92,7 @@ void state_machine_fun(void)
         break;
         case grab:
         {
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            if(ros::Time::now() - last_time > ros::Duration(7.0))
             {
                 current_pos_state = release;
                 last_time = ros::Time::now();

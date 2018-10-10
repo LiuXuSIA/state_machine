@@ -62,6 +62,7 @@ static const int position_H_hover = 3;
 static const int position_Com_go = 4;
 static const int position_Com_hover = 5;
 static const int Com_get_close = 6;
+static const int Com_get_fit = 7;
 static const int componnet_grab = 10;
 static const int Com_leave = 11;
 static const int grab_status_judge = 12;
@@ -103,7 +104,7 @@ bool velocity_control_enable = true;
 #define CONSTRUCT_HEIGET    5.0
 #define BOX_HEIGET          0.25
 #define PLACE_HEIGET        0.5
-#define LOCATE_ACCURACY     0.5
+#define LOCATE_ACCURACY     0.4
 
 
 /***************************callback function definition***************/
@@ -119,11 +120,11 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
     current_position = *msg;
 }
 
-geometry_msgs::TwistStamped current_velocity;
-void velo_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
-{
-    current_velocity = *msg;
-}
+// geometry_msgs::TwistStamped current_velocity;
+// void velo_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
+// {
+//     current_velocity = *msg;
+// }
 
 state_machine::FIXED_TARGET_POSITION_P2M fix_target_position;
 void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M::ConstPtr& msg)
@@ -169,24 +170,32 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     position_construction.pose.position.x = fix_target_position.construction_y;
     position_construction.pose.position.y = fix_target_position.construction_x;
     position_construction.pose.position.z = CONSTRUCT_HEIGET;
+
+    position_grab.pose.position.x = position_componnet.pose.position.x;
+    position_grab.pose.position.y = position_componnet.pose.position.y;
+    position_grab.pose.position.z = -fix_target_position.component_z + 0.3;
+
+    position_place.pose.position.x = position_componnet.pose.position.x;
+    position_place.pose.position.y = position_componnet.pose.position.y;
+    position_place.pose.position.z = -fix_target_position.component_z + 0.8;
     
-    //adjust angular,face north
-    float yaw_sp=M_PI_2;
-    //home
-    position_home.pose.orientation.x = 0;
-    position_home.pose.orientation.y = 0;
-    position_home.pose.orientation.z = sin(yaw_sp/2);
-    position_home.pose.orientation.w = cos(yaw_sp/2);
-    //componnet
-    position_componnet.pose.orientation.x = 0;
-    position_componnet.pose.orientation.y = 0;
-    position_componnet.pose.orientation.z = sin(yaw_sp/2);
-    position_componnet.pose.orientation.w = cos(yaw_sp/2);
-    //construction
-    position_construction.pose.orientation.x = 0;
-    position_construction.pose.orientation.y = 0;
-    position_construction.pose.orientation.z = sin(yaw_sp/2);
-    position_construction.pose.orientation.w = cos(yaw_sp/2);
+    // //adjust angular,face north
+    // float yaw_sp=M_PI_2;
+    // //home
+    // position_home.pose.orientation.x = 0;
+    // position_home.pose.orientation.y = 0;
+    // position_home.pose.orientation.z = sin(yaw_sp/2);
+    // position_home.pose.orientation.w = cos(yaw_sp/2);
+    // //componnet
+    // position_componnet.pose.orientation.x = 0;
+    // position_componnet.pose.orientation.y = 0;
+    // position_componnet.pose.orientation.z = sin(yaw_sp/2);
+    // position_componnet.pose.orientation.w = cos(yaw_sp/2);
+    // //construction
+    // position_construction.pose.orientation.x = 0;
+    // position_construction.pose.orientation.y = 0;
+    // position_construction.pose.orientation.z = sin(yaw_sp/2);
+    // position_construction.pose.orientation.w = cos(yaw_sp/2);
 }
 
 state_machine::TASK_STATUS_CHANGE_P2M task_status_change;
@@ -198,12 +207,12 @@ void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::Cons
 }
 
 
-state_machine::Distance distance;
-void distance_cb(const state_machine::Distance::ConstPtr& msg)
-{
-    distance = *msg;
-    ROS_INFO("distance:%f",distance.distance);
-}
+// state_machine::Distance distance;
+// void distance_cb(const state_machine::Distance::ConstPtr& msg)
+// {
+//     distance = *msg;
+//     ROS_INFO("distance:%f",distance.distance);
+// }
 
 
 /*****************************main function*****************************/
@@ -228,35 +237,35 @@ int main(int argc, char **argv)
     vel_descend.twist.angular.y = 0.0f;
     vel_descend.twist.angular.z = 0.0f;
 
-     float yaw_sp=M_PI_2;
-    //position_grab
-    position_grab.pose.orientation.x = 0;
-    position_grab.pose.orientation.y = 0;
-    position_grab.pose.orientation.z = sin(yaw_sp/2);
-    position_grab.pose.orientation.w = cos(yaw_sp/2);
-    //position_place
-    position_place.pose.orientation.x = 0;
-    position_place.pose.orientation.y = 0;
-    position_place.pose.orientation.z = sin(yaw_sp/2);
-    position_place.pose.orientation.w = cos(yaw_sp/2);
-    //position_judge
-    position_judge.pose.orientation.x = 0;
-    position_judge.pose.orientation.y = 0;
-    position_judge.pose.orientation.z = sin(yaw_sp/2);
-    position_judge.pose.orientation.w = cos(yaw_sp/2);
-    //position_of_safe
-    position_of_safe.pose.orientation.x = 0;
-    position_of_safe.pose.orientation.y = 0;
-    position_of_safe.pose.orientation.z = sin(yaw_sp/2);
-    position_of_safe.pose.orientation.w = cos(yaw_sp/2);
+    //  float yaw_sp=M_PI_2;
+    // //position_grab
+    // position_grab.pose.orientation.x = 0;
+    // position_grab.pose.orientation.y = 0;
+    // position_grab.pose.orientation.z = sin(yaw_sp/2);
+    // position_grab.pose.orientation.w = cos(yaw_sp/2);
+    // //position_place
+    // position_place.pose.orientation.x = 0;
+    // position_place.pose.orientation.y = 0;
+    // position_place.pose.orientation.z = sin(yaw_sp/2);
+    // position_place.pose.orientation.w = cos(yaw_sp/2);
+    // //position_judge
+    // position_judge.pose.orientation.x = 0;
+    // position_judge.pose.orientation.y = 0;
+    // position_judge.pose.orientation.z = sin(yaw_sp/2);
+    // position_judge.pose.orientation.w = cos(yaw_sp/2);
+    // //position_of_safe
+    // position_of_safe.pose.orientation.x = 0;
+    // position_of_safe.pose.orientation.y = 0;
+    // position_of_safe.pose.orientation.z = sin(yaw_sp/2);
+    // position_of_safe.pose.orientation.w = cos(yaw_sp/2);
      
     //topic  subscribe
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
-    ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity",10,velo_cb);
+    //ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity",10,velo_cb);
     ros::Subscriber fixed_target_sub = nh.subscribe<state_machine::FIXED_TARGET_POSITION_P2M>("mavros/fixed_target_position_p2m",10,fixed_target_position_p2m_cb);
     ros::Subscriber task_status_sub = nh.subscribe<state_machine::TASK_STATUS_CHANGE_P2M>("mavros/task_status_change_p2m",10,task_status_change_p2m_cb);
-    ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
+    //ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
 
     //topic publish
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
@@ -311,21 +320,34 @@ int main(int argc, char **argv)
             }
         }
 
-        if(distance.distance > 1.0)
+        if(current_state.armed && current_pos_state == land)
         {
-            grab_status.grab_status = 0;
-            grab_status_pub.publish(grab_status);
+            if(current_state.mode != "MANUAL" && current_state.mode != "AUTO.LAND" && 
+              (ros::Time::now() - landing_last_request > ros::Duration(5.0)))
+                {
+                    if(land_client.call(landing_cmd) && landing_cmd.response.success)
+                    {
+                        ROS_INFO("AUTO LANDING");
+                    }
+                    landing_last_request = ros::Time::now();
+                }
         }
-        else if(current_pos_state == Com_get_close || current_pos_state == componnet_grab)
-        {
-            grab_status.grab_status = 0;
-            grab_status_pub.publish(grab_status);
-        }
-        else
-        {
-            grab_status.grab_status = 1;
-            grab_status_pub.publish(grab_status);
-        }
+
+        // if(distance.distance > 1.0)
+        // {
+        //     grab_status.grab_status = 0;
+        //     grab_status_pub.publish(grab_status);
+        // }
+        // else if(current_pos_state == Com_get_close || current_pos_state == componnet_grab)
+        // {
+        //     grab_status.grab_status = 0;
+        //     grab_status_pub.publish(grab_status);
+        // }
+        // else
+        // {
+        //     grab_status.grab_status = 1;
+        //     grab_status_pub.publish(grab_status);
+        // }
 
         task_status_monitor.task_status = current_pos_state;
         task_status_monitor.loop_value = loop;
@@ -352,7 +374,7 @@ void state_machine_fun(void)
             velocity_control_enable = false;
             pose_pub = position_home;
             local_vel_pub.publish(vel_ascend);
-            if(current_position.pose.position.z > 3.5)
+            if(current_position.pose.position.z > 3)
             {
                 current_pos_state = position_H_go;
                 last_time = ros::Time::now();
@@ -410,7 +432,7 @@ void state_machine_fun(void)
             {
                 if (Distance_of_Two(current_position.pose.position.x,position_componnet.pose.position.x,
                                     current_position.pose.position.y,position_componnet.pose.position.y,
-                                    current_position.pose.position.z,position_componnet.pose.position.z) < 0.2)
+                                    current_position.pose.position.z,position_componnet.pose.position.z) < 0.15)
                 {
                     accuracy_count1++;
                     if(accuracy_count1 > 3)
@@ -426,9 +448,10 @@ void state_machine_fun(void)
                 {
                     accuracy_count1 = 0;
                 }
-            }           
+            } 
+
             hover_count1++;
-            if(hover_count1 > 10)
+            if(hover_count1 > 15)
             {
                 current_pos_state = Com_get_close;
                 accuracy_count1 = 0;
@@ -442,16 +465,22 @@ void state_machine_fun(void)
         {
             pose_pub = position_componnet;
             local_vel_pub.publish(vel_descend);
-            if (abs(current_position.pose.position.x - position_componnet.pose.position.x) < 0.1 &&
-                abs(current_position.pose.position.y - position_componnet.pose.position.y) < 0.1 &&
-                distance.distance < 0.5 )   //need modified
+            if (current_position.pose.position.z < 1.5)    //need modified
+            {
+                current_pos_state = Com_get_fit;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case Com_get_fit:
+        {
+            local_pos_pub.publish(position_grab);
+            pose_pub = position_grab;
+            if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
+                                current_position.pose.position.y,position_grab.pose.position.y,
+                                current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY)
             {
                 current_pos_state = componnet_grab;
-
-                position_grab.pose.position.x = current_position.pose.position.x;
-                position_grab.pose.position.y = current_position.pose.position.y;
-                position_grab.pose.position.z = current_position.pose.position.z;
-
                 last_time = ros::Time::now();
             }
         }
@@ -482,7 +511,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_componnet;
             local_vel_pub.publish(vel_ascend);
-            if (current_position.pose.position.z > 3 )
+            if (current_position.pose.position.z > 4)
             {
                 position_judge.pose.position.x = current_position.pose.position.x;
                 position_judge.pose.position.y = current_position.pose.position.y;
@@ -494,38 +523,45 @@ void state_machine_fun(void)
         break;
         case grab_status_judge:
         {
-            static int grab_judge_count = 0;
+            // static int grab_judge_count = 0;
+            // pose_pub = position_judge;
+            // local_pos_pub.publish(position_judge);
+            // if(ros::Time::now() - last_time > ros::Duration(3.0) && grab_judge_count == 0)
+            // {
+            //     grab_judge_count++;
+            // }
+            // if (ros::Time::now() - last_time > ros::Duration(0.5) && grab_judge_count >0)
+            // {
+            //     if (distance.distance < 0.5)
+            //         {
+            //             grab_judge_count++;
+            //             if(grab_judge_count > 10)
+            //             {
+            //                 grab_judge_count = 0;
+            //                 current_pos_state = place_point_get_close;
+                            
+            //                 position_place.pose.position.x = position_componnet.pose.position.x;
+            //                 position_place.pose.position.y = position_componnet.pose.position.y;
+            //                 position_place.pose.position.z = PLACE_HEIGET + BOX_HEIGET*loop;
+
+            //                 last_time = ros::Time::now();
+            //                 break;
+            //             }
+            //         }
+            //     else
+            //     {
+            //         grab_judge_count = 0;
+            //         current_pos_state = position_Com_go;
+            //         last_time = ros::Time::now();
+            //         break;
+            //     }               
+            // }
             pose_pub = position_judge;
             local_pos_pub.publish(position_judge);
-            if(ros::Time::now() - last_time > ros::Duration(3.0) && grab_judge_count == 0)
+            if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
-                grab_judge_count++;
-            }
-            if (ros::Time::now() - last_time > ros::Duration(0.5) && grab_judge_count >0)
-            {
-                if (distance.distance < 0.5)
-                    {
-                        grab_judge_count++;
-                        if(grab_judge_count > 10)
-                        {
-                            grab_judge_count = 0;
-                            current_pos_state = place_point_get_close;
-                            
-                            position_place.pose.position.x = position_componnet.pose.position.x;
-                            position_place.pose.position.y = position_componnet.pose.position.y;
-                            position_place.pose.position.z = PLACE_HEIGET + BOX_HEIGET*loop;
-
-                            last_time = ros::Time::now();
-                            break;
-                        }
-                    }
-                else
-                {
-                    grab_judge_count = 0;
-                    current_pos_state = position_Com_go;
-                    last_time = ros::Time::now();
-                    break;
-                }               
+                current_pos_state = place_point_get_close;
+                last_time = ros::Time::now();
             }
         }
         break;
@@ -556,7 +592,7 @@ void state_machine_fun(void)
             {
                 if (Distance_of_Two(current_position.pose.position.x,position_place.pose.position.x,
                                     current_position.pose.position.y,position_place.pose.position.y,
-                                    current_position.pose.position.z,position_place.pose.position.z) < 0.1)
+                                    current_position.pose.position.z,position_place.pose.position.z) < 0.15)
                 {
                     accuracy_count3++;
                     if(accuracy_count3 > 3)
@@ -622,34 +658,41 @@ void state_machine_fun(void)
         break;
         case place_status_judge:
         {
-            static int place_judge_count = 0;
+            // static int place_judge_count = 0;
+            // pose_pub = position_of_safe;
+            // local_pos_pub.publish(position_of_safe);
+            // if(ros::Time::now() - last_time > ros::Duration(1.0) && place_judge_count == 0)
+            // {
+            //     place_judge_count++;
+            // }
+            // if (ros::Time::now() - last_time > ros::Duration(0.5) && place_judge_count >0)
+            // {
+            //     if (distance.distance > 1.0)
+            //         {
+            //             place_judge_count++;
+            //             if(place_judge_count > 3)
+            //             {
+            //                 place_judge_count = 0;
+            //                 current_pos_state = return_home;
+            //                 loop++;
+            //                 last_time = ros::Time::now();
+            //                 break;
+            //             }
+            //         }
+            //     else
+            //     {
+            //         place_judge_count = 0;
+            //         current_pos_state = place_point_get_close;
+            //         last_time = ros::Time::now();
+            //         break;
+            //     }               
+            // }
             pose_pub = position_of_safe;
             local_pos_pub.publish(position_of_safe);
-            if(ros::Time::now() - last_time > ros::Duration(1.0) && place_judge_count == 0)
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
-                place_judge_count++;
-            }
-            if (ros::Time::now() - last_time > ros::Duration(0.5) && place_judge_count >0)
-            {
-                if (distance.distance > 1.0)
-                    {
-                        place_judge_count++;
-                        if(place_judge_count > 3)
-                        {
-                            place_judge_count = 0;
-                            current_pos_state = return_home;
-                            loop++;
-                            last_time = ros::Time::now();
-                            break;
-                        }
-                    }
-                else
-                {
-                    place_judge_count = 0;
-                    current_pos_state = place_point_get_close;
-                    last_time = ros::Time::now();
-                    break;
-                }               
+                current_pos_state = return_home;
+                last_time = ros::Time::now();
             }
         }
         break;
@@ -667,17 +710,6 @@ void state_machine_fun(void)
         }
         break;
         case land:
-        {
-            if(current_state.mode != "AUTO.LAND" && 
-                   (ros::Time::now() - landing_last_request > ros::Duration(10.0)))
-                {
-                    if(land_client.call(landing_cmd) && landing_cmd.response.success)
-                    {
-                        ROS_INFO("AUTO LANDING");
-                    }
-                    landing_last_request = ros::Time::now();
-                }
-        }
         break;
     }
 }
