@@ -23,7 +23,6 @@
 #include <state_machine/VISION_POSITION_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
 
-#include <state_machine/VISION_POSITION_GET_M2P.h>
 #include <state_machine/Vision_Position_Raw.h> 
 
 
@@ -78,6 +77,7 @@ state_machine::YAW_SP_CALCULATED_M2P yaw_sp_calculated;
 
 //velocity send
 bool velocity_control_enable = true;
+bool fix_target_receive_enable = true;
 
 /*************************constant defunition***************************/
 
@@ -111,64 +111,70 @@ state_machine::FIXED_TARGET_POSITION_P2M fix_target_position;
 void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M::ConstPtr& msg)
 {
     fix_target_position = *msg;
-
-    fix_target_return.home_x = fix_target_position.home_x;
-    fix_target_return.home_y = fix_target_position.home_y;
-    fix_target_return.home_z = -HOME_HEIGHT;
-
-    fix_target_return.component_x = fix_target_position.component_x;
-    fix_target_return.component_y = fix_target_position.component_y;
-    fix_target_return.component_z = -OBSERVE_HEIGET;
-
-    fix_target_return.construction_x = fix_target_position.construction_x;
-    fix_target_return.construction_y = fix_target_position.construction_y;
-    fix_target_return.construction_z = -CONSTRUCTION_HEIGET;
-
-    ROS_INFO("fix_target_return.home_x:%f",fix_target_return.home_x);
-    ROS_INFO("fix_target_return.home_y:%f",fix_target_return.home_y);
-    ROS_INFO("fix_target_return.home_z:%f",fix_target_return.home_z);
-
-    ROS_INFO("fix_target_return.component_x:%f",fix_target_return.component_x);
-    ROS_INFO("fix_target_return.component_y:%f",fix_target_return.component_y);
-    ROS_INFO("fix_target_return.component_z:%f",fix_target_return.component_z);
-
-    ROS_INFO("fix_target_return.construction_x:%f",fix_target_return.construction_x);
-    ROS_INFO("fix_target_return.construction_y:%f",fix_target_return.construction_y);
-    ROS_INFO("fix_target_return.construction_z:%f",fix_target_return.construction_z);
-
-    fixed_target_pub.publish(fix_target_return);
-
-    //Coordinate transformation
-    //position of home
-    position_home.pose.position.x = fix_target_position.home_y;
-    position_home.pose.position.y = fix_target_position.home_x;
-    position_home.pose.position.z = HOME_HEIGHT;
-    //position of componnet
-    position_componnet.pose.position.x = fix_target_position.component_y;
-    position_componnet.pose.position.y = fix_target_position.component_x;
-    position_componnet.pose.position.z = OBSERVE_HEIGET;
-    //position of construction
-    position_construction.pose.position.x = fix_target_position.construction_y;
-    position_construction.pose.position.y = fix_target_position.construction_x;
-    position_construction.pose.position.z = CONSTRUCTION_HEIGET;
     
-    //adjust angular,face north
-    float yaw_sp=M_PI_2;
-    //home
-    position_home.pose.orientation.x = 0;
-    position_home.pose.orientation.y = 0;
-    position_home.pose.orientation.z = sin(yaw_sp/2);
-    position_home.pose.orientation.w = cos(yaw_sp/2);
-    //componnet
-    position_componnet.pose.orientation.x = 0;
-    position_componnet.pose.orientation.y = 0;
-    position_componnet.pose.orientation.z = sin(yaw_sp/2);
-    position_componnet.pose.orientation.w = cos(yaw_sp/2);
-    //construction
-    position_construction.pose.orientation.x = 0;
-    position_construction.pose.orientation.y = 0;
-    position_construction.pose.orientation.z = sin(yaw_sp/2);
-    position_construction.pose.orientation.w = cos(yaw_sp/2);
+    if(fix_target_receive_enable ==true)
+    {
+        fix_target_return.home_x = fix_target_position.home_x;
+        fix_target_return.home_y = fix_target_position.home_y;
+        fix_target_return.home_z = -HOME_HEIGHT + fix_target_position.home_z;
+
+        fix_target_return.component_x = fix_target_position.component_x;
+        fix_target_return.component_y = fix_target_position.component_y;
+        fix_target_return.component_z = -OBSERVE_HEIGET + fix_target_position.component_z;
+
+        fix_target_return.construction_x = fix_target_position.construction_x;
+        fix_target_return.construction_y = fix_target_position.construction_y;
+        fix_target_return.construction_z = -CONSTRUCTION_HEIGET + fix_target_position.construction_z;
+
+        ROS_INFO("fix_target_return.home_x:%f",fix_target_return.home_x);
+        ROS_INFO("fix_target_return.home_y:%f",fix_target_return.home_y);
+        ROS_INFO("fix_target_return.home_z:%f",fix_target_return.home_z);
+
+        ROS_INFO("fix_target_return.component_x:%f",fix_target_return.component_x);
+        ROS_INFO("fix_target_return.component_y:%f",fix_target_return.component_y);
+        ROS_INFO("fix_target_return.component_z:%f",fix_target_return.component_z);
+
+        ROS_INFO("fix_target_return.construction_x:%f",fix_target_return.construction_x);
+        ROS_INFO("fix_target_return.construction_y:%f",fix_target_return.construction_y);
+        ROS_INFO("fix_target_return.construction_z:%f",fix_target_return.construction_z);
+
+        fixed_target_pub.publish(fix_target_return);
+
+        //Coordinate transformation
+        //position of home
+        position_home.pose.position.x = fix_target_position.home_y;
+        position_home.pose.position.y = fix_target_position.home_x;
+        position_home.pose.position.z = HOME_HEIGHT - fix_target_position.home_z;
+        //position of componnet
+        position_componnet.pose.position.x = fix_target_position.component_y;
+        position_componnet.pose.position.y = fix_target_position.component_x;
+        position_componnet.pose.position.z = OBSERVE_HEIGET - fix_target_position.component_z;
+        //position of construction
+        position_construction.pose.position.x = fix_target_position.construction_y;
+        position_construction.pose.position.y = fix_target_position.construction_x;
+        position_construction.pose.position.z = CONSTRUCTION_HEIGET - fix_target_position.construction_z;
+
+        fix_target_receive_enable = false;
+    
+        // //adjust angular,face north
+        // float yaw_sp=M_PI_2;
+        // //home
+        // position_home.pose.orientation.x = 0;
+        // position_home.pose.orientation.y = 0;
+        // position_home.pose.orientation.z = sin(yaw_sp/2);
+        // position_home.pose.orientation.w = cos(yaw_sp/2);
+        // //componnet
+        // position_componnet.pose.orientation.x = 0;
+        // position_componnet.pose.orientation.y = 0;
+        // position_componnet.pose.orientation.z = sin(yaw_sp/2);
+        // position_componnet.pose.orientation.w = cos(yaw_sp/2);
+        // //construction
+        // position_construction.pose.orientation.x = 0;
+        // position_construction.pose.orientation.y = 0;
+        // position_construction.pose.orientation.z = sin(yaw_sp/2);
+        // position_construction.pose.orientation.w = cos(yaw_sp/2);
+    }
+    
 }
 
 state_machine::TASK_STATUS_CHANGE_P2M task_status_change;
@@ -300,7 +306,7 @@ void state_machine_fun(void)
             velocity_control_enable = false;
             pose_pub = position_home;
             local_vel_pub.publish(vel_pub);
-            if(current_position.pose.position.z > 1)
+            if((current_position.pose.position.z + fix_target_position.home_z) > 1.5)
             {
                 current_pos_state = position_H_go;
                 last_time = ros::Time::now();

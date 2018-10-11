@@ -37,6 +37,7 @@ void state_machine_fun(void);
 geometry_msgs::PoseStamped position_home;
 geometry_msgs::PoseStamped position_componnet;
 geometry_msgs::PoseStamped position_construction;
+geometry_msgs::PoseStamped position_by_calculated;
 
 //topic
 geometry_msgs::PoseStamped pose_pub; 
@@ -74,7 +75,7 @@ state_machine::VISION_POSITION_GET_M2P vision_position_get;
 state_machine::YAW_SP_CALCULATED_M2P yaw_sp_calculated;
 
 
-bool display_enable = true;
+bool display_enable = false;
 bool initial_enable = false;
 
 /*************************constant defunition***************************/
@@ -267,8 +268,6 @@ int main(int argc, char **argv)
     while(ros::ok())
     {
         state_machine_fun();
-
-        ros::spinOnce();
         rate.sleep();
     }
 
@@ -283,6 +282,8 @@ void state_machine_fun(void)
     {
         case initial:
         {
+            display_enable = true;
+            ros::spinOnce();
             initial_enable = true;
             current_pos_state = vision_process;
             last_time = ros::Time::now();
@@ -305,11 +306,11 @@ void state_machine_fun(void)
             static float position_y_average = 0;
             static float position[10][2] = {0};
             
-            if (ros::Time::now() - mission_last_time > ros::Duration(1.0) && vision_count > 10)
+            if (ros::Time::now() - last_time > ros::Duration(1.0) && vision_count > 10)
             {
                 vision_count = 0;
             }
-            if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && vision_count < 10)
+            if(ros::Time::now() - last_time > ros::Duration(0.5) && vision_count < 10)
             {
                 // position_x_average = (position_x_average * vision_count + vision_position.component_position_x)/(vision_count);
                 // position_y_average = (position_x_average * vision_count + vision_position.component_position_y)/(vision_count);
@@ -351,12 +352,35 @@ void state_machine_fun(void)
             }
             else
             {
+
                 for(int i = 0;i < 10;i++)
+                {
                     if(i != row_count_x_max && i != row_count_x_min)
-                        position_x_total += position[i][0];
+                    {
+                        position_x_total += position[i][0]; 
+                        ROS_INFO("position[%d][0]:%f",i,position_by_calculated.pose.position.x);
+                    }
+                           
+                }
                 for(int i = 0;i < 10;i++)
+                {
                     if(i != row_count_x_max && i != row_count_x_min)
+                    {
                         position_y_total += position[i][1];
+                        ROS_INFO("position[%d][1]:%f",i,position_by_calculated.pose.position.x);
+                    }
+                }
+
+                ROS_INFO("position_x_max:%f",position_x_max);
+                ROS_INFO("row_count_x_max:%d",row_count_x_max);
+                ROS_INFO("position_y_max:%f",position_y_max);
+                ROS_INFO("row_count_y_max:%d",row_count_y_max);
+                ROS_INFO("position_x_min:%f",position_x_min);
+                ROS_INFO("row_count_x_min:%d",row_count_x_min);
+                ROS_INFO("position_y_min:%f",position_y_min);
+                ROS_INFO("row_count_y_min:%d",row_count_y_min);
+
+
                 position_x_average = position_x_total/8;
                 position_y_average = position_y_total/8;
 
@@ -381,9 +405,10 @@ void state_machine_fun(void)
                 position_y_min = 0;
                 position_x_total = 0;
                 position_y_total = 0;
-                static float position[10][2] = {0};
-
-                display_enable = true;
+                position[10][2] = {0};
+                current_pos_state = initial;
+                //display_enable = true;
+            }
         }
         break;
     }
