@@ -85,7 +85,7 @@ bool fix_target_receive_enable = true;
 #define ASCEND_VELOCITY        1.5
 #define OBSERVE_HEIGET         2.5
 #define CONSTRUCTION_HEIGET    2.5
-#define LOCATE_ACCURACY        0.5
+#define LOCATE_ACCURACY        0.6
 
 
 /***************************callback function definition***************/
@@ -191,9 +191,10 @@ void vision_position_cb(const state_machine::Vision_Position_Raw::ConstPtr& msg)
     vision_position_raw = *msg;
 
     vision_position_get.loop_value = loop;
-    vision_position_get.component_position_x = vision_position_raw.x;
-    vision_position_get.component_position_y = vision_position_raw.y;
-    vision_position_get.component_position_z = vision_position_raw.z;
+    //NED
+    vision_position_get.component_position_x = vision_position_raw.x + current_position.pose.position.y;
+    vision_position_get.component_position_y = vision_position_raw.y + current_position.pose.position.x;
+    vision_position_get.component_position_z = vision_position_raw.z - current_position.pose.position.z;
 
     vision_position_pub.publish(vision_position_get);
 }
@@ -275,6 +276,19 @@ int main(int argc, char **argv)
                 display_falg = false;
             }
         }
+
+        if(current_state.armed && current_pos_state == land)
+        {
+            if(current_state.mode != "MANUAL" && current_state.mode != "AUTO.LAND" && 
+              (ros::Time::now() - landing_last_request > ros::Duration(5.0)))
+                {
+                    if(land_client.call(landing_cmd) && landing_cmd.response.success)
+                    {
+                        ROS_INFO("AUTO LANDING");
+                    }
+                    landing_last_request = ros::Time::now();
+                }
+        }
         
         if(task_status_change.task_status == 18)
         {
@@ -286,6 +300,7 @@ int main(int argc, char **argv)
         task_status_monitor.target_x = pose_pub.pose.position.y;
         task_status_monitor.target_y = pose_pub.pose.position.x;
         task_status_monitor.target_z = -pose_pub.pose.position.z;
+        task_status_monitor.sensor_distance = 0;
         task_status_pub.publish(task_status_monitor);
 
         ros::spinOnce();
@@ -330,7 +345,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_home;
             local_pos_pub.publish(position_home);
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            if(ros::Time::now() - last_time > ros::Duration(3.0))
             {
                 current_pos_state = position_Com_go;
                 last_time = ros::Time::now();
@@ -357,17 +372,6 @@ void state_machine_fun(void)
         }
         break;
         case land:
-        {
-            if(current_state.mode != "AUTO.LAND" && 
-              (ros::Time::now() - landing_last_request > ros::Duration(10.0)))
-            {
-                if(land_client.call(landing_cmd) && landing_cmd.response.success)
-                {
-                    ROS_INFO("AUTO LANDING");
-                }
-                landing_last_request = ros::Time::now();
-            }
-        }
         break;
     }
 }

@@ -45,11 +45,11 @@ int main (int argc, char** argv)
  
     ros::Publisher distance_pub = nh.advertise<state_machine::Distance>("distance", 10); 
 
-    ros::Rate rate(20.0); 
+    ros::Rate rate(10.0); 
 
     try 
     { 
-        ser.setPort("/dev/ttyUSB1"); 
+        ser.setPort("/dev/ttyUSB0"); 
         ser.setBaudrate(9600); 
         serial::Timeout to = serial::Timeout::simpleTimeout(1000); 
         ser.setTimeout(to); 
@@ -99,7 +99,8 @@ int main (int argc, char** argv)
   
             last_distance = distance.distance;
             ROS_INFO("distance:%f",distance.distance);
-            //distance_pub.publish(distance); 
+
+            distance_pub.publish(distance); 
         } 
 
         ros::spinOnce(); 

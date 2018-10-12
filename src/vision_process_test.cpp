@@ -176,12 +176,17 @@ void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::Cons
     ROS_INFO("task_status_change.loop_value:%d",task_status_change.loop_value);
 }
 
-state_machine::Distance distance;
-void distance_cb(const state_machine::Distance::ConstPtr& msg)
-{
-    distance = *msg;
-    ROS_INFO("distance:%f",distance.distance);
-}
+// state_machine::Distance distance;
+// void distance_cb(const state_machine::Distance::ConstPtr& msg)
+// {
+//     distance = *msg;
+//     ROS_INFO("distance:%f",distance.distance);
+//     if(display_enable == true)
+//     {
+//         //ROS_INFO("distance:%f",distance.distance);
+//         display_enable = false;
+//     } 
+// }
 
 state_machine::Vision_Position_Raw vision_position_raw;
 void vision_position_cb(const state_machine::Vision_Position_Raw::ConstPtr& msg)
@@ -189,9 +194,10 @@ void vision_position_cb(const state_machine::Vision_Position_Raw::ConstPtr& msg)
     vision_position_raw = *msg;
 
     vision_position_get.loop_value = loop;
-    vision_position_get.component_position_x = vision_position_raw.x;
-    vision_position_get.component_position_y = vision_position_raw.y;
-    vision_position_get.component_position_z = vision_position_raw.z;
+    //NED
+    vision_position_get.component_position_x = vision_position_raw.x + current_position.pose.position.y;
+    vision_position_get.component_position_y = vision_position_raw.y + current_position.pose.position.x;
+    vision_position_get.component_position_z = vision_position_raw.z - current_position.pose.position.z;
 
     vision_position_pub.publish(vision_position_get);
 
@@ -246,28 +252,29 @@ int main(int argc, char **argv)
 
     ros::Rate rate(10.0);
 
-    while(ros::ok() && !current_state.connected)
-    {
-        ros::spinOnce();
-        rate.sleep();
-    }
+    // while(ros::ok() && !current_state.connected)
+    // {
+    //     ros::spinOnce();
+    //     rate.sleep();
+    // }
 
-    ROS_INFO("Connect successfully!!");
+    // ROS_INFO("Connect successfully!!");
 
-    ROS_INFO("send setpoint before takeoff,please wait");
+    // ROS_INFO("send setpoint before takeoff,please wait");
 
-    for(int i =100; ros::ok() && i > 0; i--)
-    {
-        local_vel_pub.publish(vel_pub);
-        ros::spinOnce();
-        rate.sleep();
-    }
+    // for(int i =100; ros::ok() && i > 0; i--)
+    // {
+    //     local_vel_pub.publish(vel_pub);
+    //     ros::spinOnce();
+    //     rate.sleep();
+    // }
 
-    ROS_INFO("Initialization finished");
+    // ROS_INFO("Initialization finished");
 
     while(ros::ok())
     {
         state_machine_fun();
+        ros::spinOnce();
         rate.sleep();
     }
 
@@ -283,7 +290,7 @@ void state_machine_fun(void)
         case initial:
         {
             display_enable = true;
-            ros::spinOnce();
+            // ros::spinOnce();
             initial_enable = true;
             current_pos_state = vision_process;
             last_time = ros::Time::now();
@@ -312,6 +319,7 @@ void state_machine_fun(void)
             }
             if(ros::Time::now() - last_time > ros::Duration(0.5) && vision_count < 10)
             {
+                //ros::spinOnce();
                 // position_x_average = (position_x_average * vision_count + vision_position.component_position_x)/(vision_count);
                 // position_y_average = (position_x_average * vision_count + vision_position.component_position_y)/(vision_count);
                 
@@ -327,7 +335,7 @@ void state_machine_fun(void)
                     initial_enable = false;
                 }
 
-                if(vision_position_get.component_position_x > position_x_max)
+                if(distance.distance > position_x_max)
                 {
                     position_x_max = vision_position_get.component_position_x;
                     row_count_x_max = vision_count;
@@ -337,7 +345,7 @@ void state_machine_fun(void)
                     position_y_max = vision_position_get.component_position_y;
                     row_count_y_max = vision_count;
                 }
-                if(vision_position_get.component_position_x < position_x_min)
+                if(distance.distance < position_x_min)
                 {
                     position_x_min = vision_position_get.component_position_x;
                     row_count_x_min = vision_count;
@@ -350,15 +358,15 @@ void state_machine_fun(void)
                  
                 vision_count++;
             }
-            else
+            else if(vision_count == 10)
             {
 
                 for(int i = 0;i < 10;i++)
                 {
+                    ROS_INFO("position[%d][0]:%f",i,position[i][0]);
                     if(i != row_count_x_max && i != row_count_x_min)
                     {
                         position_x_total += position[i][0]; 
-                        ROS_INFO("position[%d][0]:%f",i,position_by_calculated.pose.position.x);
                     }
                            
                 }
@@ -388,7 +396,7 @@ void state_machine_fun(void)
                 position_by_calculated.pose.position.y = position_y_average;
                 position_by_calculated.pose.position.z = 2.5;
 
-                ROS_INFO("position_by_calculated.x:%f",position_by_calculated.pose.position.x);
+                ROS_INFO("position_x_average.x:%f",position_x_average);
                 ROS_INFO("position_by_calculated.y:%f",position_by_calculated.pose.position.y);
                 ROS_INFO("position_by_calculated.z:%f",position_by_calculated.pose.position.z);
 
@@ -407,7 +415,7 @@ void state_machine_fun(void)
                 position_y_total = 0;
                 position[10][2] = {0};
                 current_pos_state = initial;
-                //display_enable = true;
+                display_enable = true;
             }
         }
         break;
