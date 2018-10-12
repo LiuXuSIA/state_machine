@@ -232,7 +232,7 @@ int main(int argc, char **argv)
     ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity",10,velo_cb);
     ros::Subscriber fixed_target_sub = nh.subscribe<state_machine::FIXED_TARGET_POSITION_P2M>("mavros/fixed_target_position_p2m",10,fixed_target_position_p2m_cb);
     ros::Subscriber task_status_sub = nh.subscribe<state_machine::TASK_STATUS_CHANGE_P2M>("mavros/task_status_change_p2m",10,task_status_change_p2m_cb);
-    ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
+    //ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
     ros::Subscriber vision_position_sub = nh.subscribe<state_machine::Vision_Position_Raw>("vision_position",10,vision_position_cb);
 
     //topic publish
@@ -335,7 +335,7 @@ void state_machine_fun(void)
                     initial_enable = false;
                 }
 
-                if(distance.distance > position_x_max)
+                if(vision_position_get.component_position_x > position_x_max)
                 {
                     position_x_max = vision_position_get.component_position_x;
                     row_count_x_max = vision_count;
@@ -345,7 +345,7 @@ void state_machine_fun(void)
                     position_y_max = vision_position_get.component_position_y;
                     row_count_y_max = vision_count;
                 }
-                if(distance.distance < position_x_min)
+                if(vision_position_get.component_position_x < position_x_min)
                 {
                     position_x_min = vision_position_get.component_position_x;
                     row_count_x_min = vision_count;

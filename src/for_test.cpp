@@ -20,11 +20,20 @@
 
 #include <state_machine/Distance.h> 
 
+/***************************function declare****************************/
+void state_machine_fun(void);
+
 /**************************for different debug**************************/
 #define communication_debug
 //#define orientation_debug
 
 /***************************variable definition*************************/
+static const int initial = 1;
+static const int hover_to_recognize = 2;
+int state = initial;
+
+//time
+ros::Time last_time;
 
 geometry_msgs::PoseStamped pose_pub;  //ENU
 bool receive_flag = false;
@@ -34,6 +43,9 @@ state_machine::GRAB_STATUS_M2P grab_status;
 state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor;
 state_machine::VISION_POSITION_GET_M2P vision_position_get;
 state_machine::YAW_SP_CALCULATED_M2P yaw_sp_calculated;
+
+bool display_enable = false;
+bool initial_enable = false;
 
 /***************************callback function definition***************/
 state_machine::State current_state;
@@ -97,8 +109,12 @@ state_machine::Distance distance;
 void distance_cb(const state_machine::Distance::ConstPtr& msg)
 {
     distance = *msg;
-    task_status_monitor.sensor_distance = distance.distance;
-    //ROS_INFO("distance:%f",distance.distance);
+    ROS_INFO("distance:%f",distance.distance);
+    if(display_enable == true)
+    {
+        //ROS_INFO("distance:%f",distance.distance);
+        display_enable = false;
+    } 
 }
 
 
@@ -152,65 +168,119 @@ int main(int argc, char **argv)
     
     ros::Rate rate(10.0);
 
-    while(ros::ok() && !current_state.connected)
-    {
-    	ros::spinOnce();
-    	rate.sleep();
-    }
+ //    while(ros::ok() && !current_state.connected)
+ //    {
+ //    	ros::spinOnce();
+ //    	rate.sleep();
+ //    }
 
-    ROS_INFO("Connect successfully!!");
+ //    ROS_INFO("Connect successfully!!");
 
-    #ifdef orientation_debug
-    ROS_INFO("send setpoint before takeoff,please wait");
+ //    #ifdef orientation_debug
+ //    ROS_INFO("send setpoint before takeoff,please wait");
 
-    for(int i =100; ros::ok() && i > 0; i--)
-	{
-		local_pos_pub.publish(pose_pub);
-		ros::spinOnce();
-		rate.sleep();
-	}
+ //    for(int i =100; ros::ok() && i > 0; i--)
+	// {
+	// 	local_pos_pub.publish(pose_pub);
+	// 	ros::spinOnce();
+	// 	rate.sleep();
+	// }
 
-    ROS_INFO("Initialization finished");
-    #endif
+ //    ROS_INFO("Initialization finished");
+ //    #endif
 
 	while(ros::ok())
-	{
-        
+	{     
+  //       while(receive_flag == false)
+  //       {
 
-        while(receive_flag == false)
-        {
+  //           task_status_pub.publish(task_status_monitor);
+  //           ros::spinOnce();
+  //           rate.sleep();
+  //       }
 
-            task_status_pub.publish(task_status_monitor);
-            ros::spinOnce();
-            rate.sleep();
-        }
+  //       fixed_target_pub.publish(fix_target_return);
+		// ros::spinOnce();
+		// rate.sleep();
 
-        fixed_target_pub.publish(fix_target_return);
-		ros::spinOnce();
-		rate.sleep();
+  //       grab_status_pub.publish(grab_status);
+  //       ros::spinOnce();
+  //       rate.sleep();
 
-        grab_status_pub.publish(grab_status);
-        ros::spinOnce();
-        rate.sleep();
+  //       task_status_pub.publish(task_status_monitor);
+  //       ros::spinOnce();
+  //       rate.sleep();
 
-        task_status_pub.publish(task_status_monitor);
-        ros::spinOnce();
-        rate.sleep();
+  //       vision_position_pub.publish(vision_position_get);
+  //       ros::spinOnce();
+  //       rate.sleep();
 
-        vision_position_pub.publish(vision_position_get);
-        ros::spinOnce();
-        rate.sleep();
+  //       yaw_sp_pub.publish(yaw_sp_calculated);
+  //       ros::spinOnce();
+  //       rate.sleep();
 
-        yaw_sp_pub.publish(yaw_sp_calculated);
-        ros::spinOnce();
-        rate.sleep();
-
-        receive_flag = false;
+  //       receive_flag = false;
 
         //break;
+        state_machine_fun();
+        // ros::spinOnce();
+        rate.sleep();
     }
+}
 
-    ros::spin();
+void state_machine_fun()
+{
 
-	return 0;
+    switch(state)
+    {
+         case initial:
+        {
+            display_enable = true;
+            // ros::spinOnce();
+            initial_enable = true;
+            state = hover_to_recognize;
+            last_time = ros::Time::now();
+        }
+        break;
+        case hover_to_recognize:
+        {   
+            static float position_x_aver = 0;
+            //static float position_y_aver = 0;
+            //static float position_z_aver = 0;
+            static int vision_count1 = 11;
+
+            if (ros::Time::now() - last_time > ros::Duration(1.0) && vision_count1 > 10)
+            {
+                vision_count1 = 0;
+            }
+            if(ros::Time::now() - last_time > ros::Duration(0.5) && vision_count1 < 10)
+            {
+                ros::spinOnce();
+                position_x_aver = (position_x_aver * vision_count1 + distance.distance)/(vision_count1 + 1);
+                //position_y_aver = (position_y_aver * vision_count1 + vision_position_get.component_position_y)/(vision_count1 + 1);
+               //position_z_aver = (position_z_aver * vision_count1 + vision_position_get.component_position_z)/(vision_count1 + 1);
+                // current_pos_state = component_locate;   //need change Z place to component_locate
+                vision_count1++;
+                //display_enable = true;
+            }
+            else if(vision_count1 == 10)
+            {
+                ROS_INFO("position_x_aver:%f",position_x_aver);
+                //ROS_INFO("position_y_aver:%f",position_y_aver);
+                //ROS_INFO("position_z_aver:%f",position_z_aver);
+
+                // position_box.pose.position.x = position_y_aver;
+                // position_box.pose.position.y = position_x_aver;
+                // position_box.pose.position.z = RECOGNIZE_HEIGHT - position_z_aver;
+                vision_count1 = 11;
+                position_x_aver = 0;
+                // position_y_aver = 0;
+                // position_z_aver = 0;
+                state = 4; 
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+    }
+    
 }
