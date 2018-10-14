@@ -96,10 +96,10 @@ int main (int argc, char** argv)
             if(position_data.data.substr(0,4) == "SSSS" &&
                 position_data.data.substr(27,4) == "EEEE")
             {
-                position_x_temp = position_data.data.substr(5,5);
-                position_y_temp = position_data.data.substr(11,5);
-                position_z_temp = position_data.data.substr(17,5);
-                position_d_temp = position_data.data.substr(23,5);
+                position_x_temp.data = position_data.data.substr(5,5);
+                position_y_temp.data = position_data.data.substr(11,5);
+                position_z_temp.data = position_data.data.substr(17,5);
+                position_d_temp.data = position_data.data.substr(23,5);
 
                 position_x = atof(position_x_temp.data.substr(1,4).c_str());
                 position_y = atof(position_y_temp.data.substr(1,4).c_str());
