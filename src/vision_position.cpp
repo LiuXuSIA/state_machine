@@ -53,7 +53,7 @@ int main (int argc, char** argv)
     ros::NodeHandle nh;  
     
     //for coordinate exchange
-    ros::Subscriber pose_sub = nh.subscribe<state_machine::Attitude>("mavros/attitude",10,attitude_cb);
+    ros::Subscriber attitude_sub = nh.subscribe<state_machine::Attitude>("mavros/attitude",10,attitude_cb);
     //vision_position
     ros::Publisher vision_position_pub = nh.advertise<state_machine::Vision_Position_Raw>("vision_position", 10); 
 
@@ -110,8 +110,6 @@ int main (int argc, char** argv)
                 vision_position_raw.x = (R[0][0] * position_x + R[0][1] * position_y + R[0][2] * position_z)/1000;
                 vision_position_raw.y = (R[1][0] * position_x + R[1][1] * position_y + R[1][2] * position_z)/1000;
                 vision_position_raw.z = (R[2][0] * position_x + R[2][1] * position_y + R[2][2] * position_z)/1000;
-
-
 
                 vision_position_pub.publish(vision_position_raw);
             }

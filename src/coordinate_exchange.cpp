@@ -23,6 +23,7 @@
 
 #include <state_machine/FIXED_TARGET_POSITION_P2M.h>
 #include <state_machine/FIXED_TARGET_RETURN_M2P.h>
+#include <state_machine/Vision_Position_Raw.h>
 
 #include <state_machine/Attitude.h>
 #include "math.h"
@@ -48,9 +49,15 @@ float bias_x;
 float bias_y;
 float bias_z;
 
+float bias_xx;
+float bias_yy;
+float bias_zz;
+
 ros::Publisher fixed_target_pub;
+state_machine::Vision_Position_Raw vision_position_raw;
 
 float R[3][3] = {0};
+float R1[3][3] = {0};
 
 //message to pix
 state_machine::FIXED_TARGET_RETURN_M2P fix_target_return;
@@ -81,6 +88,22 @@ void attitude_cb(const state_machine::Attitude::ConstPtr& msg)
     R[2][1] = cos(current_attitude.roll) * sin(current_attitude.pitch) * sin(current_attitude.yaw) -
               sin(current_attitude.roll) * cos(current_attitude.yaw);
     R[2][2]= cos(current_attitude.roll) * cos(current_attitude.pitch);
+
+    R1[0][0] = cos(current_attitude.pitch) * cos(current_attitude.yaw);
+    R1[0][1] = sin(current_attitude.roll) * sin(current_attitude.pitch) * cos(current_attitude.yaw) -
+              cos(current_attitude.roll) * sin(current_attitude.yaw);
+    R1[0][2] = cos(current_attitude.roll) * sin(current_attitude.pitch) * cos(current_attitude.yaw) +
+              sin(current_attitude.roll) * sin(current_attitude.yaw);
+
+    R1[1][0] = cos(current_attitude.pitch) * sin(current_attitude.yaw);
+    R1[1][1] = sin(current_attitude.roll) * sin(current_attitude.pitch) * sin(current_attitude.yaw) +
+              cos(current_attitude.roll) * cos(current_attitude.yaw);
+    R1[1][2] = cos(current_attitude.roll) * sin(current_attitude.pitch) * sin(current_attitude.yaw) -
+              sin(current_attitude.roll) * cos(current_attitude.yaw);
+
+    R1[2][0] = -sin(current_attitude.pitch);
+    R1[2][1] = sin(current_attitude.roll) * cos(current_attitude.pitch);
+    R1[2][2]= cos(current_attitude.roll) * cos(current_attitude.pitch);
 }
 
 state_machine::FIXED_TARGET_POSITION_P2M fix_target_position;
@@ -123,8 +146,24 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     body.pose.position.z = (R[2][0] * body_ned.pose.position.x + R[2][1] * body_ned.pose.position.y + R[2][2] * body_ned.pose.position.z);
 
     bias_x = body.pose.position.x - 1;
-    bias_y = body.pose.position.x - 1;
-    bias_z = body.pose.position.x - 1;
+    bias_y = body.pose.position.y + 1;
+    bias_z = body.pose.position.z - 0.5;
+
+    vision_position_raw.x = (R1[0][0] * (1 + bias_x) + R1[0][1] * (-1 + bias_y) + R1[0][2] * (0.5 + bias_z))/1000;
+    vision_position_raw.y = (R1[1][0] * (1 + bias_x) + R1[1][1] * (-1 + bias_y) + R1[1][2] * (0.5 + bias_z))/1000;
+    vision_position_raw.z = (R1[2][0] * (1 + bias_x) + R1[2][1] * (-1 + bias_y) + R1[2][2] * (0.5 + bias_z))/1000;
+
+    bias_xx = fix_target_position.component_x - vision_position_raw.x - current_position.pose.position.x;
+    bias_yy = fix_target_position.component_y - vision_position_raw.y - current_position.pose.position.y;
+    bias_zz = fix_target_position.component_z - vision_position_raw.z - current_position.pose.position.z;
+
+    ROS_INFO("bias_x:%f",bias_x);
+    ROS_INFO("bias_y:%f",bias_y);
+    ROS_INFO("bias_z:%f",bias_z);
+    ROS_INFO("bias_xx:%f",bias_xx);
+    ROS_INFO("bias_yy:%f",bias_yy);
+    ROS_INFO("bias_zz:%f",bias_zz);
+
 }
 
 /*****************************main function*****************************/
@@ -135,7 +174,8 @@ int main(int argc, char **argv)
      
     //topic  subscribe
     ros::Subscriber fixed_target_sub = nh.subscribe<state_machine::FIXED_TARGET_POSITION_P2M>("mavros/fixed_target_position_p2m",10,fixed_target_position_p2m_cb);
-    ros::Subscriber pose_sub = nh.subscribe<state_machine::Attitude>("mavros/attitude",10,attitude_cb);
+    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
+    ros::Subscriber attitude_sub = nh.subscribe<state_machine::Attitude>("mavros/attitude",10,attitude_cb);
 
     
     //topic publish
