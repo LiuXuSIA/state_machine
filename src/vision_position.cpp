@@ -106,15 +106,15 @@ int main (int argc, char** argv)
                 position_z = atof(position_z_temp.data.substr(1,4).c_str());
                 position_d = atof(position_d_temp.data.substr(1,3).c_str());
 
-                if(position_x_temp.data[0] == '1')
+                if(position_x_temp.data[0] == '0')
                 {
                     position_x = -position_x; 
                 }
-                if(position_y_temp.data[0] == '1')
+                if(position_y_temp.data[0] == '0')
                 {
                     position_y = -position_y; 
                 }
-                if(position_z_temp.data[0] == '1')
+                if(position_z_temp.data[0] == '0')
                 {
                     position_z = -position_z; 
                 }
