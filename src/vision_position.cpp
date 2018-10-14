@@ -89,16 +89,35 @@ int main (int argc, char** argv)
             ROS_INFO_STREAM("Reading:"); 
             std_msgs::String position_data; 
             float position_x,position_y,position_z,position_d;
+            std_msgs::String position_x_temp,position_y_temp,position_z_temp,position_d_temp;
             position_data.data = ser.read(ser.available()); 
             ROS_INFO_STREAM("Read: " << position_data.data);
 
             if(position_data.data.substr(0,4) == "SSSS" &&
                 position_data.data.substr(27,4) == "EEEE")
             {
-                position_x = atof(position_data.data.substr(5,5).c_str());
-                position_y = atof(position_data.data.substr(11,5).c_str());
-                position_z = atof(position_data.data.substr(17,5).c_str());
-                position_d = atof(position_data.data.substr(23,4).c_str());
+                position_x_temp = position_data.data.substr(5,5);
+                position_y_temp = position_data.data.substr(11,5);
+                position_z_temp = position_data.data.substr(17,5);
+                position_d_temp = position_data.data.substr(23,5);
+
+                position_x = atof(position_x_temp.data.substr(1,4).c_str());
+                position_y = atof(position_y_temp.data.substr(1,4).c_str());
+                position_z = atof(position_z_temp.data.substr(1,4).c_str());
+                position_d = atof(position_d_temp.data.substr(1,3).c_str());
+
+                if(position_x_temp.data[0] == '1')
+                {
+                    position_x = -position_x; 
+                }
+                if(position_y_temp.data[0] == '1')
+                {
+                    position_y = -position_y; 
+                }
+                if(position_z_temp.data[0] == '1')
+                {
+                    position_z = -position_z; 
+                }
 
                 ROS_INFO("x:%f",position_x);
                 ROS_INFO("y:%f",position_y);
