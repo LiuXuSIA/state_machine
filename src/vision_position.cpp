@@ -23,6 +23,7 @@ serial::Serial ser;
 state_machine::Vision_Position_Raw vision_position_raw;
 
 float R[3][3] = {0};
+float body_pose_x,body_pose_y,body_pose_z;
 
 geometry_msgs::PoseStamped current_position;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -94,6 +95,8 @@ int main (int argc, char** argv)
     { 
         if(ser.available())
         { 
+            ros::spinOnce();
+
             ROS_INFO_STREAM("Reading:"); 
             std_msgs::String position_data; 
             float position_x,position_y,position_z,position_d;
@@ -130,13 +133,15 @@ int main (int argc, char** argv)
                 ROS_INFO("x:%f",position_x);
                 ROS_INFO("y:%f",position_y);
                 ROS_INFO("z:%f",position_z);
-                ROS_INFO("d:%f",position_d);
+                ROS_INFO("d:%f",position_d); 
 
-                ros::spinOnce(); 
+                body_pose_x = position_y + 170;
+                body_pose_y = -position_x;
+                body_pose_z = position_z + 590;
 
-                vision_position_raw.x = (R[0][0] * position_x + R[0][1] * position_y + R[0][2] * position_z)/1000 + current_position.pose.position.y;
-                vision_position_raw.y = (R[1][0] * position_x + R[1][1] * position_y + R[1][2] * position_z)/1000 + current_position.pose.position.x;
-                vision_position_raw.z = (R[2][0] * position_x + R[2][1] * position_y + R[2][2] * position_z)/1000 + current_position.pose.position.z;
+                vision_position_raw.x = (R[0][0] * body_pose_x + R[0][1] * body_pose_y + R[0][2] * body_pose_z)/1000 + current_position.pose.position.y;
+                vision_position_raw.y = (R[1][0] * body_pose_x + R[1][1] * body_pose_y + R[1][2] * body_pose_z)/1000 + current_position.pose.position.x;
+                vision_position_raw.z = (R[2][0] * body_pose_x + R[2][1] * body_pose_y + R[2][2] * body_pose_z)/1000 + current_position.pose.position.z;
 
                 vision_position_pub.publish(vision_position_raw);
             }
