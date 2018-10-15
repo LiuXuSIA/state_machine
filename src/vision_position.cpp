@@ -135,8 +135,8 @@ int main (int argc, char** argv)
                 ROS_INFO("z:%f",position_z);
                 ROS_INFO("d:%f",position_d); 
 
-                body_pose_x = position_y + 170;
-                body_pose_y = -position_x;
+                body_pose_x = -position_x + 170;
+                body_pose_y = -position_y;
                 body_pose_z = position_z + 590;
 
                 vision_position_raw.x = (R[0][0] * body_pose_x + R[0][1] * body_pose_y + R[0][2] * body_pose_z)/1000 + current_position.pose.position.y;
