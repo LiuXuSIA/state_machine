@@ -24,6 +24,7 @@ double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, do
 
 geometry_msgs::PoseStamped pose_pub;  //ENU
 geometry_msgs::TwistStamped vel_ascend;
+geometry_msgs::TwistStamped vel_ascend2;
 geometry_msgs::TwistStamped vel_descend;
 ros::Publisher local_pos_pub;
 ros::Publisher local_vel_pub;
@@ -34,7 +35,9 @@ static const int target_go = 2;
 static const int hover_ascend = 3;
 static const int descend = 4;
 static const int hover_descend = 5;
-static const int land = 6;
+static const int ascend_again = 6;
+static const int hover_ascend_again = 7;
+static const int land = 8;
 
 //mission 
 int current_pos_state = takeoff;
@@ -50,7 +53,8 @@ ros::Time landing_last_request;
 /*************************constant defunition***************************/
 
 #define ASCEND_VELOCITY    1.5
-#define DESCEND_VELOCITY   0.1
+#define ASCEND_VELOCITY2   0.1
+#define DESCEND_VELOCITY   1.0
 #define LOCATE_ACCURACY    0.5
 
 
@@ -79,6 +83,13 @@ int main(int argc, char **argv)
     vel_ascend.twist.angular.x = 0.0f;
     vel_ascend.twist.angular.y = 0.0f;
     vel_ascend.twist.angular.z = 0.0f;
+
+    vel_ascend2.twist.linear.x = 0.0f;
+    vel_ascend2.twist.linear.y = 0.0f;
+    vel_ascend2.twist.linear.z = ASCEND_VELOCITY2;
+    vel_ascend2.twist.angular.x = 0.0f;
+    vel_ascend2.twist.angular.y = 0.0f;
+    vel_ascend2.twist.angular.z = 0.0f;
 
     vel_descend.twist.linear.x = 0.0f;
     vel_descend.twist.linear.y = 0.0f;
@@ -159,6 +170,7 @@ void state_machine_fun(void)
                 last_time = ros::Time::now();
             }
         }
+        break;
         case hover_ascend:
         {
             local_pos_pub.publish(pose_pub);
@@ -186,6 +198,29 @@ void state_machine_fun(void)
         }
         break;
         case hover_descend:
+        {
+            local_pos_pub.publish(pose_pub);
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            {
+                current_pos_state = ascend_again;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case ascend_again:
+        {
+            local_vel_pub.publish(vel_ascend2);
+            if(current_position.pose.position.z > 5)
+            {
+                pose_pub.pose.position.x = current_position.pose.position.x;
+                pose_pub.pose.position.y = current_position.pose.position.y;
+                pose_pub.pose.position.z = current_position.pose.position.z;
+                current_pos_state = hover_ascend_again;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case hover_ascend_again:
         {
             local_pos_pub.publish(pose_pub);
             if(ros::Time::now() - last_time > ros::Duration(5.0))

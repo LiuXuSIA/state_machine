@@ -100,7 +100,8 @@ bool fix_target_receive_enable = true;
 /*************************constant defunition***************************/
 
 #define HOME_HEIGHT             5.0
-#define ASCEND_VELOCITY         1.5
+#define ASCEND_VELOCITY         0.3
+#define TAKE_OFF_VELOCITY       1.5
 #define DESCEND_VELOCITY        0.3
 #define OBSERVE_HEIGET          5.0
 #define CONSTRUCT_HEIGET        5.0
@@ -227,7 +228,7 @@ int main(int argc, char **argv)
     //takeoff velocity
     vel_ascend.twist.linear.x = 0.0f;
     vel_ascend.twist.linear.y = 0.0f;
-    vel_ascend.twist.linear.z = ASCEND_VELOCITY;
+    vel_ascend.twist.linear.z = TAKE_OFF_VELOCITY;
     vel_ascend.twist.angular.x = 0.0f;
     vel_ascend.twist.angular.y = 0.0f;
     vel_ascend.twist.angular.z = 0.0f;

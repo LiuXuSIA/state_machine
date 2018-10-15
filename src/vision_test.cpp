@@ -392,7 +392,9 @@ void state_machine_fun(void)
             static float position_y_aver = 0;
             static float position_z_aver = 0;
             static int vision_count1 = 11;
-
+            
+            pose_pub = position_componnet;
+            local_pos_pub.publish(position_componnet);
             if (ros::Time::now() - last_time > ros::Duration(1.0) && vision_count1 > 10)
             {
                 vision_count1 = 0;
@@ -584,6 +586,7 @@ void state_machine_fun(void)
                 position_z_total = 0;
                 position[10][3] = {0};
                 current_pos_state = Com_get_close;   //need change Z place to component_locate
+                last_time = ros::Time::now();
                 //display_enable = true;
             }
         }
