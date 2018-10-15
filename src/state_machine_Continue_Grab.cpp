@@ -105,7 +105,7 @@ bool fix_target_receive_enable = true;
 #define OBSERVE_HEIGET          5.0
 #define CONSTRUCT_HEIGET        5.0
 #define BOX_HEIGET              0.25
-#define PLACE_HEIGET            0.35
+#define PLACE_HEIGET            0.6
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
@@ -403,7 +403,7 @@ void state_machine_fun(void)
             {
                 position_grab.pose.position.x = position_component.pose.position.x;
                 position_grab.pose.position.y = position_component.pose.position.y;
-                position_grab.pose.position.z = -fix_target_position.component_z + (5 - loop) * BOX_HEIGET + 0.27;
+                position_grab.pose.position.z = -fix_target_position.component_z + (5 - loop) * BOX_HEIGET + 0.01;
 
                 current_pos_state = position_Com_hover;
                 last_time = ros::Time::now();
