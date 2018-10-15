@@ -403,7 +403,7 @@ void state_machine_fun(void)
             {
                 position_grab.pose.position.x = position_component.pose.position.x;
                 position_grab.pose.position.y = position_component.pose.position.y;
-                position_grab.pose.position.z = -fix_target_position.component_z + (5 - loop) * BOX_HEIGET + 0.01;
+                position_grab.pose.position.z = -fix_target_position.component_z + (5 - loop) * BOX_HEIGET + 0.02;
 
                 current_pos_state = position_Com_hover;
                 last_time = ros::Time::now();
