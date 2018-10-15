@@ -14,6 +14,7 @@
 #include <state_machine/Vision_Position_Raw.h>
 
 #include <state_machine/Attitude.h>
+#include <geometry_msgs/PoseStamped.h>
 #include "math.h"
 
 
@@ -22,6 +23,12 @@ serial::Serial ser;
 state_machine::Vision_Position_Raw vision_position_raw;
 
 float R[3][3] = {0};
+
+geometry_msgs::PoseStamped current_position;
+void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
+    current_position = *msg;
+}
 
 state_machine::Attitude current_attitude;
 void attitude_cb(const state_machine::Attitude::ConstPtr& msg)
@@ -53,6 +60,7 @@ int main (int argc, char** argv)
     ros::NodeHandle nh;  
     
     //for coordinate exchange
+    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
     ros::Subscriber attitude_sub = nh.subscribe<state_machine::Attitude>("mavros/attitude",10,attitude_cb);
     //vision_position
     ros::Publisher vision_position_pub = nh.advertise<state_machine::Vision_Position_Raw>("vision_position", 10); 
@@ -126,9 +134,9 @@ int main (int argc, char** argv)
 
                 ros::spinOnce(); 
 
-                vision_position_raw.x = (R[0][0] * position_x + R[0][1] * position_y + R[0][2] * position_z)/1000;
-                vision_position_raw.y = (R[1][0] * position_x + R[1][1] * position_y + R[1][2] * position_z)/1000;
-                vision_position_raw.z = (R[2][0] * position_x + R[2][1] * position_y + R[2][2] * position_z)/1000;
+                vision_position_raw.x = (R[0][0] * position_x + R[0][1] * position_y + R[0][2] * position_z)/1000 + current_position.pose.position.y;
+                vision_position_raw.y = (R[1][0] * position_x + R[1][1] * position_y + R[1][2] * position_z)/1000 + current_position.pose.position.x;
+                vision_position_raw.z = (R[2][0] * position_x + R[2][1] * position_y + R[2][2] * position_z)/1000 + current_position.pose.position.z;
 
                 vision_position_pub.publish(vision_position_raw);
             }

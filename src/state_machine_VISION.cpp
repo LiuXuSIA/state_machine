@@ -192,9 +192,9 @@ void vision_position_cb(const state_machine::Vision_Position_Raw::ConstPtr& msg)
 
     vision_position_get.loop_value = loop;
     //NED
-    vision_position_get.component_position_x = vision_position_raw.x + current_position.pose.position.y - 1.252107;
-    vision_position_get.component_position_y = vision_position_raw.y + current_position.pose.position.x - 0.557770;
-    vision_position_get.component_position_z = vision_position_raw.z - current_position.pose.position.z - 0.228023;
+    vision_position_get.component_position_x = vision_position_raw.x;
+    vision_position_get.component_position_y = vision_position_raw.y;
+    vision_position_get.component_position_z = vision_position_raw.z;
 
     vision_position_pub.publish(vision_position_get);
 }
