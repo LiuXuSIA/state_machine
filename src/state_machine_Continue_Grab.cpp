@@ -110,6 +110,7 @@ bool fix_target_receive_enable = true;
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
+#define GRAB_HEIGHT_MARGIN      0.02
 
 
 /***************************callback function definition***************/
@@ -404,7 +405,7 @@ void state_machine_fun(void)
             {
                 position_grab.pose.position.x = position_component.pose.position.x;
                 position_grab.pose.position.y = position_component.pose.position.y;
-                position_grab.pose.position.z = -fix_target_position.component_z + (5 - loop) * BOX_HEIGET + 0.02;
+                position_grab.pose.position.z = -fix_target_position.component_z + (5 - loop) * BOX_HEIGET + GRAB_HEIGHT_MARGIN;
 
                 current_pos_state = position_Com_hover;
                 last_time = ros::Time::now();

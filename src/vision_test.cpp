@@ -74,6 +74,9 @@ static const int place_status_judge = 20;
 static const int return_home = 21;
 static const int land = 22;
 
+//vision recognize fail
+static const int vision_fail_process = 23;
+
 
 
 //mission 
@@ -109,7 +112,7 @@ bool initial_enable = false;
 #define RECOGNIZE_HEIGHT        2.5
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.7
-#define Z_BIAS_AER_BOTT         0.4
+#define Z_BIAS_AER_BOTT         0.8
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
@@ -417,8 +420,18 @@ void state_machine_fun(void)
                 position_x_aver = 0;
                 position_y_aver = 0;
                 position_z_aver = 0;
-                current_pos_state = component_locate; 
-                last_time = ros::Time::now();
+                if(abs(current_position.pose.position.x - position_box.pose.position.x) > 3 ||
+                   abs(current_position.pose.position.y - position_box.pose.position.y) > 3 ||
+                   position_box.pose.position.x == 0 || position_box.pose.position.y == 0)
+                {
+                    current_pos_state = vision_fail_process;
+                    last_time = ros::Time::now();
+                }
+                else
+                {
+                    current_pos_state = component_locate;
+                    last_time = ros::Time::now();
+                }
             }
         }
         break;
@@ -756,7 +769,13 @@ void state_machine_fun(void)
             }
         }
         break;
-       case  return_home:
+        case vision_fail_process:
+        {
+            current_pos_state = return_home;
+            last_time = ros::Time::now();
+        }
+        break;
+        case  return_home:
         {
             pose_pub = position_home;
             local_pos_pub.publish(position_home);
