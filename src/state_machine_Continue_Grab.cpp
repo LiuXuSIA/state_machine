@@ -47,7 +47,8 @@ geometry_msgs::PoseStamped position_of_safe;
 //topic
 geometry_msgs::PoseStamped pose_pub; 
 geometry_msgs::TwistStamped vel_take_off;
-geometry_msgs::TwistStamped vel_ascend;
+geometry_msgs::TwistStamped vel_ascend_com;
+geometry_msgs::TwistStamped vel_ascend_con;
 geometry_msgs::TwistStamped vel_descend;
 
 ros::Publisher local_pos_pub;
@@ -101,7 +102,8 @@ bool fix_target_receive_enable = true;
 /*************************constant defunition***************************/
 
 #define HOME_HEIGHT             5.0
-#define ASCEND_VELOCITY         0.3
+#define ASCEND_VELOCITY_CON     0.3
+#define ASCEND_VELOCITY_COM     0.5
 #define TAKE_OFF_VELOCITY       1.5
 #define DESCEND_VELOCITY        0.3
 #define OBSERVE_HEIGET          5.0
@@ -235,12 +237,19 @@ int main(int argc, char **argv)
     vel_take_off.twist.angular.y = 0.0f;
     vel_take_off.twist.angular.z = 0.0f;
 
-    vel_ascend.twist.linear.x = 0.0f;
-    vel_ascend.twist.linear.y = 0.0f;
-    vel_ascend.twist.linear.z = ASCEND_VELOCITY;
-    vel_ascend.twist.angular.x = 0.0f;
-    vel_ascend.twist.angular.y = 0.0f;
-    vel_ascend.twist.angular.z = 0.0f;
+    vel_ascend_com.twist.linear.x = 0.0f;
+    vel_ascend_com.twist.linear.y = 0.0f;
+    vel_ascend_com.twist.linear.z = ASCEND_VELOCITY_COM;
+    vel_ascend_com.twist.angular.x = 0.0f;
+    vel_ascend_com.twist.angular.y = 0.0f;
+    vel_ascend_com.twist.angular.z = 0.0f;
+
+    vel_ascend_con.twist.linear.x = 0.0f;
+    vel_ascend_con.twist.linear.y = 0.0f;
+    vel_ascend_con.twist.linear.z = ASCEND_VELOCITY_CON;
+    vel_ascend_con.twist.angular.x = 0.0f;
+    vel_ascend_con.twist.angular.y = 0.0f;
+    vel_ascend_con.twist.angular.z = 0.0f;
 
     //descend to grab velocity
     vel_descend.twist.linear.x = 0.0f;
@@ -500,7 +509,7 @@ void state_machine_fun(void)
         case Com_leave:
         {
             pose_pub = position_component;
-            local_vel_pub.publish(vel_ascend);
+            local_vel_pub.publish(vel_ascend_com);
             if ((current_position.pose.position.z + fix_target_position.component_z) > 4)
             {
                 position_judge.pose.position.x = current_position.pose.position.x;
@@ -689,7 +698,7 @@ void state_machine_fun(void)
         case Con_leave:
         {
             pose_pub = position_place;
-            local_vel_pub.publish(vel_ascend);
+            local_vel_pub.publish(vel_ascend_con);
             if ((current_position.pose.position.z + fix_target_position.construction_z) > (4 + BOX_HEIGET*loop))
             {
                 position_of_safe.pose.position.x = current_position.pose.position.x;
