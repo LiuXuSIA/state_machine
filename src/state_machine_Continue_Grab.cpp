@@ -46,6 +46,7 @@ geometry_msgs::PoseStamped position_of_safe;
 
 //topic
 geometry_msgs::PoseStamped pose_pub; 
+geometry_msgs::TwistStamped vel_take_off;
 geometry_msgs::TwistStamped vel_ascend;
 geometry_msgs::TwistStamped vel_descend;
 
@@ -227,9 +228,16 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     //takeoff velocity
+    vel_take_off.twist.linear.x = 0.0f;
+    vel_take_off.twist.linear.y = 0.0f;
+    vel_take_off.twist.linear.z = TAKE_OFF_VELOCITY;
+    vel_take_off.twist.angular.x = 0.0f;
+    vel_take_off.twist.angular.y = 0.0f;
+    vel_take_off.twist.angular.z = 0.0f;
+
     vel_ascend.twist.linear.x = 0.0f;
     vel_ascend.twist.linear.y = 0.0f;
-    vel_ascend.twist.linear.z = TAKE_OFF_VELOCITY;
+    vel_ascend.twist.linear.z = ASCEND_VELOCITY;
     vel_ascend.twist.angular.x = 0.0f;
     vel_ascend.twist.angular.y = 0.0f;
     vel_ascend.twist.angular.z = 0.0f;
@@ -299,7 +307,7 @@ int main(int argc, char **argv)
 
     for(int i =100; ros::ok() && i > 0; i--)
 	{
-		local_vel_pub.publish(vel_ascend);
+		local_vel_pub.publish(vel_take_off);
 		ros::spinOnce();
 		rate.sleep();
 	}
@@ -317,7 +325,7 @@ int main(int argc, char **argv)
         }
         else if(velocity_control_enable == true)
         {
-            local_vel_pub.publish(vel_ascend);
+            local_vel_pub.publish(vel_take_off);
             if(display_falg == true)
             {
                 ROS_INFO("Wait for switch to offboard...");
@@ -363,7 +371,7 @@ void state_machine_fun(void)
         {
             velocity_control_enable = false;
             pose_pub = position_home;
-            local_vel_pub.publish(vel_ascend);
+            local_vel_pub.publish(vel_take_off);
             if((current_position.pose.position.z + fix_target_position.home_z) > 3)
             {
                 current_pos_state = position_H_go;
