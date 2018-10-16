@@ -103,7 +103,7 @@ bool fix_target_receive_enable = true;
 
 #define HOME_HEIGHT             5.0
 #define ASCEND_VELOCITY_CON     0.3
-#define ASCEND_VELOCITY_COM     0.5
+#define ASCEND_VELOCITY_COM     0.6
 #define TAKE_OFF_VELOCITY       1.5
 #define DESCEND_VELOCITY        0.3
 #define OBSERVE_HEIGET          5.0
