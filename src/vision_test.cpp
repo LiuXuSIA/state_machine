@@ -29,11 +29,12 @@
 /***************************function declare****************************/
 void state_machine_fun(void);
 double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2);
+float wrap_pi(float angle_rad);
 
 /***************************variable definition*************************/
 //position  ENU
 geometry_msgs::PoseStamped position_home;
-geometry_msgs::PoseStamped position_componnet;
+geometry_msgs::PoseStamped position_component;
 geometry_msgs::PoseStamped position_construction;
 
 geometry_msgs::PoseStamped pose_pub; 
@@ -101,6 +102,9 @@ bool velocity_control_enable = true;
 bool fix_target_receive_enable = true;
 bool initial_enable = false;
 
+//yaw
+float yaw_sp;
+
 /*************************constant defunition***************************/
 
 #define HOME_HEIGHT             3.0
@@ -146,26 +150,32 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         fix_target_return.home_x = fix_target_position.home_x;
         fix_target_return.home_y = fix_target_position.home_y;
         fix_target_return.home_z = -HOME_HEIGHT + fix_target_position.home_z;
+        fix_target_return.home_yaw_sp = fix_target_position.home_yaw_sp;
 
         fix_target_return.component_x = fix_target_position.component_x;
         fix_target_return.component_y = fix_target_position.component_y;
         fix_target_return.component_z = -OBSERVE_HEIGET + fix_target_position.component_z;
+        fix_target_return.component_yaw_sp = fix_target_position.component_yaw_sp;
 
         fix_target_return.construction_x = fix_target_position.construction_x;
         fix_target_return.construction_y = fix_target_position.construction_y;
         fix_target_return.construction_z = -CONSTRUCT_HEIGET + fix_target_position.construction_z;
+        fix_target_return.construction_yaw_sp = fix_target_position.construction_yaw_sp;
 
         ROS_INFO("fix_target_return.home_x:%f",fix_target_return.home_x);
         ROS_INFO("fix_target_return.home_y:%f",fix_target_return.home_y);
         ROS_INFO("fix_target_return.home_z:%f",fix_target_return.home_z);
+        ROS_INFO("fix_target_return.home_yaw_sp:%f",fix_target_return.home_yaw_sp);
 
         ROS_INFO("fix_target_return.component_x:%f",fix_target_return.component_x);
         ROS_INFO("fix_target_return.component_y:%f",fix_target_return.component_y);
         ROS_INFO("fix_target_return.component_z:%f",fix_target_return.component_z);
+        ROS_INFO("fix_target_return.component_yaw_sp:%f",fix_target_return.component_yaw_sp);
 
         ROS_INFO("fix_target_return.construction_x:%f",fix_target_return.construction_x);
         ROS_INFO("fix_target_return.construction_y:%f",fix_target_return.construction_y);
         ROS_INFO("fix_target_return.construction_z:%f",fix_target_return.construction_z);
+        ROS_INFO("fix_target_return.construction_yaw_sp:%f",fix_target_return.construction_yaw_sp);
 
         fixed_target_pub.publish(fix_target_return);
 
@@ -175,33 +185,67 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         position_home.pose.position.y = fix_target_position.home_x;
         position_home.pose.position.z = HOME_HEIGHT - fix_target_position.home_z;
         //position of componnet
-        position_componnet.pose.position.x = fix_target_position.component_y;
-        position_componnet.pose.position.y = fix_target_position.component_x;
-        position_componnet.pose.position.z = OBSERVE_HEIGET - fix_target_position.component_z;
+        position_component.pose.position.x = fix_target_position.component_y;
+        position_component.pose.position.y = fix_target_position.component_x;
+        position_component.pose.position.z = OBSERVE_HEIGET - fix_target_position.component_z;
         //position of construction
         position_construction.pose.position.x = fix_target_position.construction_y;
         position_construction.pose.position.y = fix_target_position.construction_x;
         position_construction.pose.position.z = CONSTRUCT_HEIGET - fix_target_position.construction_z;
 
-        fix_target_receive_enable = false;
+        // position_grab.pose.position.x = position_component.pose.position.x;
+        // position_grab.pose.position.y = position_component.pose.position.y;
+        // position_grab.pose.position.z = -fix_target_position.component_z + 0.27;
+
+        // position_place.pose.position.x = position_construction.pose.position.x;
+        // position_place.pose.position.y = position_construction.pose.position.y;
+        // position_place.pose.position.z = -fix_target_position.construction_z + PLACE_HEIGET;
+        yaw_sp = wrap_pi(fix_target_return.component_yaw_sp * M_PI/180 + M_PI_2);
     
         // //adjust angular,face north
-        // float yaw_sp=M_PI_2;
-        // //home
-        // position_home.pose.orientation.x = 0;
-        // position_home.pose.orientation.y = 0;
-        // position_home.pose.orientation.z = sin(yaw_sp/2);
-        // position_home.pose.orientation.w = cos(yaw_sp/2);
-        // //componnet
-        // position_componnet.pose.orientation.x = 0;
-        // position_componnet.pose.orientation.y = 0;
-        // position_componnet.pose.orientation.z = sin(yaw_sp/2);
-        // position_componnet.pose.orientation.w = cos(yaw_sp/2);
-        // //construction
-        // position_construction.pose.orientation.x = 0;
-        // position_construction.pose.orientation.y = 0;
-        // position_construction.pose.orientation.z = sin(yaw_sp/2);
-        // position_construction.pose.orientation.w = cos(yaw_sp/2);
+        
+        //home
+        position_home.pose.orientation.x = 0;
+        position_home.pose.orientation.y = 0;
+        position_home.pose.orientation.z = sin(yaw_sp/2);
+        position_home.pose.orientation.w = cos(yaw_sp/2);
+        //componnet
+        position_component.pose.orientation.x = 0;
+        position_component.pose.orientation.y = 0;
+        position_component.pose.orientation.z = sin(yaw_sp/2);
+        position_component.pose.orientation.w = cos(yaw_sp/2);
+        //construction
+        position_construction.pose.orientation.x = 0;
+        position_construction.pose.orientation.y = 0;
+        position_construction.pose.orientation.z = sin(yaw_sp/2);
+        position_construction.pose.orientation.w = cos(yaw_sp/2);
+        //construction
+        position_grab.pose.orientation.x = 0;
+        position_grab.pose.orientation.y = 0;
+        position_grab.pose.orientation.z = sin(yaw_sp/2);
+        position_grab.pose.orientation.w = cos(yaw_sp/2);
+        //construction
+        position_judge.pose.orientation.x = 0;
+        position_judge.pose.orientation.y = 0;
+        position_judge.pose.orientation.z = sin(yaw_sp/2);
+        position_judge.pose.orientation.w = cos(yaw_sp/2);
+        //construction
+        position_place.pose.orientation.x = 0;
+        position_place.pose.orientation.y = 0;
+        position_place.pose.orientation.z = sin(yaw_sp/2);
+        position_place.pose.orientation.w = cos(yaw_sp/2);
+        //construction
+        position_safe.pose.orientation.x = 0;
+        position_safe.pose.orientation.y = 0;
+        position_safe.pose.orientation.z = sin(yaw_sp/2);
+        position_safe.pose.orientation.w = cos(yaw_sp/2);
+
+        position_box.pose.orientation.x = 0;
+        position_box.pose.orientation.y = 0;
+        position_box.pose.orientation.z = sin(yaw_sp/2);
+        position_box.pose.orientation.w = cos(yaw_sp/2);
+
+        fix_target_receive_enable = false;
     }
 }
 
@@ -377,11 +421,11 @@ void state_machine_fun(void)
         break;
         case position_Com_go:
         {
-            pose_pub = position_componnet;
-            local_pos_pub.publish(position_componnet);
-            if (Distance_of_Two(current_position.pose.position.x,position_componnet.pose.position.x,
-                                current_position.pose.position.y,position_componnet.pose.position.y,
-                                current_position.pose.position.z,position_componnet.pose.position.z) < LOCATE_ACCURACY_ROUGH)
+            pose_pub = position_component;
+            local_pos_pub.publish(position_component);
+            if (Distance_of_Two(current_position.pose.position.x,position_component.pose.position.x,
+                                current_position.pose.position.y,position_component.pose.position.y,
+                                current_position.pose.position.z,position_component.pose.position.z) < LOCATE_ACCURACY_ROUGH)
             {
                 initial_enable = true;
                 current_pos_state = hover_to_recognize;
@@ -396,8 +440,8 @@ void state_machine_fun(void)
             static float position_z_aver = 0;
             static int vision_count1 = 11;
             
-            pose_pub = position_componnet;
-            local_pos_pub.publish(position_componnet);
+            pose_pub = position_component;
+            local_pos_pub.publish(position_component);
             if (ros::Time::now() - last_time > ros::Duration(1.0) && vision_count1 > 10)
             {
                 vision_count1 = 0;
@@ -641,7 +685,7 @@ void state_machine_fun(void)
         break;
         case Com_leave:
         {
-            pose_pub = position_componnet;
+            pose_pub = position_component;
             local_vel_pub.publish(vel_ascend);
             if ((current_position.pose.position.z + fix_target_position.component_z) > 3)
             {
@@ -798,4 +842,40 @@ void state_machine_fun(void)
 double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2)
 {
     return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
+}
+
+// limit angle_rad to [-pi,pi]
+float wrap_pi(float angle_rad)
+{
+    //value is inf or NaN
+    //the macro definition of M_PI and NAN are both in <math.h>
+    //M_PI means 3.14159265257...,NAN means not define
+
+    int c = 0;
+
+    if (angle_rad > 10 || angle_rad < -10) 
+    {
+        return angle_rad;
+    }
+    
+    while (angle_rad >= M_PI) 
+    {
+        angle_rad -= M_PI*2;
+
+        if (c++ > 3) 
+        {
+            return NAN;
+        }
+    }
+    c = 0;
+    while (angle_rad < -M_PI) 
+    {
+        angle_rad += M_PI*2;
+
+        if (c++ > 3) 
+        {
+            return NAN;
+        }
+    }
+    return angle_rad;
 }

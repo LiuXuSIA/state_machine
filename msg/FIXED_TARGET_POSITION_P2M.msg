@@ -15,3 +15,6 @@ float32 component_z     #component_z  point Z position (NED), in m
 float32 construction_x  #construction_x point X position (NED) (left), in m
 float32 construction_y  #construction_y point Y position (NED) (left), in m
 float32 construction_z  #construction_z point Z position (NED) (left), in m
+float32 home_yaw_sp
+float32 component_yaw_sp
+float32 construction_yaw_sp
