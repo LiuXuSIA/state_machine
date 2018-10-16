@@ -109,7 +109,7 @@ bool fix_target_receive_enable = true;
 #define OBSERVE_HEIGET          5.0
 #define CONSTRUCT_HEIGET        5.0
 #define BOX_HEIGET              0.25
-#define PLACE_HEIGET            0.28
+#define PLACE_HEIGET            0.25
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
