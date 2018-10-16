@@ -186,13 +186,14 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         position_construction.pose.position.y = fix_target_position.construction_x;
         position_construction.pose.position.z = CONSTRUCT_HEIGET - fix_target_position.construction_z;
 
-        // position_grab.pose.position.x = position_component.pose.position.x;
-        // position_grab.pose.position.y = position_component.pose.position.y;
-        // position_grab.pose.position.z = -fix_target_position.component_z + 0.27;
+        position_grab.pose.position.x = position_component.pose.position.x;
+        position_grab.pose.position.y = position_component.pose.position.y;
+        position_grab.pose.position.z = -fix_target_position.component_z + 0.27;
 
-        // position_place.pose.position.x = position_construction.pose.position.x;
-        // position_place.pose.position.y = position_construction.pose.position.y;
-        // position_place.pose.position.z = -fix_target_position.construction_z + PLACE_HEIGET;
+        position_place.pose.position.x = position_construction.pose.position.x;
+        position_place.pose.position.y = position_construction.pose.position.y;
+        position_place.pose.position.z = -fix_target_position.construction_z + PLACE_HEIGET;
+        
         yaw_sp = wrap_pi(fix_target_return.component_yaw_sp * M_PI/180 + M_PI_2);
     
         // //adjust angular,face north
