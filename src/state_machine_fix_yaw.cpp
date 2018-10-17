@@ -275,7 +275,7 @@ int main(int argc, char **argv)
         task_status_monitor.target_x = pose_pub.pose.position.y;
         task_status_monitor.target_y = pose_pub.pose.position.x;
         task_status_monitor.target_z = -pose_pub.pose.position.z;
-        task_status_pub.publish(task_status_monitor);
+        //task_status_pub.publish(task_status_monitor);
 
 		ros::spinOnce();
 		rate.sleep();
