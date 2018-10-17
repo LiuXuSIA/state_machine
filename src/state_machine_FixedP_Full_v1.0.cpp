@@ -37,6 +37,25 @@ void state_machine_fun(void);
 double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2);
 float wrap_pi(float angle_rad);
 
+/*************************constant defunition***************************/
+
+#define MAX_MISSION_TIME        360
+#define HOME_HEIGHT             5.0
+#define OBSERVE_HEIGET          5.0
+#define CONSTRUCT_HEIGET        5.0
+#define TAKE_OFF_HEIGHT         3.0
+#define ASCEND_VELOCITY_CON     0.3
+#define ASCEND_VELOCITY_COM     0.6
+#define TAKE_OFF_VELOCITY       1.5
+#define DESCEND_VELOCITY        0.3
+#define BOX_HEIGET              0.25
+#define PLACE_HEIGET            0.25
+#define LOCATE_ACCURACY_HIGH    0.5
+#define LOCATE_ACCURACY_GRAB    0.1
+#define LOCATE_ACCURACY_ROUGH   1.0
+#define GRAB_HEIGHT_MARGIN      0.02
+#define BOX_LOOP_MAX            3
+
 /***************************variable definition*************************/
 //fixed position  ENU
 geometry_msgs::PoseStamped position_home;
@@ -130,24 +149,8 @@ bool fix_target_receive_enable = true;
 bool fix_box_receive_enable = true;
 bool force_home_enable = true;
 
-/*************************constant defunition***************************/
-
-#define MAX_MISSION_TIME        360
-#define HOME_HEIGHT             5.0
-#define OBSERVE_HEIGET          5.0
-#define CONSTRUCT_HEIGET        5.0
-#define TAKE_OFF_HEIGHT         3.0
-#define ASCEND_VELOCITY_CON     0.3
-#define ASCEND_VELOCITY_COM     0.6
-#define TAKE_OFF_VELOCITY       1.5
-#define DESCEND_VELOCITY        0.3
-#define BOX_HEIGET              0.25
-#define PLACE_HEIGET            0.25
-#define LOCATE_ACCURACY_HIGH    0.5
-#define LOCATE_ACCURACY_GRAB    0.1
-#define LOCATE_ACCURACY_ROUGH   1.0
-#define GRAB_HEIGHT_MARGIN      0.02
-#define BOX_LOOP_MAX            3
+//yaw set
+float yaw_sp;
 
 /***************************callback function definition***************/
 state_machine::State current_state;
@@ -722,7 +725,7 @@ int main(int argc, char **argv)
             position_timer_out.pose.position.z = current_position.pose.position.z;
 
             current_pos_state = hover_only;
-            mission_last_time = ros::Time::now();
+            last_time = ros::Time::now();
             ROS_INFO("Mission time run out,will return home and landing!!");
         }
 
@@ -1146,7 +1149,7 @@ void state_machine_fun(void)
                 position_return_home.pose.position.z = HOME_HEIGHT - fix_target_position.home_z;
 
                 current_pos_state = force_return_home;
-                mission_last_time = ros::Time::now();
+                last_time = ros::Time::now();
             }         
         }
         break;
@@ -1157,7 +1160,7 @@ void state_machine_fun(void)
             if(ros::Time::now() - last_time > ros::Duration(3.0))
             {
                 current_pos_state = return_home;
-                mission_last_time = ros::Time::now();
+                last_time = ros::Time::now();
             }         
         }
         break;

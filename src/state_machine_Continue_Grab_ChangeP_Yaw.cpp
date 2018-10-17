@@ -37,6 +37,23 @@ void state_machine_fun(void);
 double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2);
 float wrap_pi(float angle_rad);
 
+/*************************constant defunition***************************/
+
+#define HOME_HEIGHT             5.0
+#define ASCEND_VELOCITY_CON     0.3
+#define ASCEND_VELOCITY_COM     0.6
+#define TAKE_OFF_VELOCITY       1.5
+#define DESCEND_VELOCITY        0.3
+#define OBSERVE_HEIGET          5.0
+#define CONSTRUCT_HEIGET        5.0
+#define BOX_HEIGET              0.25
+#define PLACE_HEIGET            0.25
+#define LOCATE_ACCURACY_HIGH    0.5
+#define LOCATE_ACCURACY_GRAB    0.2
+#define LOCATE_ACCURACY_ROUGH   1.0
+#define GRAB_HEIGHT_MARGIN      0.02
+#define BOX_LOOP_MAX            3
+
 /***************************variable definition*************************/
 //position  ENU
 geometry_msgs::PoseStamped position_home;
@@ -117,22 +134,8 @@ bool velocity_control_enable = true;
 bool fix_target_receive_enable = true;
 bool fix_box_receive_enable = true;
 
-/*************************constant defunition***************************/
-
-#define HOME_HEIGHT             5.0
-#define ASCEND_VELOCITY_CON     0.3
-#define ASCEND_VELOCITY_COM     0.6
-#define TAKE_OFF_VELOCITY       1.5
-#define DESCEND_VELOCITY        0.3
-#define OBSERVE_HEIGET          5.0
-#define CONSTRUCT_HEIGET        5.0
-#define BOX_HEIGET              0.25
-#define PLACE_HEIGET            0.25
-#define LOCATE_ACCURACY_HIGH    0.5
-#define LOCATE_ACCURACY_GRAB    0.2
-#define LOCATE_ACCURACY_ROUGH   1.0
-#define GRAB_HEIGHT_MARGIN      0.02
-#define BOX_LOOP_MAX            3
+//yaw set
+float yaw_sp;
 
 /***************************callback function definition***************/
 state_machine::State current_state;
