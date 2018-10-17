@@ -111,7 +111,7 @@ bool fix_target_receive_enable = true;
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.25
 #define LOCATE_ACCURACY_HIGH    0.5
-#define LOCATE_ACCURACY_GRAB    0.2
+#define LOCATE_ACCURACY_GRAB    0.08
 #define LOCATE_ACCURACY_ROUGH   1.0
 #define GRAB_HEIGHT_MARGIN      0.02
 
@@ -645,7 +645,7 @@ void state_machine_fun(void)
             {
                 if (Distance_of_Two(current_position.pose.position.x,position_place.pose.position.x,
                                     current_position.pose.position.y,position_place.pose.position.y,
-                                    current_position.pose.position.z,position_place.pose.position.z) < 0.1)
+                                    current_position.pose.position.z,position_place.pose.position.z) < 0.10)
                 {
                     accuracy_count3++;
                     if(accuracy_count3 > 3)
