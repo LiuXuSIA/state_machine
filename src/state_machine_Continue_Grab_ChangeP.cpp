@@ -52,7 +52,7 @@ geometry_msgs::PoseStamped position_box2;
 geometry_msgs::PoseStamped position_box3;
 geometry_msgs::PoseStamped position_box4;
 geometry_msgs::PoseStamped position_box5;
-geometry_msgs::PoseStamped position_box6;
+geometry_msgs::PoseStamped position_box0;
 
 //topic
 geometry_msgs::PoseStamped pose_pub; 
@@ -259,9 +259,9 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         position_box5.pose.position.y = fix_target_position.box5_x;
         position_box5.pose.position.z = OBSERVE_HEIGET - fix_target_position.box5_z;
 
-        position_box6.pose.position.x = fix_target_position.component_y;
-        position_box6.pose.position.y = fix_target_position.component_x;
-        position_box6.pose.position.z = OBSERVE_HEIGET - fix_target_position.component_z;
+        position_box0.pose.position.x = fix_target_position.component_y;
+        position_box0.pose.position.y = fix_target_position.component_x;
+        position_box0.pose.position.z = OBSERVE_HEIGET - fix_target_position.component_z;
 4
         // position_grab.pose.position.x = position_component.pose.position.x;
         // position_grab.pose.position.y = position_component.pose.position.y;
@@ -566,6 +566,16 @@ int main(int argc, char **argv)
         switch(box_loop)
         {
             case 0:
+                position_grab.pose.position.x = position_box0.pose.position.x;
+                position_grab.pose.position.y = position_box0.pose.position.y;
+                position_grab.pose.position.z = -fix_target_position.component_z - grab_loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;;
+
+                position_component.pose.position.x = position_box0.pose.position.x;
+                position_component.pose.position.y = position_box0.pose.position.y;
+                position_component.pose.position.z = position_box0.pose.position.z;
+
+            break;
+            case 1:
                 position_grab.pose.position.x = position_box1.pose.position.x;
                 position_grab.pose.position.y = position_box1.pose.position.y;
                 position_grab.pose.position.z = -fix_target_position.box1_z - grab_loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;
@@ -575,7 +585,7 @@ int main(int argc, char **argv)
                 position_component.pose.position.z = position_box1.pose.position.z;
 
             break;
-            case 1:
+            case 2:
                 position_grab.pose.position.x = position_box2.pose.position.x;
                 position_grab.pose.position.y = position_box2.pose.position.y;
                 position_grab.pose.position.z = -fix_target_position.box2_z - grab_loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;
@@ -585,7 +595,7 @@ int main(int argc, char **argv)
                 position_component.pose.position.z = position_box2.pose.position.z;
 
             break;
-            case 2:
+            case 3:
                 position_grab.pose.position.x = position_box3.pose.position.x;
                 position_grab.pose.position.y = position_box3.pose.position.y;
                 position_grab.pose.position.z = -fix_target_position.box3_z - grab_loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;
@@ -595,7 +605,7 @@ int main(int argc, char **argv)
                 position_component.pose.position.z = position_box3.pose.position.z;
 
             break;
-            case 3:
+            case 4:
                 position_grab.pose.position.x = position_box4.pose.position.x;
                 position_grab.pose.position.y = position_box4.pose.position.y;
                 position_grab.pose.position.z = -fix_target_position.box4_z - grab_loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;
@@ -605,7 +615,7 @@ int main(int argc, char **argv)
                 position_component.pose.position.z = position_box4.pose.position.z;
 
             break;
-            case 4:
+            case 5:
                 position_grab.pose.position.x = position_box5.pose.position.x;
                 position_grab.pose.position.y = position_box5.pose.position.y;
                 position_grab.pose.position.z = -fix_target_position.box5_z - grab_loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;
@@ -613,16 +623,6 @@ int main(int argc, char **argv)
                 position_component.pose.position.x = position_box5.pose.position.x;
                 position_component.pose.position.y = position_box5.pose.position.y;
                 position_component.pose.position.z = position_box5.pose.position.z;
-
-            break;
-            case 5:
-                position_grab.pose.position.x = position_box6.pose.position.x;
-                position_grab.pose.position.y = position_box6.pose.position.y;
-                position_grab.pose.position.z = -fix_target_position.component_z - grab_loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;
-
-                position_component.pose.position.x = position_box6.pose.position.x;
-                position_component.pose.position.y = position_box6.pose.position.y;
-                position_component.pose.position.z = position_box6.pose.position.z;
 
             break;
         }
