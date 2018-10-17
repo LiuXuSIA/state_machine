@@ -107,6 +107,8 @@ void velo_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
 state_machine::FIXED_TARGET_POSITION_P2M fix_target_position;
 void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M::ConstPtr& msg)
 {
+    fix_target_position = *msg;
+    
     fix_target_return.home_x = fix_target_position.home_x;
     fix_target_return.home_y = fix_target_position.home_y;
     fix_target_return.home_z = -HOME_HEIGHT + fix_target_position.home_z;
