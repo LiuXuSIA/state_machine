@@ -44,12 +44,11 @@ float wrap_pi(float angle_rad);
 #define CONSTRUCT_HEIGET        3.0
 #define TAKE_OFF_HEIGHT         1.5
 #define ASCEND_VELOCITY         1.5
-#define DESCEND_VELOCITY        0.3
+#define DESCEND_VELOCITY        0.5
 #define RECOGNIZE_HEIGHT        2.5
 #define BOX_HEIGET              0.25
 #define GRAB_HEIGET             0.5
 #define PLACE_HEIGET            0.5
-#define DESCEND_VELOCITY        0.5
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0

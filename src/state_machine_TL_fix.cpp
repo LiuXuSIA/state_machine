@@ -114,15 +114,15 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
 
     fix_target_return.home_x = fix_target_position.home_x;
     fix_target_return.home_y = fix_target_position.home_y;
-    fix_target_return.home_z = -HOME_HEIGHT;
+    fix_target_return.home_z = -HOME_HEIGHT + fix_target_position.home_z;
 
     fix_target_return.component_x = fix_target_position.component_x;
     fix_target_return.component_y = fix_target_position.component_y;
-    fix_target_return.component_z = -OBSERVE_HEIGET;
+    fix_target_return.component_z = -OBSERVE_HEIGET + fix_target_position.component_z;
 
     fix_target_return.construction_x = fix_target_position.construction_x;
     fix_target_return.construction_y = fix_target_position.construction_y;
-    fix_target_return.construction_z = -CONSTRUCTION_HEIGET;
+    fix_target_return.construction_z = -CONSTRUCTION_HEIGET + fix_target_position.construction_z;
 
     ROS_INFO("fix_target_return.home_x:%f",fix_target_return.home_x);
     ROS_INFO("fix_target_return.home_y:%f",fix_target_return.home_y);
@@ -142,15 +142,15 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     //position of home
     position_home.pose.position.x = fix_target_position.home_y;
     position_home.pose.position.y = fix_target_position.home_x;
-    position_home.pose.position.z = HOME_HEIGHT;
+    position_home.pose.position.z = HOME_HEIGHT - fix_target_position.home_z;
     //position of componnet
     position_componnet.pose.position.x = fix_target_position.component_y;
     position_componnet.pose.position.y = fix_target_position.component_x;
-    position_componnet.pose.position.z = OBSERVE_HEIGET;
+    position_componnet.pose.position.z = OBSERVE_HEIGET - fix_target_position.component_z;
     //position of construction
     position_construction.pose.position.x = fix_target_position.construction_y;
     position_construction.pose.position.y = fix_target_position.construction_x;
-    position_construction.pose.position.z = CONSTRUCTION_HEIGET;
+    position_construction.pose.position.z = CONSTRUCTION_HEIGET - fix_target_position.construction_z;
 
     position_hover2.pose.position.x = position_home.pose.position.x;
     position_hover2.pose.position.y = position_home.pose.position.y;
@@ -302,7 +302,7 @@ void state_machine_fun(void)
             velocity_control_enable = false;
             pose_pub = position_home;
             local_vel_pub.publish(vel_pub);
-            if(current_position.pose.position.z > 3)
+            if((current_position.pose.position.z + fix_target_position.home_z) > 3)
             {
                 current_pos_state = target_go;
                 last_time = ros::Time::now();
@@ -326,7 +326,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_home;
             local_pos_pub.publish(position_home);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = go_hover2;
                 last_time = ros::Time::now();
@@ -350,7 +350,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_hover2;
             local_pos_pub.publish(position_hover2);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = go_hover3;
                 last_time = ros::Time::now();
@@ -374,7 +374,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_hover3;
             local_pos_pub.publish(position_hover3);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = land;
                 last_time = ros::Time::now();

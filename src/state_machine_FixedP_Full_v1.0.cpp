@@ -1,6 +1,6 @@
 /*************************************************************************
-@file           state_machine_v1.0.cpp
-@date           2018/09/24 11:01
+@file           state_machine_FixedP_Full_v1.0.cpp
+@date           2018/10/17 20:57
 @author         liuxu
 @email          liuxu.ccc@gmail.com
 @description    fixed 3 position from GCS
@@ -19,12 +19,14 @@
 //custom gcs->pix->mavros
 #include <state_machine/FIXED_TARGET_POSITION_P2M.h>
 #include <state_machine/TASK_STATUS_CHANGE_P2M.h>
+//#include <state_machine/FIXED_BOX_POSITION_P2M.h>
 
 //custom mavros->pix->gcs
 #include <state_machine/TASK_STATUS_MONITOR_M2P.h>
 #include <state_machine/VISION_POSITION_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
 #include <state_machine/FIXED_TARGET_RETURN_M2P.h>
+//#include <state_machine/FIXED_BOX_RETURN_M2P.h>
 #include <state_machine/GRAB_STATUS_M2P.h>
 
 #include <state_machine/Distance.h> 
@@ -33,16 +35,29 @@
 
 void state_machine_fun(void);
 double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2);
+float wrap_pi(float angle_rad);
 
 /***************************variable definition*************************/
-//position  ENU
+//fixed position  ENU
 geometry_msgs::PoseStamped position_home;
 geometry_msgs::PoseStamped position_component;
 geometry_msgs::PoseStamped position_construction;
+
+//fixed box position
+geometry_msgs::PoseStamped position_box1;
+geometry_msgs::PoseStamped position_box2;
+geometry_msgs::PoseStamped position_box3;
+geometry_msgs::PoseStamped position_box4;
+geometry_msgs::PoseStamped position_box5;
+geometry_msgs::PoseStamped position_box0;
+
+//position for hover  ENU
 geometry_msgs::PoseStamped position_grab;
 geometry_msgs::PoseStamped position_place;
 geometry_msgs::PoseStamped position_judge;
 geometry_msgs::PoseStamped position_of_safe;
+geometry_msgs::PoseStamped position_timer_out;
+geometry_msgs::PoseStamped position_return_home;
 
 //topic
 geometry_msgs::PoseStamped pose_pub; 
@@ -54,16 +69,22 @@ geometry_msgs::TwistStamped vel_descend;
 ros::Publisher local_pos_pub;
 ros::Publisher local_vel_pub;
 ros::Publisher fixed_target_pub;
+//ros::Publisher fixed_box_pub;
 
-//bool velocity_control_enable = true;
+//message to pix
+state_machine::FIXED_TARGET_RETURN_M2P fix_target_return;
+//state_machine::FIXED_BOX_RETURN_M2P fix_box_return;
+state_machine::GRAB_STATUS_M2P grab_status;
+state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor;
 
 //state_machine state,every state need target position
 static const int takeoff = 1;
 static const int position_H_go = 2;
 static const int position_H_hover = 3;
-static const int position_Com_go = 4;
-static const int position_Com_hover = 5;
-static const int Com_get_close = 6;
+static const int hover_only = 4;
+static const int position_Com_go = 5;
+static const int position_Com_hover = 6;
+static const int Com_get_close = 7;
 static const int component_grab = 10;
 static const int Com_leave = 11;
 static const int grab_status_judge = 12;
@@ -75,50 +96,65 @@ static const int componnet_place = 17;
 static const int place_done = 18;
 static const int Con_leave = 19;
 static const int place_status_judge = 20;
-static const int return_home = 21;
-static const int land = 22;
+static const int force_return_home = 21;
+static const int return_home = 22;
+static const int land = 23;
+
+//for box lost process
+static const int hover_after_lost = 25;
+static const int construct_point_adjust = 24;
+
 
 //mission 
-int loop = 0;
+int grab_loop = 0;
+int place_loop = 0;
 int current_pos_state = takeoff;
+int last_mission_state = takeoff;
+
+//box_loop
+int box_loop = 0;
 
 //time
+ros::Time mission_timer_start_time;
 ros::Time last_time;
+bool mission_timer_enable = true;
 
 //land
 state_machine::CommandTOL landing_cmd;
 ros::ServiceClient land_client;
 ros::Time landing_last_request;
 
-//message to pix
-state_machine::FIXED_TARGET_RETURN_M2P fix_target_return;
-state_machine::GRAB_STATUS_M2P grab_status;
-state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor;
-
 //velocity send
 bool velocity_control_enable = true;
 bool fix_target_receive_enable = true;
+bool fix_box_receive_enable = true;
+bool force_home_enable = true;
 
 /*************************constant defunition***************************/
 
+#define MAX_MISSION_TIME        360
 #define HOME_HEIGHT             5.0
+#define OBSERVE_HEIGET          5.0
+#define CONSTRUCT_HEIGET        5.0
+#define TAKE_OFF_HEIGHT         3.0
 #define ASCEND_VELOCITY_CON     0.3
 #define ASCEND_VELOCITY_COM     0.6
 #define TAKE_OFF_VELOCITY       1.5
 #define DESCEND_VELOCITY        0.3
-#define OBSERVE_HEIGET          5.0
-#define CONSTRUCT_HEIGET        5.0
 #define BOX_HEIGET              0.25
-#define PLACE_HEIGET            0.7
+#define PLACE_HEIGET            0.25
 #define LOCATE_ACCURACY_HIGH    0.5
-#define LOCATE_ACCURACY_GRAB    0.2
+#define LOCATE_ACCURACY_GRAB    0.1
 #define LOCATE_ACCURACY_ROUGH   1.0
-
+#define GRAB_HEIGHT_MARGIN      0.02
+#define BOX_LOOP_MAX            3
 
 /***************************callback function definition***************/
 state_machine::State current_state;
+state_machine::State last_state;
 void state_cb(const state_machine::State::ConstPtr& msg)
 {
+    last_state = current_state;
     current_state = *msg;
 }
 
@@ -147,6 +183,32 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         fix_target_return.construction_y = fix_target_position.construction_y;
         fix_target_return.construction_z = -CONSTRUCT_HEIGET + fix_target_position.construction_z;
 
+        fix_target_return.box1_x = fix_target_position.box1_x;
+        fix_target_return.box1_y = fix_target_position.box1_y;
+        fix_target_return.box1_z = -OBSERVE_HEIGET + fix_target_position.box1_z;
+
+        fix_target_return.box2_x = fix_target_position.box2_x;
+        fix_target_return.box2_y = fix_target_position.box2_y;
+        fix_target_return.box2_z = -OBSERVE_HEIGET + fix_target_position.box2_z;
+
+        fix_target_return.box3_x = fix_target_position.box3_x;
+        fix_target_return.box3_y = fix_target_position.box3_y;
+        fix_target_return.box3_z = -OBSERVE_HEIGET + fix_target_position.box3_z;
+
+        fix_target_return.box4_x = fix_target_position.box4_x;
+        fix_target_return.box4_y = fix_target_position.box4_y;
+        fix_target_return.box4_z = -OBSERVE_HEIGET + fix_target_position.box4_z;
+
+        fix_target_return.box5_x = fix_target_position.box5_x;
+        fix_target_return.box5_y = fix_target_position.box5_y;
+        fix_target_return.box5_z = -OBSERVE_HEIGET + fix_target_position.box5_z;
+
+        // fix_target_return.box6_x = fix_target_position.component_x;
+        // fix_target_return.box6_y = fix_target_position.component_y;
+        // fix_target_return.box6_z = -OBSERVE_HEIGET + fix_target_position.component_z;
+
+        fixed_target_pub.publish(fix_target_return);
+
         ROS_INFO("fix_target_return.home_x:%f",fix_target_return.home_x);
         ROS_INFO("fix_target_return.home_y:%f",fix_target_return.home_y);
         ROS_INFO("fix_target_return.home_z:%f",fix_target_return.home_z);
@@ -159,7 +221,27 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         ROS_INFO("fix_target_return.construction_y:%f",fix_target_return.construction_y);
         ROS_INFO("fix_target_return.construction_z:%f",fix_target_return.construction_z);
 
-        fixed_target_pub.publish(fix_target_return);
+        ROS_INFO("fix_target_return.box1_x:%f",fix_target_return.box1_x);
+        ROS_INFO("fix_target_return.box1_y:%f",fix_target_return.box1_y);
+        ROS_INFO("fix_target_return.box1_z:%f",fix_target_return.box1_z);
+
+        ROS_INFO("fix_target_return.box2_x:%f",fix_target_return.box2_x);
+        ROS_INFO("fix_target_return.box2_y:%f",fix_target_return.box2_y);
+        ROS_INFO("fix_target_return.box2_z:%f",fix_target_return.box2_z);
+
+        ROS_INFO("fix_target_return.box3_x:%f",fix_target_return.box3_x);
+        ROS_INFO("fix_target_return.box3_y:%f",fix_target_return.box3_y);
+        ROS_INFO("fix_target_return.box3_z:%f",fix_target_return.box3_z);
+
+        ROS_INFO("fix_target_return.box4_x:%f",fix_target_return.box4_x);
+        ROS_INFO("fix_target_return.box4_y:%f",fix_target_return.box4_y);
+        ROS_INFO("fix_target_return.box4_z:%f",fix_target_return.box4_z);
+
+        ROS_INFO("fix_target_return.box5_x:%f",fix_target_return.box5_x);
+        ROS_INFO("fix_target_return.box5_y:%f",fix_target_return.box5_y);
+        ROS_INFO("fix_target_return.box5_z:%f",fix_target_return.box5_z);
+
+        //fixed_target_pub.publish(fix_target_return);
 
         //Coordinate transformation
         //position of home
@@ -167,21 +249,113 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         position_home.pose.position.y = fix_target_position.home_x;
         position_home.pose.position.z = HOME_HEIGHT - fix_target_position.home_z;
         //position of componnet
-        position_component.pose.position.x = fix_target_position.component_y;
-        position_component.pose.position.y = fix_target_position.component_x;
-        position_component.pose.position.z = OBSERVE_HEIGET - fix_target_position.component_z;
+        // position_component.pose.position.x = fix_target_position.component_y;
+        // position_component.pose.position.y = fix_target_position.component_x;
+        // position_component.pose.position.z = OBSERVE_HEIGET - fix_target_position.component_z;
         //position of construction
         position_construction.pose.position.x = fix_target_position.construction_y;
         position_construction.pose.position.y = fix_target_position.construction_x;
         position_construction.pose.position.z = CONSTRUCT_HEIGET - fix_target_position.construction_z;
 
-        position_grab.pose.position.x = position_component.pose.position.x;
-        position_grab.pose.position.y = position_component.pose.position.y;
-        position_grab.pose.position.z = -fix_target_position.component_z + 0.27;
+        position_box1.pose.position.x = fix_target_position.box1_y;
+        position_box1.pose.position.y = fix_target_position.box1_x;
+        position_box1.pose.position.z = OBSERVE_HEIGET - fix_target_position.box1_z;
 
-        position_place.pose.position.x = position_construction.pose.position.x;
-        position_place.pose.position.y = position_construction.pose.position.y;
-        position_place.pose.position.z = -fix_target_position.construction_z + PLACE_HEIGET;
+        position_box2.pose.position.x = fix_target_position.box2_y;
+        position_box2.pose.position.y = fix_target_position.box2_x;
+        position_box2.pose.position.z = OBSERVE_HEIGET - fix_target_position.box2_z;
+
+        position_box3.pose.position.x = fix_target_position.box3_y;
+        position_box3.pose.position.y = fix_target_position.box3_x;
+        position_box3.pose.position.z = OBSERVE_HEIGET - fix_target_position.box3_z;
+
+        position_box4.pose.position.x = fix_target_position.box4_y;
+        position_box4.pose.position.y = fix_target_position.box4_x;
+        position_box4.pose.position.z = OBSERVE_HEIGET - fix_target_position.box4_z;
+
+        position_box5.pose.position.x = fix_target_position.box5_y;
+        position_box5.pose.position.y = fix_target_position.box5_x;
+        position_box5.pose.position.z = OBSERVE_HEIGET - fix_target_position.box5_z;
+
+        position_box0.pose.position.x = fix_target_position.component_y;
+        position_box0.pose.position.y = fix_target_position.component_x;
+        position_box0.pose.position.z = OBSERVE_HEIGET - fix_target_position.component_z;
+
+        yaw_sp = wrap_pi(M_PI_2 - fix_target_return.component_yaw_sp * M_PI/180);
+
+        //home
+        position_home.pose.orientation.x = 0;
+        position_home.pose.orientation.y = 0;
+        position_home.pose.orientation.z = sin(yaw_sp/2);
+        position_home.pose.orientation.w = cos(yaw_sp/2);
+        //componnet
+        position_component.pose.orientation.x = 0;
+        position_component.pose.orientation.y = 0;
+        position_component.pose.orientation.z = sin(yaw_sp/2);
+        position_component.pose.orientation.w = cos(yaw_sp/2);
+        //construction
+        position_construction.pose.orientation.x = 0;
+        position_construction.pose.orientation.y = 0;
+        position_construction.pose.orientation.z = sin(yaw_sp/2);
+        position_construction.pose.orientation.w = cos(yaw_sp/2);
+
+        //grab
+        position_grab.pose.orientation.x = 0;
+        position_grab.pose.orientation.y = 0;
+        position_grab.pose.orientation.z = sin(yaw_sp/2);
+        position_grab.pose.orientation.w = cos(yaw_sp/2);
+        //place
+        position_place.pose.orientation.x = 0;
+        position_place.pose.orientation.y = 0;
+        position_place.pose.orientation.z = sin(yaw_sp/2);
+        position_place.pose.orientation.w = cos(yaw_sp/2);
+        //judge
+        position_judge.pose.orientation.x = 0;
+        position_judge.pose.orientation.y = 0;
+        position_judge.pose.orientation.z = sin(yaw_sp/2);
+        position_judge.pose.orientation.w = cos(yaw_sp/2);
+        //safe
+        position_of_safe.pose.orientation.x = 0;
+        position_of_safe.pose.orientation.y = 0;
+        position_of_safe.pose.orientation.z = sin(yaw_sp/2);
+        position_of_safe.pose.orientation.w = cos(yaw_sp/2);
+        //safe
+        position_return_home.pose.orientation.x = 0;
+        position_return_home.pose.orientation.y = 0;
+        position_return_home.pose.orientation.z = sin(yaw_sp/2);
+        position_return_home.pose.orientation.w = cos(yaw_sp/2);
+
+        // //box0
+        // position_box0.pose.orientation.x = 0;
+        // position_box0.pose.orientation.y = 0;
+        // position_box0.pose.orientation.z = sin(yaw_sp/2);
+        // position_box0.pose.orientation.w = cos(yaw_sp/2);
+        // //box1
+        // position_box1.pose.orientation.x = 0;
+        // position_box1.pose.orientation.y = 0;
+        // position_box1.pose.orientation.z = sin(yaw_sp/2);
+        // position_box1.pose.orientation.w = cos(yaw_sp/2);
+        // //box2
+        // position_box2.pose.orientation.x = 0;
+        // position_box2.pose.orientation.y = 0;
+        // position_box2.pose.orientation.z = sin(yaw_sp/2);
+        // position_box2.pose.orientation.w = cos(yaw_sp/2);
+        // //box3
+        // position_box3.pose.orientation.x = 0;
+        // position_box3.pose.orientation.y = 0;
+        // position_box3.pose.orientation.z = sin(yaw_sp/2);
+        // position_box3.pose.orientation.w = cos(yaw_sp/2);
+        // //box4
+        // position_box4.pose.orientation.x = 0;
+        // position_box4.pose.orientation.y = 0;
+        // position_box4.pose.orientation.z = sin(yaw_sp/2);
+        // position_box4.pose.orientation.w = cos(yaw_sp/2);
+        // //box5
+        // position_box5.pose.orientation.x = 0;
+        // position_box5.pose.orientation.y = 0;
+        // position_box5.pose.orientation.z = sin(yaw_sp/2);
+        // position_box5.pose.orientation.w = cos(yaw_sp/2);
+
 
         fix_target_receive_enable = false;
     
@@ -204,6 +378,91 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         // position_construction.pose.orientation.w = cos(yaw_sp/2);
     }
 }
+
+// state_machine::FIXED_BOX_POSITION_P2M fix_box_position;
+// void fixed_box_position_p2m_cb(const state_machine::FIXED_BOX_POSITION_P2M::ConstPtr& msg)
+// {
+//     fix_box_position = *msg;
+//     if (fix_box_receive_enable == true)
+//     {
+//         fix_box_return.box1_x = fix_box_position.box1_x;
+//         fix_box_return.box1_y = fix_box_position.box1_y;
+//         fix_box_return.box1_z = fix_box_position.box1_z;
+
+//         fix_box_return.box2_x = fix_box_position.box2_x;
+//         fix_box_return.box2_y = fix_box_position.box2_y;
+//         fix_box_return.box2_z = fix_box_position.box2_z;
+
+//         fix_box_return.box3_x = fix_box_position.box3_x;
+//         fix_box_return.box3_y = fix_box_position.box3_y;
+//         fix_box_return.box3_z = fix_box_position.box3_z;
+
+//         fix_box_return.box4_x = fix_box_position.box4_x;
+//         fix_box_return.box4_y = fix_box_position.box4_y;
+//         fix_box_return.box4_z = fix_box_position.box4_z;
+
+//         fix_box_return.box5_x = fix_box_position.box5_x;
+//         fix_box_return.box5_y = fix_box_position.box5_y;
+//         fix_box_return.box5_z = fix_box_position.box5_z;
+
+//         fix_box_return.box6_x = fix_box_position.box6_x;
+//         fix_box_return.box6_y = fix_box_position.box6_y;
+//         fix_box_return.box6_z = fix_box_position.box6_z;
+
+//         fixed_box_pub.publish(fix_box_return);
+
+//         ROS_INFO("fix_box_return.box1_x:%f",fix_box_return.box1_x);
+//         ROS_INFO("fix_box_return.box1_y:%f",fix_box_return.box1_y);
+//         ROS_INFO("fix_box_return.box1_z:%f",fix_box_return.box1_z);
+
+//         ROS_INFO("fix_box_return.box2_x:%f",fix_box_return.box2_x);
+//         ROS_INFO("fix_box_return.box2_y:%f",fix_box_return.box2_y);
+//         ROS_INFO("fix_box_return.box2_z:%f",fix_box_return.box2_z);
+
+//         ROS_INFO("fix_box_return.box3_x:%f",fix_box_return.box3_x);
+//         ROS_INFO("fix_box_return.box3_y:%f",fix_box_return.box3_y);
+//         ROS_INFO("fix_box_return.box3_z:%f",fix_box_return.box3_z);
+
+//         ROS_INFO("fix_box_return.box4_x:%f",fix_box_return.box4_x);
+//         ROS_INFO("fix_box_return.box4_y:%f",fix_box_return.box4_y);
+//         ROS_INFO("fix_box_return.box4_z:%f",fix_box_return.box4_z);
+
+//         ROS_INFO("fix_box_return.box5_x:%f",fix_box_return.box5_x);
+//         ROS_INFO("fix_box_return.box5_y:%f",fix_box_return.box5_y);
+//         ROS_INFO("fix_box_return.box5_z:%f",fix_box_return.box5_z);
+
+//         ROS_INFO("fix_box_return.box6_x:%f",fix_box_return.box6_x);
+//         ROS_INFO("fix_box_return.box6_y:%f",fix_box_return.box6_y);
+//         ROS_INFO("fix_box_return.box6_z:%f",fix_box_return.box6_z);
+
+//         position_box1.pose.position.x = fix_box_position.box1_y;
+//         position_box1.pose.position.y = fix_box_position.box1_x;
+//         position_box1.pose.position.z = OBSERVE_HEIGET - fix_box_position.box1_z;
+
+//         position_box2.pose.position.x = fix_box_position.box2_y;
+//         position_box2.pose.position.y = fix_box_position.box2_x;
+//         position_box2.pose.position.z = OBSERVE_HEIGET - fix_box_position.box2_z;
+
+//         position_box3.pose.position.x = fix_box_position.box3_y;
+//         position_box3.pose.position.y = fix_box_position.box3_x;
+//         position_box3.pose.position.z = OBSERVE_HEIGET - fix_box_position.box3_z;
+
+//         position_box4.pose.position.x = fix_box_position.box4_y;
+//         position_box4.pose.position.y = fix_box_position.box4_x;
+//         position_box4.pose.position.z = OBSERVE_HEIGET - fix_box_position.box4_z;
+
+//         position_box5.pose.position.x = fix_box_position.box5_y;
+//         position_box5.pose.position.y = fix_box_position.box5_x;
+//         position_box5.pose.position.z = OBSERVE_HEIGET - fix_box_position.box5_z;
+
+//         position_box6.pose.position.x = fix_box_position.box6_y;
+//         position_box6.pose.position.y = fix_box_position.box6_x;
+//         position_box6.pose.position.z = OBSERVE_HEIGET - fix_box_position.box6_z;
+
+//         fix_box_receive_enable = false;
+//     }
+
+// }
 
 state_machine::TASK_STATUS_CHANGE_P2M task_status_change;
 void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::ConstPtr& msg)
@@ -258,6 +517,39 @@ int main(int argc, char **argv)
     vel_descend.twist.angular.y = 0.0f;
     vel_descend.twist.angular.z = 0.0f;
 
+    //initial value
+    // fix_target_return.home_x = 4;
+    // fix_target_return.home_y = 4;
+    // fix_target_return.home_z = 4;
+
+    // fix_target_return.component_x = 4;
+    // fix_target_return.component_y = 4;
+    // fix_target_return.component_z = 4;
+
+    // fix_target_return.construction_x = 4;
+    // fix_target_return.construction_y = 4;
+    // fix_target_return.construction_z = 4;
+
+    // fix_target_return.box1_x = 4;
+    // fix_target_return.box1_y = 4;
+    // fix_target_return.box1_z = 4;
+
+    // fix_target_return.box2_x = 4;
+    // fix_target_return.box2_y = 4;
+    // fix_target_return.box2_z = 4;
+
+    // fix_target_return.box3_x = 4;
+    // fix_target_return.box3_y = 4;
+    // fix_target_return.box3_z = 4;
+
+    // fix_target_return.box4_x = 4;
+    // fix_target_return.box4_y = 4;
+    // fix_target_return.box4_z = 4;
+
+    // fix_target_return.box5_x = 4;
+    // fix_target_return.box5_y = 4;
+    // fix_target_return.box5_z = 4;
+
     //  float yaw_sp=M_PI_2;
     // //position_grab
     // position_grab.pose.orientation.x = 0;
@@ -286,12 +578,15 @@ int main(int argc, char **argv)
     //ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity",10,velo_cb);
     ros::Subscriber fixed_target_sub = nh.subscribe<state_machine::FIXED_TARGET_POSITION_P2M>("mavros/fixed_target_position_p2m",10,fixed_target_position_p2m_cb);
     ros::Subscriber task_status_sub = nh.subscribe<state_machine::TASK_STATUS_CHANGE_P2M>("mavros/task_status_change_p2m",10,task_status_change_p2m_cb);
+    //ros::Subscriber fixed_box_sub = nh.subscribe<state_machine::FIXED_BOX_POSITION_P2M>("mavros/fixed_box_position_p2m",10,fixed_box_position_p2m_cb);
+
     //ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
 
     //topic publish
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
     local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("mavros/setpoint_velocity/cmd_vel",10);
     fixed_target_pub = nh.advertise<state_machine::FIXED_TARGET_RETURN_M2P>("mavros/fixed_target_return_m2p",10);
+    //fixed_box_pub = nh.advertise<state_machine::FIXED_BOX_RETURN_M2P>("mavros/fixed_box_return_m2p",10);
     ros::Publisher grab_status_pub = nh.advertise<state_machine::GRAB_STATUS_M2P>("mavros/grab_status_m2p",10);
     ros::Publisher task_status_pub = nh.advertise<state_machine::TASK_STATUS_MONITOR_M2P>("mavros/task_status_monitor_m2p",10);
 
@@ -305,8 +600,8 @@ int main(int argc, char **argv)
 
     while(ros::ok() && !current_state.connected)
     {
-    	ros::spinOnce();
-    	rate.sleep();
+        ros::spinOnce();
+        rate.sleep();
     }
 
     ROS_INFO("Connect successfully!!");
@@ -314,16 +609,16 @@ int main(int argc, char **argv)
     ROS_INFO("send setpoint before takeoff,please wait");
 
     for(int i =100; ros::ok() && i > 0; i--)
-	{
-		local_vel_pub.publish(vel_take_off);
-		ros::spinOnce();
-		rate.sleep();
-	}
+    {
+        local_vel_pub.publish(vel_take_off);
+        ros::spinOnce();
+        rate.sleep();
+    }
 
     ROS_INFO("Initialization finished");
 
-	while(ros::ok())
-	{
+    while(ros::ok())
+    {
         static bool display_falg = true;
         
         if(current_state.mode == "OFFBOARD" && current_state.armed)
@@ -354,19 +649,96 @@ int main(int argc, char **argv)
                 }
         }
 
+        switch(box_loop)
+        {
+            case 0:
+                position_grab.pose.position.x = position_box0.pose.position.x;
+                position_grab.pose.position.y = position_box0.pose.position.y;
+                position_grab.pose.position.z = -fix_target_position.component_z - grab_loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;;
+
+                position_component.pose.position.x = position_box0.pose.position.x;
+                position_component.pose.position.y = position_box0.pose.position.y;
+                position_component.pose.position.z = position_box0.pose.position.z;
+
+            break;
+            case 1:
+                position_grab.pose.position.x = position_box1.pose.position.x;
+                position_grab.pose.position.y = position_box1.pose.position.y;
+                position_grab.pose.position.z = -fix_target_position.box1_z - grab_loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;
+
+                position_component.pose.position.x = position_box1.pose.position.x;
+                position_component.pose.position.y = position_box1.pose.position.y;
+                position_component.pose.position.z = position_box1.pose.position.z;
+
+            break;
+            case 2:
+                position_grab.pose.position.x = position_box2.pose.position.x;
+                position_grab.pose.position.y = position_box2.pose.position.y;
+                position_grab.pose.position.z = -fix_target_position.box2_z - grab_loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;
+
+                position_component.pose.position.x = position_box2.pose.position.x;
+                position_component.pose.position.y = position_box2.pose.position.y;
+                position_component.pose.position.z = position_box2.pose.position.z;
+
+            break;
+            case 3:
+                position_grab.pose.position.x = position_box3.pose.position.x;
+                position_grab.pose.position.y = position_box3.pose.position.y;
+                position_grab.pose.position.z = -fix_target_position.box3_z - grab_loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;
+
+                position_component.pose.position.x = position_box3.pose.position.x;
+                position_component.pose.position.y = position_box3.pose.position.y;
+                position_component.pose.position.z = position_box3.pose.position.z;
+
+            break;
+            case 4:
+                position_grab.pose.position.x = position_box4.pose.position.x;
+                position_grab.pose.position.y = position_box4.pose.position.y;
+                position_grab.pose.position.z = -fix_target_position.box4_z - grab_loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;
+
+                position_component.pose.position.x = position_box4.pose.position.x;
+                position_component.pose.position.y = position_box4.pose.position.y;
+                position_component.pose.position.z = position_box4.pose.position.z;
+
+            break;
+            case 5:
+                position_grab.pose.position.x = position_box5.pose.position.x;
+                position_grab.pose.position.y = position_box5.pose.position.y;
+                position_grab.pose.position.z = -fix_target_position.box5_z - grab_loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;
+
+                position_component.pose.position.x = position_box5.pose.position.x;
+                position_component.pose.position.y = position_box5.pose.position.y;
+                position_component.pose.position.z = position_box5.pose.position.z;
+
+            break;
+        }
+
+        if(ros::Time::now() - mission_timer_start_time > ros::Duration(MAX_MISSION_TIME) && force_home_enable == true)
+        {
+            force_home_enable = false;
+
+            position_timer_out.pose.position.x = current_position.pose.position.x;
+            position_timer_out.pose.position.y = current_position.pose.position.y;
+            position_timer_out.pose.position.z = current_position.pose.position.z;
+
+            current_pos_state = hover_only;
+            mission_last_time = ros::Time::now();
+            ROS_INFO("Mission time run out,will return home and landing!!");
+        }
+
         task_status_monitor.task_status = current_pos_state;
-        task_status_monitor.loop_value = loop;
+        task_status_monitor.loop_value = place_loop;
         task_status_monitor.target_x = pose_pub.pose.position.y;
         task_status_monitor.target_y = pose_pub.pose.position.x;
         task_status_monitor.target_z = -pose_pub.pose.position.z;
         task_status_monitor.sensor_distance = 0;
         task_status_pub.publish(task_status_monitor);
 
-		ros::spinOnce();
-		rate.sleep();
-	}
+        ros::spinOnce();
+        rate.sleep();
+    }
 
-	return 0;
+    return 0;
 }
 
 
@@ -380,7 +752,12 @@ void state_machine_fun(void)
             velocity_control_enable = false;
             pose_pub = position_home;
             local_vel_pub.publish(vel_take_off);
-            if((current_position.pose.position.z + fix_target_position.home_z) > 3)
+            if(mission_timer_enable)
+            {
+                mission_timer_start_time = ros::Time::now();
+                mission_timer_enable = false;
+            }
+            if((current_position.pose.position.z + fix_target_position.home_z) > TAKE_OFF_HEIGHT)
             {
                 current_pos_state = position_H_go;
                 last_time = ros::Time::now();
@@ -419,6 +796,10 @@ void state_machine_fun(void)
                                 current_position.pose.position.y,position_component.pose.position.y,
                                 current_position.pose.position.z,position_component.pose.position.z) < LOCATE_ACCURACY_HIGH)
             {
+                // position_grab.pose.position.x = position_component.pose.position.x;
+                // position_grab.pose.position.y = position_component.pose.position.y;
+                // position_grab.pose.position.z = -fix_target_position.component_z - loop * BOX_HEIGET + GRAB_HEIGHT_MARGIN;
+
                 current_pos_state = position_Com_hover;
                 last_time = ros::Time::now();
             }
@@ -438,7 +819,7 @@ void state_machine_fun(void)
             {
                 if (Distance_of_Two(current_position.pose.position.x,position_component.pose.position.x,
                                     current_position.pose.position.y,position_component.pose.position.y,
-                                    current_position.pose.position.z,position_component.pose.position.z) < 0.15)
+                                    current_position.pose.position.z,position_component.pose.position.z) < 0.10)
                 {
                     accuracy_count1++;
                     if(accuracy_count1 > 3)
@@ -505,7 +886,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_component;
             local_vel_pub.publish(vel_ascend_com);
-            if ((current_position.pose.position.z + fix_target_position.component_z) > 4)
+            if ((current_position.pose.position.z + fix_target_position.component_z) > 2)
             {
                 position_judge.pose.position.x = current_position.pose.position.x;
                 position_judge.pose.position.y = current_position.pose.position.y;
@@ -547,8 +928,14 @@ void state_machine_fun(void)
             // }
             pose_pub = position_judge;
             local_pos_pub.publish(position_judge);
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            if(ros::Time::now() - last_time > ros::Duration(3.0))
             {
+                box_loop++;
+                if(box_loop == BOX_LOOP_MAX)
+                {
+                    box_loop = 0;
+                    grab_loop++;
+                }
                 current_pos_state = position_Con_go;
                 last_time = ros::Time::now();
             }
@@ -562,6 +949,10 @@ void state_machine_fun(void)
                                 current_position.pose.position.y,position_construction.pose.position.y,
                                 current_position.pose.position.z,position_construction.pose.position.z) < LOCATE_ACCURACY_HIGH)
             {
+                position_place.pose.position.x = position_construction.pose.position.x;
+                position_place.pose.position.y = position_construction.pose.position.y;
+                position_place.pose.position.z = -fix_target_position.construction_z + place_loop * BOX_HEIGET + PLACE_HEIGET;
+
                 current_pos_state = position_Con_hover;
                 last_time = ros::Time::now();
             }
@@ -690,7 +1081,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_place;
             local_vel_pub.publish(vel_ascend_con);
-            if ((current_position.pose.position.z + fix_target_position.construction_z) > (4 + BOX_HEIGET*loop))
+            if ((current_position.pose.position.z + fix_target_position.construction_z) > (3 + BOX_HEIGET*place_loop))
             {
                 position_of_safe.pose.position.x = current_position.pose.position.x;
                 position_of_safe.pose.position.y = current_position.pose.position.y;
@@ -735,9 +1126,39 @@ void state_machine_fun(void)
             local_pos_pub.publish(position_of_safe);
             if(ros::Time::now() - last_time > ros::Duration(3.0))
             {
-                current_pos_state = return_home;
+                place_loop++;
+                if(place_loop < BOX_LOOP_MAX * 2)
+                    current_pos_state = position_Com_go;
+                else
+                    current_pos_state = return_home;
                 last_time = ros::Time::now();
             }
+        }
+        break;
+        case hover_only:
+        {
+            pose_pub = position_timer_out;
+            local_pos_pub.publish(position_timer_out);
+            if(ros::Time::now() - last_time > ros::Duration(3.0))
+            {
+                position_return_home.pose.position.x = current_position.pose.position.x;
+                position_return_home.pose.position.y = current_position.pose.position.y;
+                position_return_home.pose.position.z = HOME_HEIGHT - fix_target_position.home_z;
+
+                current_pos_state = force_return_home;
+                mission_last_time = ros::Time::now();
+            }         
+        }
+        break;
+        case force_return_home:
+        {
+            pose_pub = position_return_home;
+            local_pos_pub.publish(position_return_home);
+            if(ros::Time::now() - last_time > ros::Duration(3.0))
+            {
+                current_pos_state = return_home;
+                mission_last_time = ros::Time::now();
+            }         
         }
         break;
         case  return_home:
@@ -763,4 +1184,18 @@ void state_machine_fun(void)
 double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, double z2)
 {
     return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
+}
+
+// limit angle_rad to [-pi,pi]
+float wrap_pi(float angle_rad)
+{
+    if (angle_rad >= M_PI) 
+    {
+        angle_rad -= M_PI*2;
+    }
+    if (angle_rad < -M_PI) 
+    {
+        angle_rad += M_PI*2;
+    }
+    return angle_rad;
 }
