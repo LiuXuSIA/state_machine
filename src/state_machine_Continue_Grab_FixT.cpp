@@ -745,7 +745,7 @@ void state_machine_fun(void)
             if(ros::Time::now() - last_time > ros::Duration(3.0))
             {
                 loop++;
-                if(loop < 3)
+                if(loop < 2)
                     current_pos_state = position_Com_go;
                 else
                     current_pos_state = return_home;
