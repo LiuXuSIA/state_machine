@@ -262,7 +262,7 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         position_box0.pose.position.x = fix_target_position.component_y;
         position_box0.pose.position.y = fix_target_position.component_x;
         position_box0.pose.position.z = OBSERVE_HEIGET - fix_target_position.component_z;
-4
+
         // position_grab.pose.position.x = position_component.pose.position.x;
         // position_grab.pose.position.y = position_component.pose.position.y;
         // position_grab.pose.position.z = -fix_target_position.component_z + 0.27;
@@ -432,37 +432,37 @@ int main(int argc, char **argv)
     vel_descend.twist.angular.z = 0.0f;
 
     //initial value
-    fix_target_return.home_x = 4;
-    fix_target_return.home_y = 4;
-    fix_target_return.home_z = 4;
+    // fix_target_return.home_x = 4;
+    // fix_target_return.home_y = 4;
+    // fix_target_return.home_z = 4;
 
-    fix_target_return.component_x = 4;
-    fix_target_return.component_y = 4;
-    fix_target_return.component_z = 4;
+    // fix_target_return.component_x = 4;
+    // fix_target_return.component_y = 4;
+    // fix_target_return.component_z = 4;
 
-    fix_target_return.construction_x = 4;
-    fix_target_return.construction_y = 4;
-    fix_target_return.construction_z = 4;
+    // fix_target_return.construction_x = 4;
+    // fix_target_return.construction_y = 4;
+    // fix_target_return.construction_z = 4;
 
-    fix_target_return.box1_x = 4;
-    fix_target_return.box1_y = 4;
-    fix_target_return.box1_z = 4;
+    // fix_target_return.box1_x = 4;
+    // fix_target_return.box1_y = 4;
+    // fix_target_return.box1_z = 4;
 
-    fix_target_return.box2_x = 4;
-    fix_target_return.box2_y = 4;
-    fix_target_return.box2_z = 4;
+    // fix_target_return.box2_x = 4;
+    // fix_target_return.box2_y = 4;
+    // fix_target_return.box2_z = 4;
 
-    fix_target_return.box3_x = 4;
-    fix_target_return.box3_y = 4;
-    fix_target_return.box3_z = 4;
+    // fix_target_return.box3_x = 4;
+    // fix_target_return.box3_y = 4;
+    // fix_target_return.box3_z = 4;
 
-    fix_target_return.box4_x = 4;
-    fix_target_return.box4_y = 4;
-    fix_target_return.box4_z = 4;
+    // fix_target_return.box4_x = 4;
+    // fix_target_return.box4_y = 4;
+    // fix_target_return.box4_z = 4;
 
-    fix_target_return.box5_x = 4;
-    fix_target_return.box5_y = 4;
-    fix_target_return.box5_z = 4;
+    // fix_target_return.box5_x = 4;
+    // fix_target_return.box5_y = 4;
+    // fix_target_return.box5_z = 4;
 
     //  float yaw_sp=M_PI_2;
     // //position_grab
@@ -977,7 +977,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_place;
             local_vel_pub.publish(vel_ascend_con);
-            if ((current_position.pose.position.z + fix_target_position.construction_z) > (4 + BOX_HEIGET*place_loop))
+            if ((current_position.pose.position.z + fix_target_position.construction_z) > (3 + BOX_HEIGET*place_loop))
             {
                 position_of_safe.pose.position.x = current_position.pose.position.x;
                 position_of_safe.pose.position.y = current_position.pose.position.y;
@@ -1023,7 +1023,7 @@ void state_machine_fun(void)
             if(ros::Time::now() - last_time > ros::Duration(3.0))
             {
                 place_loop++;
-                if(place_loop < 3)
+                if(place_loop < BOX_LOOP_MAX * 2)
                     current_pos_state = position_Com_go;
                 else
                     current_pos_state = return_home;
