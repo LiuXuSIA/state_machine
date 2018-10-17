@@ -25,7 +25,3 @@ float32 box4_z
 float32 box5_x  
 float32 box5_y  
 float32 box5_z 
-
-float32 box6_x  
-float32 box6_y  
-float32 box6_z 
