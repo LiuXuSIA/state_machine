@@ -81,10 +81,10 @@ bool fix_target_receive_enable = true;
 
 /*************************constant defunition***************************/
 
-#define HOME_HEIGHT            2.5
+#define HOME_HEIGHT            3.0
 #define ASCEND_VELOCITY        1.5
-#define OBSERVE_HEIGET         2.5
-#define CONSTRUCTION_HEIGET    2.5
+#define OBSERVE_HEIGET         3.0
+#define CONSTRUCTION_HEIGET    3.0
 #define LOCATE_ACCURACY        0.6
 
 

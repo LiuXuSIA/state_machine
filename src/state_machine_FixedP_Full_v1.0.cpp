@@ -328,6 +328,11 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         position_return_home.pose.orientation.z = sin(yaw_sp/2);
         position_return_home.pose.orientation.w = cos(yaw_sp/2);
 
+        position_timer_out.pose.orientation.x = 0;
+        position_timer_out.pose.orientation.y = 0;
+        position_timer_out.pose.orientation.z = sin(yaw_sp/2);
+        position_timer_out.pose.orientation.w = cos(yaw_sp/2);
+
         // //box0
         // position_box0.pose.orientation.x = 0;
         // position_box0.pose.orientation.y = 0;
