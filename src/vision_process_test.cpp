@@ -199,7 +199,7 @@ void vision_position_cb(const state_machine::Vision_Position_Raw::ConstPtr& msg)
     vision_position_get.component_position_y = vision_position_raw.y;
     vision_position_get.component_position_z = vision_position_raw.z;
 
-    vision_position_pub.publish(vision_position_get);
+    //vision_position_pub.publish(vision_position_get);
 
     if(display_enable == true)
     {
