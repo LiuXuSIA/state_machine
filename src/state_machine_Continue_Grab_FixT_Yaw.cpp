@@ -115,7 +115,7 @@ float yaw_sp;
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.25
 #define LOCATE_ACCURACY_HIGH    0.5
-#define LOCATE_ACCURACY_GRAB    0.08
+#define LOCATE_ACCURACY_GRAB    0.15
 #define LOCATE_ACCURACY_ROUGH   1.0
 #define GRAB_HEIGHT_MARGIN      0.02
 
