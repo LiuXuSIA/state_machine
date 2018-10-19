@@ -55,7 +55,8 @@ static const int position_H_go = 2;
 static const int position_H_hover = 3;
 static const int position_Com_go = 4;
 static const int position_Com_hover = 5;
-static const int land = 6;
+static const int return_home = 6;
+static const int land = 7;
 
 //mission 
 int loop = 0;
@@ -308,7 +309,7 @@ int main(int argc, char **argv)
         
         if(task_status_change.task_status == 17)
         {
-            current_pos_state = land;
+            current_pos_state = return_home;
         }
 
         task_status_monitor.task_status = current_pos_state;
@@ -451,6 +452,19 @@ void state_machine_fun(void)
                 ROS_INFO("vision failure error!!");
                 last_time = ros::Time::now();
                 break;
+            }
+        }
+        break;
+        case  return_home:
+        {
+            pose_pub = position_home;
+            local_pos_pub.publish(position_home);
+            if (Distance_of_Two(current_position.pose.position.x,position_home.pose.position.x,
+                                current_position.pose.position.y,position_home.pose.position.y,
+                                current_position.pose.position.z,position_home.pose.position.z) < LOCATE_ACCURACY)
+            {
+                current_pos_state = land;
+                last_time = ros::Time::now();
             }
         }
         break;
