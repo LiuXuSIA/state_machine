@@ -198,7 +198,7 @@ void vision_position_cb(const state_machine::Vision_Position_Raw::ConstPtr& msg)
 
     if (vision_position_receive_enable == true)
     {
-        vision_position_raw_use = *msg;
+        vision_position_raw_use = vision_position_raw;
         vision_position_get.component_position_x = vision_position_raw_use.x;
         vision_position_get.component_position_y = vision_position_raw_use.y;
         vision_position_get.component_position_z = vision_position_raw_use.z;
