@@ -290,7 +290,7 @@ int main(int argc, char **argv)
                 }
         }
         
-        if(task_status_change.task_status == 18)
+        if(task_status_change.task_status == 17)
         {
             current_pos_state = land;
         }

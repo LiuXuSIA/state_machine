@@ -160,14 +160,17 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         fix_target_return.home_x = fix_target_position.home_x;
         fix_target_return.home_y = fix_target_position.home_y;
         fix_target_return.home_z = -HOME_HEIGHT + fix_target_position.home_z;
+        fix_target_return.home_yaw_sp = fix_target_position.home_yaw_sp;
 
         fix_target_return.component_x = fix_target_position.component_x;
         fix_target_return.component_y = fix_target_position.component_y;
         fix_target_return.component_z = -OBSERVE_HEIGET + fix_target_position.component_z;
+        fix_target_return.component_yaw_sp = fix_target_position.component_yaw_sp;
 
         fix_target_return.construction_x = fix_target_position.construction_x;
         fix_target_return.construction_y = fix_target_position.construction_y;
         fix_target_return.construction_z = -CONSTRUCT_HEIGET + fix_target_position.construction_z;
+        fix_target_return.construction_yaw_sp = fix_target_position.construction_yaw_sp;
 
         fix_target_return.box1_x = fix_target_position.box1_x;
         fix_target_return.box1_y = fix_target_position.box1_y;
@@ -198,14 +201,17 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         ROS_INFO("fix_target_return.home_x:%f",fix_target_return.home_x);
         ROS_INFO("fix_target_return.home_y:%f",fix_target_return.home_y);
         ROS_INFO("fix_target_return.home_z:%f",fix_target_return.home_z);
+        ROS_INFO("fix_target_return.home_yaw_sp:%f",fix_target_return.home_yaw_sp);
 
         ROS_INFO("fix_target_return.component_x:%f",fix_target_return.component_x);
         ROS_INFO("fix_target_return.component_y:%f",fix_target_return.component_y);
         ROS_INFO("fix_target_return.component_z:%f",fix_target_return.component_z);
+        ROS_INFO("fix_target_return.component_yaw_sp:%f",fix_target_return.component_yaw_sp);
 
         ROS_INFO("fix_target_return.construction_x:%f",fix_target_return.construction_x);
         ROS_INFO("fix_target_return.construction_y:%f",fix_target_return.construction_y);
         ROS_INFO("fix_target_return.construction_z:%f",fix_target_return.construction_z);
+        ROS_INFO("fix_target_return.construction_yaw_sp:%f",fix_target_return.construction_yaw_sp);
 
         ROS_INFO("fix_target_return.box1_x:%f",fix_target_return.box1_x);
         ROS_INFO("fix_target_return.box1_y:%f",fix_target_return.box1_y);
@@ -812,14 +818,52 @@ void state_machine_fun(void)
         break;
         case Com_get_close:
         {
-            local_pos_pub.publish(position_grab);
+            // local_pos_pub.publish(position_grab);
+            // pose_pub = position_grab;
+            // if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
+            //                     current_position.pose.position.y,position_grab.pose.position.y,
+            //                     current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_GRAB)
+            // {
+            //     current_pos_state = component_grab;
+            //     last_time = ros::Time::now();
+            // }
+            static int accuracy_count4 = 0;  //for improve accuracy
+            static int hover_count4 = 0;
             pose_pub = position_grab;
-            if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
-                                current_position.pose.position.y,position_grab.pose.position.y,
-                                current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_GRAB)
+            local_pos_pub.publish(position_grab);
+            if(ros::Time::now() - last_time > ros::Duration(2.0) && hover_count4 == 0)
+            {
+                hover_count4++;
+            }
+            if (ros::Time::now() - last_time > ros::Duration(0.5) && hover_count4 > 0)
+            {
+                if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
+                                    current_position.pose.position.y,position_grab.pose.position.y,
+                                    current_position.pose.position.z,position_grab.pose.position.z) < 0.10)
+                {
+                    accuracy_count4++;
+                    if(accuracy_count4 > 2)
+                    {
+                        current_pos_state = component_grab;
+                        accuracy_count4 = 0;
+                        hover_count4 = 0;
+                        last_time = ros::Time::now();
+                        break;
+                    }
+                }
+                else
+                {
+                    accuracy_count4 = 0;
+                }
+            }           
+            hover_count4++;
+            if(hover_count4 > 50)
             {
                 current_pos_state = component_grab;
+                accuracy_count4 = 0;
+                hover_count4 = 0;
                 last_time = ros::Time::now();
+                break;
             }
         }
         break;

@@ -55,6 +55,7 @@ float wrap_pi(float angle_rad);
 #define LOCATE_ACCURACY_ROUGH   1.0
 #define GRAB_HEIGHT_MARGIN      0.02
 #define BOX_LOOP_MAX            3
+#define DISTANCE_SENSOR_FOOT    0.30
 
 /***************************variable definition*************************/
 //fixed position  ENU
@@ -77,6 +78,7 @@ geometry_msgs::PoseStamped position_judge;
 geometry_msgs::PoseStamped position_of_safe;
 geometry_msgs::PoseStamped position_timer_out;
 geometry_msgs::PoseStamped position_return_home;
+geometry_msgs::PoseStamped position_grab_adjust;
 
 //topic
 geometry_msgs::PoseStamped pose_pub; 
@@ -122,6 +124,8 @@ static const int land = 23;
 //for box lost process
 static const int hover_after_lost = 25;
 static const int construct_point_adjust = 24;
+static const int grab_position_judge = 26;
+static const int grab_position_adjust = 27;
 
 
 //mission 
@@ -339,6 +343,11 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         position_timer_out.pose.orientation.z = sin(yaw_sp/2);
         position_timer_out.pose.orientation.w = cos(yaw_sp/2);
 
+        position_grab_adjust.pose.orientation.x = 0;
+        position_grab_adjust.pose.orientation.y = 0;
+        position_grab_adjust.pose.orientation.z = sin(yaw_sp/2);
+        position_grab_adjust.pose.orientation.w = cos(yaw_sp/2);
+
         // //box0
         // position_box0.pose.orientation.x = 0;
         // position_box0.pose.orientation.y = 0;
@@ -487,12 +496,12 @@ void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::Cons
 }
 
 
-// state_machine::Distance distance;
-// void distance_cb(const state_machine::Distance::ConstPtr& msg)
-// {
-//     distance = *msg;
-//     ROS_INFO("distance:%f",distance.distance);
-// }
+state_machine::Distance distance;
+void distance_cb(const state_machine::Distance::ConstPtr& msg)
+{
+    distance = *msg;
+    ROS_INFO("distance:%f",distance.distance);
+}
 
 
 /*****************************main function*****************************/
@@ -594,7 +603,7 @@ int main(int argc, char **argv)
     ros::Subscriber task_status_sub = nh.subscribe<state_machine::TASK_STATUS_CHANGE_P2M>("mavros/task_status_change_p2m",10,task_status_change_p2m_cb);
     //ros::Subscriber fixed_box_sub = nh.subscribe<state_machine::FIXED_BOX_POSITION_P2M>("mavros/fixed_box_position_p2m",10,fixed_box_position_p2m_cb);
 
-    //ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
+    ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
 
     //topic publish
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
@@ -892,7 +901,7 @@ void state_machine_fun(void)
                     accuracy_count4++;
                     if(accuracy_count4 > 2)
                     {
-                        current_pos_state = component_grab;
+                        current_pos_state = grab_position_judge;
                         accuracy_count4 = 0;
                         hover_count4 = 0;
                         last_time = ros::Time::now();
@@ -907,7 +916,7 @@ void state_machine_fun(void)
             hover_count4++;
             if(hover_count4 > 50)
             {
-                current_pos_state = component_grab;
+                current_pos_state = grab_position_judge;
                 accuracy_count4 = 0;
                 hover_count4 = 0;
                 last_time = ros::Time::now();
@@ -915,11 +924,54 @@ void state_machine_fun(void)
             }
         }
         break;
+        case grab_position_judge:
+        {
+            pose_pub = position_grab;
+            local_pos_pub.publish(position_grab);
+            if (distance.distance < DISTANCE_SENSOR_FOOT + 0.08)
+            {
+                current_pos_state = component_grab;
+                last_mission_state = grab_position_judge;
+                last_time = ros::Time::now();
+            }
+            else 
+            {
+                position_grab_adjust.pose.position.x = position_component.pose.position.x;
+                position_grab_adjust.pose.position.y = position_component.pose.position.y;
+                position_grab_adjust.pose.position.x = current_position.pose.position.z - distance.distance + DISTANCE_SENSOR_FOOT;
+                current_pos_state = grab_position_adjust;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case grab_position_adjust:
+        {
+            pose_pub = position_grab_adjust;
+            local_pos_pub.publish(position_grab_adjust);
+            if (Distance_of_Two(current_position.pose.position.x,position_grab_adjust.pose.position.x,
+                                current_position.pose.position.y,position_grab_adjust.pose.position.y,
+                                current_position.pose.position.z,position_grab_adjust.pose.position.z) < 0.10
+                || ros::Time::now() - last_time > ros::Duration(5.0))
+            {
+                current_pos_state = component_grab;
+                last_mission_state = grab_position_adjust;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
         case component_grab:
         {
             static int grab_count = 0;
-            pose_pub = position_grab;
-            local_pos_pub.publish(position_grab);
+            if (last_mission_state == grab_position_judge)
+            {
+                pose_pub = position_grab;
+                local_pos_pub.publish(position_grab);
+            }
+            else if (last_mission_state == grab_position_adjust)
+            {
+                pose_pub = position_grab_adjust;
+                local_pos_pub.publish(position_grab_adjust);
+            }
             if(ros::Time::now() - last_time > ros::Duration(1.0) && grab_count == 0)
             {
                 grab_count++;
