@@ -36,6 +36,7 @@ double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, do
 geometry_msgs::PoseStamped position_home;
 geometry_msgs::PoseStamped position_componnet;
 geometry_msgs::PoseStamped position_construction;
+geometry_msgs::PoseStamped position_box;
 
 //topic
 geometry_msgs::PoseStamped pose_pub; 
@@ -72,12 +73,13 @@ ros::Time landing_last_request;
 state_machine::FIXED_TARGET_RETURN_M2P fix_target_return;
 state_machine::GRAB_STATUS_M2P grab_status;
 state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor;
-state_machine::VISION_POSITION_GET_M2P vision_position_get;
+//state_machine::VISION_POSITION_GET_M2P vision_position_get;
 state_machine::YAW_SP_CALCULATED_M2P yaw_sp_calculated;
 
 //velocity send
 bool velocity_control_enable = true;
 bool fix_target_receive_enable = true;
+bool vision_position_receive_enable = false;
 
 /*************************constant defunition***************************/
 
@@ -186,17 +188,27 @@ void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::Cons
 }
 
 state_machine::Vision_Position_Raw vision_position_raw;
+state_machine::Vision_Position_Raw vision_position_raw_use;
+state_machine::VISION_POSITION_GET_M2P vision_position_get;
+state_machine::VISION_POSITION_GET_M2P vision_position_m2p;
 void vision_position_cb(const state_machine::Vision_Position_Raw::ConstPtr& msg)
 {
     vision_position_raw = *msg;
 
-    vision_position_get.loop_value = loop;
-    //NED
-    vision_position_get.component_position_x = vision_position_raw.x;
-    vision_position_get.component_position_y = vision_position_raw.y;
-    vision_position_get.component_position_z = vision_position_raw.z;
+    if (vision_position_receive_enable == true)
+    {
+        vision_position_raw_use = *msg;
+        vision_position_get.component_position_x = vision_position_raw_use.x;
+        vision_position_get.component_position_y = vision_position_raw_use.y;
+        vision_position_get.component_position_z = vision_position_raw_use.z;
+    }
+    
+    vision_position_m2p.loop_value = loop;
+    vision_position_m2p.component_position_x = vision_position_raw.x;
+    vision_position_m2p.component_position_y = vision_position_raw.y;
+    vision_position_m2p.component_position_z = vision_position_raw.z;
 
-    vision_position_pub.publish(vision_position_get);
+    vision_position_pub.publish(vision_position_m2p);
 }
 
 
@@ -213,6 +225,10 @@ int main(int argc, char **argv)
     vel_pub.twist.angular.x = 0.0f;
     vel_pub.twist.angular.y = 0.0f;
     vel_pub.twist.angular.z = 0.0f;
+
+    vision_position_get.component_position_x = 0;
+    vision_position_get.component_position_y = 0;
+    vision_position_get.component_position_z = 0;
      
     //topic  subscribe
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
@@ -297,9 +313,9 @@ int main(int argc, char **argv)
 
         task_status_monitor.task_status = current_pos_state;
         task_status_monitor.loop_value = loop;
-        task_status_monitor.target_x = pose_pub.pose.position.y;
-        task_status_monitor.target_y = pose_pub.pose.position.x;
-        task_status_monitor.target_z = -pose_pub.pose.position.z;
+        task_status_monitor.target_x = position_box.pose.position.y;
+        task_status_monitor.target_y = position_box.pose.position.x;
+        task_status_monitor.target_z = position_box.pose.position.z;
         task_status_monitor.sensor_distance = 0;
         task_status_pub.publish(task_status_monitor);
 
@@ -360,6 +376,7 @@ void state_machine_fun(void)
                                 current_position.pose.position.y,position_componnet.pose.position.y,
                                 current_position.pose.position.z,position_componnet.pose.position.z) < LOCATE_ACCURACY)
             {
+                bool vision_position_receive_enable = true;
                 current_pos_state = position_Com_hover;
                 last_time = ros::Time::now();
             }
@@ -369,6 +386,72 @@ void state_machine_fun(void)
         {
             pose_pub = position_componnet;
             local_pos_pub.publish(position_componnet);
+
+            static float position_x_aver = 0;
+            static float position_y_aver = 0;
+            static float position_z_aver = 0;
+            static int vision_count1 = 11;
+
+            if(vision_position_get.component_position_x != 0 || vision_position_get.component_position_y != 0 || vision_position_get.component_position_z != 0)
+            {
+                if (ros::Time::now() - last_time > ros::Duration(1.0) && vision_count1 > 10)
+                {
+                    vision_count1 = 0;
+                }
+                if(ros::Time::now() - last_time > ros::Duration(0.5) && vision_count1 < 10)
+                {
+                    position_x_aver = (position_x_aver * vision_count1 + vision_position_get.component_position_x)/(vision_count1 + 1);
+                    position_y_aver = (position_y_aver * vision_count1 + vision_position_get.component_position_y)/(vision_count1 + 1);
+                    position_z_aver = (position_z_aver * vision_count1 + vision_position_get.component_position_z)/(vision_count1 + 1);
+                    // current_pos_state = component_locate;   //need change Z place to component_locate
+                    vision_count1++;
+                    //display_enable = true;
+                }
+                else if(vision_count1 == 10)
+                {
+                    position_box.pose.position.x = position_y_aver;
+                    position_box.pose.position.y = position_x_aver;
+                    position_box.pose.position.z = position_z_aver;
+
+                    vision_count1 = 11;
+
+                    position_x_aver = 0;
+                    position_y_aver = 0;
+                    position_z_aver = 0;
+
+                    vision_position_get.component_position_x = 0;
+                    vision_position_get.component_position_y = 0;
+                    vision_position_get.component_position_z = 0;
+
+                    vision_position_receive_enable == false;
+
+                    if(abs(current_position.pose.position.x - position_box.pose.position.y) > 3 ||
+                       abs(current_position.pose.position.y - position_box.pose.position.x) > 3)
+                    {
+                        ROS_INFO("vision failure error!!");
+                        //current_pos_state = vision_fail_process;
+                        last_time = ros::Time::now();
+                        break;
+                    }
+                    else
+                    {
+                        //current_pos_state = component_locate;
+                        ROS_INFO("vision recognize success!!");
+                        ROS_INFO("x:%f",position_box.pose.position.x);
+                        ROS_INFO("y:%f",position_box.pose.position.y);
+                        ROS_INFO("z:%f",position_box.pose.position.z);
+                        last_time = ros::Time::now();
+                        break;
+                    }
+                }  
+            }
+            else
+            {
+                //current_pos_state = vision_fail_process;
+                ROS_INFO("vision failure error!!");
+                last_time = ros::Time::now();
+                break;
+            }
         }
         break;
         case land:
