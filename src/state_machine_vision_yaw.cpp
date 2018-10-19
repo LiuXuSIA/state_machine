@@ -453,8 +453,8 @@ void state_machine_fun(void)
 
                     vision_position_receive_enable == false;
 
-                    if(abs(current_position.pose.position.x - position_box.pose.position.y) > 3 ||
-                       abs(current_position.pose.position.y - position_box.pose.position.x) > 3)
+                    if(abs(current_position.pose.position.x - position_box.pose.position.x) > 3 ||
+                       abs(current_position.pose.position.y - position_box.pose.position.y) > 3)
                     {
                         ROS_INFO("vision failure error!!");
                         //current_pos_state = vision_fail_process;
