@@ -398,7 +398,7 @@ void state_machine_fun(void)
                                 current_position.pose.position.z,position_componnet.pose.position.z) < LOCATE_ACCURACY_ROUGH)
             {
                 initial_enable = true;
-                vision_position_receive_enable == true;
+                vision_position_receive_enable = true;
                 current_pos_state = hover_to_recognize;
                 last_time = ros::Time::now();
             }
