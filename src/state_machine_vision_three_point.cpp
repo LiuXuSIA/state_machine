@@ -37,7 +37,9 @@ geometry_msgs::PoseStamped position_componnet;
 geometry_msgs::PoseStamped position_construction;
 
 geometry_msgs::PoseStamped pose_pub; 
-geometry_msgs::TwistStamped vel_ascend;
+geometry_msgs::TwistStamped vel_take_off;
+geometry_msgs::TwistStamped vel_ascend_com;
+geometry_msgs::TwistStamped vel_ascend_con;
 geometry_msgs::TwistStamped vel_descend;
 
 geometry_msgs::PoseStamped position_grab;
@@ -108,7 +110,9 @@ bool vision_position_receive_enable = false;
 #define OBSERVE_HEIGET          3.0
 #define CONSTRUCT_HEIGET        3.0
 #define TAKE_OFF_HEIGHT         1.5
-#define ASCEND_VELOCITY         1.5
+#define ASCEND_VELOCITY_CON     0.3
+#define ASCEND_VELOCITY_COM     0.6
+#define TAKE_OFF_VELOCITY       1.5
 #define DESCEND_VELOCITY        0.3
 #define RECOGNIZE_HEIGHT        2.5
 #define BOX_HEIGET              0.25
@@ -250,6 +254,20 @@ int main(int argc, char **argv)
     vel_ascend.twist.angular.y = 0.0f;
     vel_ascend.twist.angular.z = 0.0f;
 
+    vel_ascend_com.twist.linear.x = 0.0f;
+    vel_ascend_com.twist.linear.y = 0.0f;
+    vel_ascend_com.twist.linear.z = ASCEND_VELOCITY_COM;
+    vel_ascend_com.twist.angular.x = 0.0f;
+    vel_ascend_com.twist.angular.y = 0.0f;
+    vel_ascend_com.twist.angular.z = 0.0f;
+
+    vel_ascend_con.twist.linear.x = 0.0f;
+    vel_ascend_con.twist.linear.y = 0.0f;
+    vel_ascend_con.twist.linear.z = ASCEND_VELOCITY_CON;
+    vel_ascend_con.twist.angular.x = 0.0f;
+    vel_ascend_con.twist.angular.y = 0.0f;
+    vel_ascend_con.twist.angular.z = 0.0f;
+
     //descend to grab and place velocity
     vel_descend.twist.linear.x = 0.0f;
     vel_descend.twist.linear.y = 0.0f;
@@ -294,7 +312,7 @@ int main(int argc, char **argv)
 
     for(int i =100; ros::ok() && i > 0; i--)
 	{
-		local_vel_pub.publish(vel_ascend);
+		local_vel_pub.publish(vel_take_off);
 		ros::spinOnce();
 		rate.sleep();
 	}
@@ -312,7 +330,7 @@ int main(int argc, char **argv)
         }
         else if(velocity_control_enable == true)
         {
-            local_vel_pub.publish(vel_ascend);
+            local_vel_pub.publish(vel_take_off);
             if(display_falg == true)
             {
                 ROS_INFO("Wait for switch to offboard...");
@@ -357,7 +375,7 @@ void state_machine_fun(void)
         {
             velocity_control_enable = false;
             pose_pub = position_home;
-            local_vel_pub.publish(vel_ascend);
+            local_vel_pub.publish(vel_take_off);
             if((current_position.pose.position.z + fix_target_position.home_z) > TAKE_OFF_HEIGHT)
             {
                 current_pos_state = position_H_go;
@@ -655,12 +673,43 @@ void state_machine_fun(void)
         // break;
         case component_hover:
         {
-            pose_pub = position_box;
-            local_pos_pub.publish(position_box);
-            if(ros::Time::now() - last_time > ros::Duration(3.0))
+            static int accuracy_count1 = 0;  //for improve accuracy
+            static int hover_count1 = 0;
+            pose_pub = position_component;
+            local_pos_pub.publish(position_component);
+            if(ros::Time::now() - last_time > ros::Duration(2.0) && hover_count1 == 0)
+            {
+                hover_count1++;
+            }
+            if (ros::Time::now() - last_time > ros::Duration(0.5) && hover_count1 > 0)
+            {
+                if (Distance_of_Two(current_position.pose.position.x,position_component.pose.position.x,
+                                    current_position.pose.position.y,position_component.pose.position.y,
+                                    current_position.pose.position.z,position_component.pose.position.z) < 0.15)
+                {
+                    accuracy_count1++;
+                    if(accuracy_count1 > 3)
+                    {
+                        current_pos_state = Com_get_close;
+                        accuracy_count1 = 0;
+                        hover_count1 = 0;
+                        last_time = ros::Time::now();
+                        break;
+                    }
+                }
+                else
+                {
+                    accuracy_count1 = 0;
+                }
+            }           
+            hover_count1++;
+            if(hover_count1 > 15)
             {
                 current_pos_state = Com_get_close;
+                accuracy_count1 = 0;
+                hover_count1 = 0;
                 last_time = ros::Time::now();
+                break;
             }
         }
         break;
@@ -689,7 +738,7 @@ void state_machine_fun(void)
             if(ros::Time::now() - last_time > ros::Duration(0.5) && grab_count > 0)
             {
                 grab_count++;
-                if(grab_count > 20)
+                if(grab_count > 30)
                 {
                     grab_count = 0;
                     current_pos_state = Com_leave;
@@ -717,13 +766,69 @@ void state_machine_fun(void)
         {
             pose_pub = position_judge;
             local_pos_pub.publish(position_judge);
-            if(ros::Time::now() - last_time > ros::Duration(10.0))
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
-                position_place.pose.position.x = position_grab.pose.position.x;
-                position_place.pose.position.y = position_grab.pose.position.y;
-                position_place.pose.position.z = -fix_target_position.component_z + loop*BOX_HEIGET + PLACE_HEIGET;
-                current_pos_state = place_point_get_close;
+                current_pos_state = position_Con_go;
                 last_time = ros::Time::now();
+            }
+        }
+        break;
+        case position_Con_go:
+        {
+            pose_pub = position_construction;
+            local_pos_pub.publish(position_construction);
+            if (Distance_of_Two(current_position.pose.position.x,position_construction.pose.position.x,
+                                current_position.pose.position.y,position_construction.pose.position.y,
+                                current_position.pose.position.z,position_construction.pose.position.z) < LOCATE_ACCURACY_HIGH)
+            {
+                position_place.pose.position.x = position_construction.pose.position.x;
+                position_place.pose.position.y = position_construction.pose.position.y;
+                position_place.pose.position.z = -fix_target_position.construction_z + loop * BOX_HEIGET + PLACE_HEIGET;
+
+                current_pos_state = position_Con_hover;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case position_Con_hover:
+        {
+            static int accuracy_count2 = 0;  //for improve accuracy
+            static int hover_count2 = 0;
+            pose_pub = position_construction;
+            local_pos_pub.publish(position_construction);
+            if(ros::Time::now() - last_time > ros::Duration(2.0) && hover_count2 == 0)
+            {
+                hover_count2++;
+            }
+            if (ros::Time::now() - last_time > ros::Duration(0.5) && hover_count2 > 0)
+            {
+                if (Distance_of_Two(current_position.pose.position.x,position_construction.pose.position.x,
+                                    current_position.pose.position.y,position_construction.pose.position.y,
+                                    current_position.pose.position.z,position_construction.pose.position.z) < 0.15)
+                {
+                    accuracy_count2++;
+                    if(accuracy_count2 > 3)
+                    {
+                        current_pos_state = place_point_get_close;
+                        accuracy_count2 = 0;
+                        hover_count2 = 0;
+                        last_time = ros::Time::now();
+                        break;
+                    }
+                }
+                else
+                {
+                    accuracy_count2 = 0;
+                }
+            }           
+            hover_count2++;
+            if(hover_count2 > 10)
+            {
+                current_pos_state = place_point_get_close;
+                accuracy_count2 = 0;
+                hover_count2 = 0;
+                last_time = ros::Time::now();
+                break;
             }
         }
         break;
@@ -808,7 +913,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_place;
             local_vel_pub.publish(vel_ascend);
-            if (current_position.pose.position.z > (3 + BOX_HEIGET*loop))
+            if ((current_position.pose.position.z + fix_target_position.construction_z) > (3 + BOX_HEIGET*loop))
             {
                 position_safe.pose.position.x = current_position.pose.position.x;
                 position_safe.pose.position.y = current_position.pose.position.y;

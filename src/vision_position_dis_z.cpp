@@ -139,7 +139,7 @@ int main (int argc, char** argv)
                 body_pose_y = -position_y - 10;
                 body_pose_z = position_z + 590;
 
-                vision_position_raw.x = (R[0][0] * body_pose_x + R[0][1] * body_pose_y + R[0][2] * body_pose_z)/1000 + current_position.pose.position.y;
+                vision_position_raw.x = (R[0][0] * body_pose_x + R[0][1] * body_pose_y + R[0][2] * body_pose_z)/1000 + current_position.pose.position.y -0.2;
                 vision_position_raw.y = (R[1][0] * body_pose_x + R[1][1] * body_pose_y + R[1][2] * body_pose_z)/1000 + current_position.pose.position.x;
                 vision_position_raw.z = position_z/1000;
 
