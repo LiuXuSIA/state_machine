@@ -113,7 +113,7 @@ bool vision_position_receive_enable = false;
 #define RECOGNIZE_HEIGHT        2.5
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.7
-#define Z_BIAS_AER_BOTT         0.1
+#define Z_BIAS_AER_BOTT         0.05
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
@@ -473,7 +473,7 @@ void state_machine_fun(void)
             else 
             {
                 vision_lost_count++;
-                if (vision_lost_count > 40)
+                if (vision_lost_count > 50)
                 {
                     vision_lost_count = 0;
                     current_pos_state = vision_fail_process;
@@ -808,7 +808,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_place;
             local_vel_pub.publish(vel_ascend);
-            if (current_position.pose.position.z > (3 + BOX_HEIGET*loop))
+            if ((current_position.pose.position.z + fix_target_position.component_z) > (3 + BOX_HEIGET*loop))
             {
                 position_safe.pose.position.x = current_position.pose.position.x;
                 position_safe.pose.position.y = current_position.pose.position.y;
