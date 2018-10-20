@@ -719,6 +719,7 @@ void state_machine_fun(void)
             local_pos_pub.publish(position_judge);
             if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
+                loop = 4;
                 position_place.pose.position.x = position_grab.pose.position.x;
                 position_place.pose.position.y = position_grab.pose.position.y;
                 position_place.pose.position.z = -fix_target_position.component_z + loop*BOX_HEIGET + PLACE_HEIGET;
