@@ -416,7 +416,7 @@ void state_machine_fun(void)
             local_pos_pub.publish(position_componnet);
 
             if(vision_position_get.component_position_x != 0 || vision_position_get.component_position_y != 0 || 
-               vision_position_get.component_position_z != 0 || )
+               vision_position_get.component_position_z != 0)
             {
                 vision_lost_count = 0;
 
