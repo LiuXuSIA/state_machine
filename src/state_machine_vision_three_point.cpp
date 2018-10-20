@@ -67,8 +67,10 @@ static const int Com_get_fit = 9;
 static const int component_grab = 10;
 static const int Com_leave = 11;
 static const int grab_status_judge = 12;
-static const int place_point_get_close = 13;
-static const int place_point_adjust = 14;
+static const int position_Con_go = 13;
+static const int position_Con_hover = 14;
+static const int place_point_get_close = 15;
+static const int place_point_adjust = 16;
 static const int component_place = 17;
 static const int place_done = 18;
 static const int Con_leave = 19;
@@ -247,12 +249,12 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "offboard_node");
     ros::NodeHandle nh;
 
-    vel_ascend.twist.linear.x = 0.0f;
-    vel_ascend.twist.linear.y = 0.0f;
-    vel_ascend.twist.linear.z = ASCEND_VELOCITY;
-    vel_ascend.twist.angular.x = 0.0f;
-    vel_ascend.twist.angular.y = 0.0f;
-    vel_ascend.twist.angular.z = 0.0f;
+    vel_take_off.twist.linear.x = 0.0f;
+    vel_take_off.twist.linear.y = 0.0f;
+    vel_take_off.twist.linear.z = TAKE_OFF_VELOCITY;
+    vel_take_off.twist.angular.x = 0.0f;
+    vel_take_off.twist.angular.y = 0.0f;
+    vel_take_off.twist.angular.z = 0.0f;
 
     vel_ascend_com.twist.linear.x = 0.0f;
     vel_ascend_com.twist.linear.y = 0.0f;
@@ -675,17 +677,17 @@ void state_machine_fun(void)
         {
             static int accuracy_count1 = 0;  //for improve accuracy
             static int hover_count1 = 0;
-            pose_pub = position_component;
-            local_pos_pub.publish(position_component);
+            pose_pub = position_componnet;
+            local_pos_pub.publish(position_componnet);
             if(ros::Time::now() - last_time > ros::Duration(2.0) && hover_count1 == 0)
             {
                 hover_count1++;
             }
             if (ros::Time::now() - last_time > ros::Duration(0.5) && hover_count1 > 0)
             {
-                if (Distance_of_Two(current_position.pose.position.x,position_component.pose.position.x,
-                                    current_position.pose.position.y,position_component.pose.position.y,
-                                    current_position.pose.position.z,position_component.pose.position.z) < 0.15)
+                if (Distance_of_Two(current_position.pose.position.x,position_componnet.pose.position.x,
+                                    current_position.pose.position.y,position_componnet.pose.position.y,
+                                    current_position.pose.position.z,position_componnet.pose.position.z) < 0.15)
                 {
                     accuracy_count1++;
                     if(accuracy_count1 > 3)
@@ -751,7 +753,7 @@ void state_machine_fun(void)
         case Com_leave:
         {
             pose_pub = position_componnet;
-            local_vel_pub.publish(vel_ascend);
+            local_vel_pub.publish(vel_ascend_com);
             if ((current_position.pose.position.z + fix_target_position.component_z) > 3)
             {
                 position_judge.pose.position.x = current_position.pose.position.x;
@@ -912,7 +914,7 @@ void state_machine_fun(void)
         case Con_leave:
         {
             pose_pub = position_place;
-            local_vel_pub.publish(vel_ascend);
+            local_vel_pub.publish(vel_ascend_con);
             if ((current_position.pose.position.z + fix_target_position.construction_z) > (3 + BOX_HEIGET*loop))
             {
                 position_safe.pose.position.x = current_position.pose.position.x;
