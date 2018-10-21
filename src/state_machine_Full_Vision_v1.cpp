@@ -491,6 +491,37 @@ int main(int argc, char **argv)
         {
             state_machine_fun();
             ROS_INFO("current_mission_state:%d",current_mission_state);
+
+            if(ros::Time::now() - mission_start_time > ros::Duration(MAX_MISSION_TIME) && force_home_enable == true)
+            {
+            //if (current_mission_state == component_place || current_mission_state == construction_leave ||current_mission_state == place_status_judge)
+                {
+                    force_home_enable = false;
+
+                    position_timer_out.pose.position.x = current_position.pose.position.x;
+                    position_timer_out.pose.position.y = current_position.pose.position.y;
+                    position_timer_out.pose.position.z = current_position.pose.position.z;
+
+                    current_mission_state = time_out_hover;
+
+                    mission_last_time = ros::Time::now();
+                    ROS_INFO("Mission time run out,will return home and landing!!");
+                }  
+            }
+
+            if (current_mission_state == box_search)
+            {
+                if(vision_position_get.component_position_x != 0 || vision_position_get.component_position_y != 0 ||
+                   vision_position_get.component_position_z != 0)
+                {
+                    position_observe.pose.position.x = current_position.pose.position.x;
+                    position_observe.pose.position.y = current_position.pose.position.y;
+                    position_observe.pose.position.z = current_position.pose.position.z;
+                    box_search_enable = false;
+                    current_mission_state = hover_to_recognize;
+                    mission_last_time = ros::Time::now();
+                }
+            }
         }
         else if(velocity_control_enable == true)
         {
@@ -513,37 +544,6 @@ int main(int argc, char **argv)
                     }
                     landing_last_request = ros::Time::now();
                 }
-        }
-
-        if(ros::Time::now() - mission_start_time > ros::Duration(MAX_MISSION_TIME) && force_home_enable == true)
-        {
-            //if (current_mission_state == component_place || current_mission_state == construction_leave ||current_mission_state == place_status_judge)
-            {
-                force_home_enable = false;
-
-                position_timer_out.pose.position.x = current_position.pose.position.x;
-                position_timer_out.pose.position.y = current_position.pose.position.y;
-                position_timer_out.pose.position.z = current_position.pose.position.z;
-
-                current_mission_state = time_out_hover;
-
-                mission_last_time = ros::Time::now();
-                ROS_INFO("Mission time run out,will return home and landing!!");
-            }  
-        }
-
-        if (current_mission_state == box_search)
-        {
-            if(vision_position_get.component_position_x != 0 || vision_position_get.component_position_y != 0 ||
-               vision_position_get.component_position_z != 0)
-            {
-                position_observe.pose.position.x = current_position.pose.position.x;
-                position_observe.pose.position.y = current_position.pose.position.y;
-                position_observe.pose.position.z = current_position.pose.position.z;
-                box_search_enable = false;
-                current_mission_state = hover_to_recognize;
-                mission_last_time = ros::Time::now();
-            }
         }
 
         task_status_monitor.task_status = current_mission_state;
@@ -571,6 +571,11 @@ void state_machine_fun(void)
             velocity_control_enable = false;
             pose_pub = position_home;
             local_vel_pub.publish(vel_take_off);
+            if(mission_timer_enable)
+            {
+                mission_start_time = ros::Time::now();
+                mission_timer_enable = false;
+            }
             if((current_position.pose.position.z + fix_target_position.home_z) > TAKE_OFF_HEIGHT)
             {
                 current_mission_state = position_home_go;
