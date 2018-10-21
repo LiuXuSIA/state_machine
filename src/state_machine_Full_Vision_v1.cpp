@@ -38,7 +38,7 @@ double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, do
 float wrap_pi(float angle_rad);
 
 /*************************constant definition***************************/
-#define MAX_MISSION_TIME        150
+#define MAX_MISSION_TIME        300
 #define HOME_HEIGHT             3.0
 #define OBSERVE_HEIGET          3.0
 #define CONSTRUCT_HEIGET        3.0
