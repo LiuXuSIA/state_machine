@@ -105,7 +105,7 @@ state_machine::GRAB_STATUS_M2P grab_status;
 state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor;
 
 //state_machine state
-static const int takeoff = 1;
+static const int takeoff = 1;              
 static const int position_home_go = 2;
 static const int position_home_hover = 3;
 static const int position_observe_go = 4;
@@ -251,9 +251,9 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         position_construction.pose.position.y = fix_target_position.construction_x;
         position_construction.pose.position.z = CONSTRUCT_HEIGET - fix_target_position.construction_z;
         //position of observe
-        position_observe.pose.position.x = position_home.pose.position.x;
-        position_observe.pose.position.y = position_home.pose.position.y;
-        position_observe.pose.position.z = position_home.pose.position.z;
+        position_observe.pose.position.x = position_component.pose.position.x;
+        position_observe.pose.position.y = position_component.pose.position.y;
+        position_observe.pose.position.z = position_component.pose.position.z;
 
         //yaw calculate
         yaw_sp = wrap_pi(M_PI_2 - fix_target_return.component_yaw_sp * M_PI/180);
@@ -1169,19 +1169,19 @@ void state_machine_fun(void)
         break;
         case vision_fail_process:
         {
-            if (position_observe.pose.position.z + fix_target_position.component_z > 6)
+            if (position_observe.pose.position.z + fix_target_position.component_z > 5)
             {
                 position_observe.pose.position.x = position_component.pose.position.x;
                 position_observe.pose.position.y = position_component.pose.position.y;
-                position_observe.pose.position.z = position_component.pose.position.z + 2;
+                position_observe.pose.position.z = position_component.pose.position.z + 1;
 
                 current_mission_state = search_start_point_go;
             }
             else 
             {
                 position_observe.pose.position.x = current_position.pose.position.x;
-                position_observe.pose.position.y = current_position.pose.position.y + 0.2;
-                position_observe.pose.position.z = current_position.pose.position.z + 0.5;
+                position_observe.pose.position.y = current_position.pose.position.y;
+                position_observe.pose.position.z = current_position.pose.position.z + 1.5;
                 current_mission_state = position_observe_go;
             }
             
@@ -1192,9 +1192,9 @@ void state_machine_fun(void)
         {
             pose_pub = position_observe;
             local_pos_pub.publish(position_observe);
-            if (Distance_of_Two(current_position.pose.position.x,position_return_home.pose.position.x,
-                                current_position.pose.position.y,position_return_home.pose.position.y,
-                                current_position.pose.position.z,position_return_home.pose.position.z) < LOCATE_ACCURACY_ROUGH)
+            if (Distance_of_Two(current_position.pose.position.x,position_observe.pose.position.x,
+                                current_position.pose.position.y,position_observe.pose.position.y,
+                                current_position.pose.position.z,position_observe.pose.position.z) < LOCATE_ACCURACY_ROUGH)
             {
                 box_search_enable = true;
 
