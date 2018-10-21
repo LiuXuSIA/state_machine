@@ -949,7 +949,7 @@ void state_machine_fun(void)
             }
             else 
             {
-                current_pos_state = position_component_go;
+                current_pos_state = position_Com_go;
             }
 
             last_time = ros::Time::now();
