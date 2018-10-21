@@ -47,6 +47,7 @@ geometry_msgs::PoseStamped position_judge;
 geometry_msgs::PoseStamped position_place;
 geometry_msgs::PoseStamped position_safe;
 geometry_msgs::PoseStamped position_box;
+geometry_msgs::PoseStamped position_recognize_adjust;
 
 ros::Publisher local_pos_pub;
 ros::Publisher local_vel_pub;
@@ -61,7 +62,7 @@ static const int position_H_hover = 3;
 static const int position_Com_go = 4;
 static const int hover_to_recognize = 5;
 static const int component_locate = 6;
-static const int component_hover = 7;
+static const int component_box_hover = 7;
 static const int Com_get_close = 8;
 static const int Com_get_fit = 9;
 static const int component_grab = 10;
@@ -148,7 +149,7 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
 {
     fix_target_position = *msg;
 
-    if(fix_target_receive_enable ==true)
+    if(fix_target_receive_enable == true)
     {
         fix_target_return.home_x = fix_target_position.home_x;
         fix_target_return.home_y = fix_target_position.home_y;
@@ -213,7 +214,6 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
 }
 
 state_machine::Vision_Position_Raw vision_position_raw;
-state_machine::Vision_Position_Raw vision_position_raw_use;
 state_machine::VISION_POSITION_GET_M2P vision_position_get;
 state_machine::VISION_POSITION_GET_M2P vision_position_m2p;
 void vision_position_cb(const state_machine::Vision_Position_Raw::ConstPtr& msg)
@@ -222,10 +222,9 @@ void vision_position_cb(const state_machine::Vision_Position_Raw::ConstPtr& msg)
 
     if (vision_position_receive_enable == true)
     {
-        vision_position_raw_use = vision_position_raw;
-        vision_position_get.component_position_x = vision_position_raw_use.x;
-        vision_position_get.component_position_y = vision_position_raw_use.y;
-        vision_position_get.component_position_z = vision_position_raw_use.z;
+        vision_position_get.component_position_x = vision_position_raw.x;
+        vision_position_get.component_position_y = vision_position_raw.y;
+        vision_position_get.component_position_z = vision_position_raw.z;
     }
     
     vision_position_m2p.loop_value = loop;
@@ -418,7 +417,7 @@ void state_machine_fun(void)
                                 current_position.pose.position.z,position_componnet.pose.position.z) < LOCATE_ACCURACY_ROUGH)
             {
                 initial_enable = true;
-                vision_position_receive_enable == true;
+                vision_position_receive_enable = true;
                 current_pos_state = hover_to_recognize;
                 last_time = ros::Time::now();
             }
@@ -493,10 +492,16 @@ void state_machine_fun(void)
             else 
             {
                 vision_lost_count++;
-                if (vision_lost_count > 40)
+                if (vision_lost_count > 50)
                 {
                     vision_lost_count = 0;
+
+                    position_componnet.pose.position.x = current_position.pose.position.x;
+                    position_componnet.pose.position.y = current_position.pose.position.y + 0.5;
+                    position_componnet.pose.position.z = current_position.pose.position.z + 1;
+
                     current_pos_state = vision_fail_process;
+
                     last_time = ros::Time::now();
                     break;
                 }
@@ -512,7 +517,7 @@ void state_machine_fun(void)
                                 current_position.pose.position.y,position_box.pose.position.y,
                                 current_position.pose.position.z,position_box.pose.position.z) < LOCATE_ACCURACY_HIGH)
             {
-                current_pos_state = component_hover;
+                current_pos_state = component_box_hover;
                 last_time = ros::Time::now();
             }
         }
@@ -673,21 +678,21 @@ void state_machine_fun(void)
         //     }
         // }
         // break;
-        case component_hover:
+        case component_box_hover:
         {
             static int accuracy_count1 = 0;  //for improve accuracy
             static int hover_count1 = 0;
-            pose_pub = position_componnet;
-            local_pos_pub.publish(position_componnet);
+            pose_pub = position_box;
+            local_pos_pub.publish(position_box);
             if(ros::Time::now() - last_time > ros::Duration(2.0) && hover_count1 == 0)
             {
                 hover_count1++;
             }
             if (ros::Time::now() - last_time > ros::Duration(0.5) && hover_count1 > 0)
             {
-                if (Distance_of_Two(current_position.pose.position.x,position_componnet.pose.position.x,
-                                    current_position.pose.position.y,position_componnet.pose.position.y,
-                                    current_position.pose.position.z,position_componnet.pose.position.z) < 0.15)
+                if (Distance_of_Two(current_position.pose.position.x,position_box.pose.position.x,
+                                    current_position.pose.position.y,position_box.pose.position.y,
+                                    current_position.pose.position.z,position_box.pose.position.z) < 0.15)
                 {
                     accuracy_count1++;
                     if(accuracy_count1 > 3)
@@ -938,7 +943,15 @@ void state_machine_fun(void)
         break;
         case vision_fail_process:
         {
-            current_pos_state = return_home;
+            if (position_componnet.pose.position.z + fix_target_position.component_z > 6)
+            {
+                current_pos_state = return_home;
+            }
+            else 
+            {
+                current_pos_state = position_component_go;
+            }
+
             last_time = ros::Time::now();
         }
         break;
