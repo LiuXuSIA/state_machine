@@ -1198,8 +1198,8 @@ void state_machine_fun(void)
             {
                 box_search_enable = true;
 
-                vel_search_body_x = 1.5; 
-                vel_search_body_y = -0.3;
+                vel_search_body_x = 1.0; 
+                vel_search_body_y = -0.2;
                 vel_search_body_z = 0;
 
                 vel_search_ned.twist.linear.x = (R[0][0] * vel_search_body_x + R[0][1] * vel_search_body_y + R[0][2] * vel_search_body_z);
@@ -1216,14 +1216,16 @@ void state_machine_fun(void)
         break;
         case box_search:
         {
+            static int dis_enable = true;
+
             if(box_search_enable == true)
             {
                 local_vel_pub.publish(vel_search_ned);
 
                 if (ros::Time::now() - search_start_time < ros::Duration(4.0))
                 {
-                    vel_search_body_x = 1.5; 
-                    vel_search_body_y = -0.3;
+                    vel_search_body_x = 1.0; 
+                    vel_search_body_y = -0.2;
                     vel_search_body_z = 0;
 
                     vel_search_ned.twist.linear.x = (R[0][0] * vel_search_body_x + R[0][1] * vel_search_body_y + R[0][2] * vel_search_body_z);
@@ -1232,14 +1234,17 @@ void state_machine_fun(void)
                     vel_search_ned.twist.angular.x = 0.0f;
                     vel_search_ned.twist.angular.y = 0.0f;
                     vel_search_ned.twist.angular.z = 0.0f;
-
-                    
+                    if (dis_enable == true)
+                    {
+                        ROS_INFO("search box velocity 1");
+                        dis_enable = false;
+                    }
                 }
 
                 else if (ros::Time::now() - search_start_time < ros::Duration(8.0))
                 {
-                    vel_search_body_x = -1.5; 
-                    vel_search_body_y = -0.3;
+                    vel_search_body_x = -1.0; 
+                    vel_search_body_y = -0.2;
                     vel_search_body_z = 0;
 
                     vel_search_ned.twist.linear.x = (R[0][0] * vel_search_body_x + R[0][1] * vel_search_body_y + R[0][2] * vel_search_body_z);
@@ -1248,12 +1253,17 @@ void state_machine_fun(void)
                     vel_search_ned.twist.angular.x = 0.0f;
                     vel_search_ned.twist.angular.y = 0.0f;
                     vel_search_ned.twist.angular.z = 0.0f;
+                    if (dis_enable == false)
+                    {
+                        ROS_INFO("search box velocity 2");
+                        dis_enable = true;
+                    }
                 }
 
                 else if (ros::Time::now() - search_start_time < ros::Duration(8.0))
                 {
-                    vel_search_body_x = 1.5; 
-                    vel_search_body_y = -0.3;
+                    vel_search_body_x = 1.0; 
+                    vel_search_body_y = -0.2;
                     vel_search_body_z = 0;
 
                     vel_search_ned.twist.linear.x = (R[0][0] * vel_search_body_x + R[0][1] * vel_search_body_y + R[0][2] * vel_search_body_z);
@@ -1262,11 +1272,17 @@ void state_machine_fun(void)
                     vel_search_ned.twist.angular.x = 0.0f;
                     vel_search_ned.twist.angular.y = 0.0f;
                     vel_search_ned.twist.angular.z = 0.0f;
+                    if (dis_enable == true)
+                    {
+                        ROS_INFO("search box velocity 1");
+                        dis_enable = false;
+                    }
+
                 }
                 else if (ros::Time::now() - search_start_time < ros::Duration(12.0))
                 {
-                    vel_search_body_x = -1.5; 
-                    vel_search_body_y = -0.3;
+                    vel_search_body_x = -1.0; 
+                    vel_search_body_y = -0.2;
                     vel_search_body_z = 0;
 
                     vel_search_ned.twist.linear.x = (R[0][0] * vel_search_body_x + R[0][1] * vel_search_body_y + R[0][2] * vel_search_body_z);
@@ -1275,6 +1291,11 @@ void state_machine_fun(void)
                     vel_search_ned.twist.angular.x = 0.0f;
                     vel_search_ned.twist.angular.y = 0.0f;
                     vel_search_ned.twist.angular.z = 0.0f;
+                    if (dis_enable == false)
+                    {
+                        ROS_INFO("search box velocity 2");
+                        dis_enable = true;
+                    }
                 }
                 else
                 {
