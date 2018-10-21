@@ -50,15 +50,15 @@ float wrap_pi(float angle_rad);
 #define DESCEND_VELOCITY        0.3
 #define RECOGNIZE_HEIGHT        2.5
 #define BOX_HEIGET              0.25
-#define PLACE_HEIGET            0.7
-#define BIAS_ZED_FOOT           0.1
+#define PLACE_HEIGET            0.5
+#define BIAS_ZED_FOOT           0.10
 #define GRAB_HEIGHT_MARGIN      0.02
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
 #define DISTANCE_SENSOR_FOOT    0.30
 #define LINE_MOVE_DISTANCE      1.20
-#define ROW_MOVE_DISTANCE       1.20
+#define ROW_MOVE_DISTANCE       0.70
 #define BOX_LINE                3
 #define BOX_ROW                 2
 
@@ -517,7 +517,7 @@ int main(int argc, char **argv)
 
         if(ros::Time::now() - mission_start_time > ros::Duration(MAX_MISSION_TIME) && force_home_enable == true)
         {
-            if (current_mission_state == component_place || current_mission_state == construction_leave ||current_mission_state == place_status_judge)
+            //if (current_mission_state == component_place || current_mission_state == construction_leave ||current_mission_state == place_status_judge)
             {
                 force_home_enable = false;
 
@@ -1218,7 +1218,7 @@ void state_machine_fun(void)
                 if (ros::Time::now() - search_start_time < ros::Duration(4.0))
                 {
                     vel_search_body_x = 1.5; 
-                    vel_search_body_y = - 0.3;
+                    vel_search_body_y = -0.3;
                     vel_search_body_z = 0;
 
                     vel_search_ned.twist.linear.x = (R[0][0] * vel_search_body_x + R[0][1] * vel_search_body_y + R[0][2] * vel_search_body_z);
