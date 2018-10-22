@@ -1,5 +1,5 @@
 /*************************************************************************
-@file           state_machine_Full_Vision_v1.cpp
+@file           state_machine_Full_Vision_v2.cpp
 @date           2018/10/20
 @author         liuxu
 @email          liuxu.ccc@gmail.com
@@ -953,7 +953,7 @@ void state_machine_fun(void)
             {
                 vision_lost_count2 = 0;
 
-                if(ros::Time::now() - mission_last_time > ros::Duration(5.0) && vision_count2 > 10)
+                if(ros::Time::now() - mission_last_time > ros::Duration(6.0) && vision_count2 > 10)
                 {
                     vision_count2 = 0;
                 }
@@ -1102,7 +1102,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_component;
             local_vel_pub.publish(vel_ascend_com);
-            if ((current_position.pose.position.z + fix_target_position.component_z) > OBSERVE_HEIGET)
+            if ((current_position.pose.position.z + fix_target_position.component_z) > 4)
             {
                 position_judge.pose.position.x = current_position.pose.position.x;
                 position_judge.pose.position.y = current_position.pose.position.y;
@@ -1263,7 +1263,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_place;
             local_vel_pub.publish(vel_ascend_con);
-            if ((current_position.pose.position.z + fix_target_position.construction_z) > (CONSTRUCT_HEIGET + BOX_HEIGET*loop))
+            if ((current_position.pose.position.z + fix_target_position.construction_z) > (4 + BOX_HEIGET*loop))
             {
                 position_safe.pose.position.x = current_position.pose.position.x;
                 position_safe.pose.position.y = current_position.pose.position.y;
