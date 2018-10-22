@@ -31,6 +31,10 @@
 //custom vision->mavros
 #include <state_machine/Vision_Position_Raw.h> 
 
+//custom distance->mavros
+#include <state_machine/Distance.h> 
+#include <state_machine/Distance_Measure_Enable.h>
+
 
 /***************************function declare****************************/
 void state_machine_fun(void);
@@ -108,6 +112,9 @@ ros::Publisher vision_position_pub;
 state_machine::FIXED_TARGET_RETURN_M2P fix_target_return;
 state_machine::GRAB_STATUS_M2P grab_status;
 state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor;
+
+//message to distance
+state_machine::Distance_Measure_Enable distance_measure;
 
 //state_machine state
 static const int takeoff = 1;              
@@ -400,12 +407,12 @@ void attitude_cb(const state_machine::Attitude::ConstPtr& msg)
     R[2][2]= cos(current_attitude.roll) * cos(current_attitude.pitch);
 }
 
-// state_machine::Distance distance;
-// void distance_cb(const state_machine::Distance::ConstPtr& msg)
-// {
-//     distance = *msg;
-//     ROS_INFO("distance:%f",distance.distance);
-// }
+state_machine::Distance distance;
+void distance_cb(const state_machine::Distance::ConstPtr& msg)
+{
+    distance = *msg;
+    //ROS_INFO("distance:%f",distance.distance);
+}
 
 /*****************************main function*****************************/
 int main(int argc, char **argv)
@@ -450,6 +457,8 @@ int main(int argc, char **argv)
     vision_position_get.component_position_y = 0;
     vision_position_get.component_position_z = 0;
 
+    distance_measure.measure_enable = 1;
+
     //topic  subscribe
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
@@ -457,7 +466,7 @@ int main(int argc, char **argv)
     ros::Subscriber fixed_target_sub = nh.subscribe<state_machine::FIXED_TARGET_POSITION_P2M>("mavros/fixed_target_position_p2m",10,fixed_target_position_p2m_cb);    
     ros::Subscriber vision_position_sub = nh.subscribe<state_machine::Vision_Position_Raw>("vision_position",10,vision_position_cb);
     ros::Subscriber attitude_sub = nh.subscribe<state_machine::Attitude>("mavros/attitude",10,attitude_cb);
-    //ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
+    ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
 
     //topic publish
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
@@ -466,6 +475,7 @@ int main(int argc, char **argv)
     vision_position_pub = nh.advertise<state_machine::VISION_POSITION_GET_M2P>("mavros/vision_position_get_m2p",10);
     ros::Publisher grab_status_pub = nh.advertise<state_machine::GRAB_STATUS_M2P>("mavros/grab_status_m2p",10);
     ros::Publisher task_status_pub = nh.advertise<state_machine::TASK_STATUS_MONITOR_M2P>("mavros/task_status_monitor_m2p",10);
+    ros::Publisher distance_measure_enable_pub = nh.advertise<state_machine::Distance_Measure_Enable>("distance_measure_enable",10);
 
     //land service
     land_client = nh.serviceClient<state_machine::CommandTOL>("mavros/cmd/land");
@@ -561,8 +571,10 @@ int main(int argc, char **argv)
         task_status_monitor.target_x = pose_pub.pose.position.y;
         task_status_monitor.target_y = pose_pub.pose.position.x;
         task_status_monitor.target_z = pose_pub.pose.position.z;
-        task_status_monitor.sensor_distance = 0;
+        task_status_monitor.sensor_distance = distance.distance;
         task_status_pub.publish(task_status_monitor);
+
+        distance_measure_enable_pub.publish(distance_measure);
 
 		ros::spinOnce();
 		rate.sleep();

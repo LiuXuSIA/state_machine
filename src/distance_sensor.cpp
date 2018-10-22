@@ -94,7 +94,7 @@ int main (int argc, char** argv)
 
     while(ros::ok()) 
     { 
-        //if(distance_measure.measure_enable == 1)
+        if(distance_measure.measure_enable == 1)
         {
             if(ser.available())
             { 
