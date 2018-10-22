@@ -31,6 +31,9 @@
 //custom vision->mavros
 #include <state_machine/Vision_Position_Raw.h> 
 
+//custom distance->mavros
+#include <state_machine/Distance.h> 
+#include <state_machine/Distance_Measure_Enable.h>
 
 /***************************function declare****************************/
 void state_machine_fun(void);
@@ -56,7 +59,7 @@ float wrap_pi(float angle_rad);
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
-#define DISTANCE_SENSOR_FOOT    0.30
+#define DISTANCE_SENSOR_FOOT    0.14
 #define LINE_MOVE_DISTANCE      1.20
 #define ROW_MOVE_DISTANCE       0.70
 #define BOX_LINE                3
@@ -64,6 +67,7 @@ float wrap_pi(float angle_rad);
 #define BODY_X_VELOCITY         0.5
 #define BODY_Y_VELOCITY         0.1
 #define OBSERVE_HEIGHT_MAX      5
+#define BEST_RECOGNIZE_HEIGHT   5
 
 /***************************variable definition*************************/
 //fixed position  ENU
@@ -95,18 +99,22 @@ geometry_msgs::PoseStamped position_box;
 geometry_msgs::PoseStamped position_timer_out;
 geometry_msgs::PoseStamped position_return_home;
 geometry_msgs::PoseStamped position_grab_adjust;
-geometry_msgs::PoseStamped position_serach_success;
+geometry_msgs::PoseStamped position_box_lost;
 
 //topic declare
 ros::Publisher local_pos_pub;
 ros::Publisher local_vel_pub;
 ros::Publisher fixed_target_pub;
 ros::Publisher vision_position_pub;
+ros::Publisher distance_measure_enable_pub;
 
 //message to pix
 state_machine::FIXED_TARGET_RETURN_M2P fix_target_return;
 state_machine::GRAB_STATUS_M2P grab_status;
 state_machine::TASK_STATUS_MONITOR_M2P task_status_monitor;
+
+//message to distance
+state_machine::Distance_Measure_Enable distance_measure;
 
 //state_machine state
 static const int takeoff = 1;              
@@ -143,6 +151,7 @@ static const int grab_position_adjust = 28;
 static const int box_search = 29;
 static const int search_start_point_go = 30;
 
+static const int  box_locate_again = 31;
 
 
 //mission 
@@ -175,6 +184,7 @@ bool initial_enable = false;
 bool vision_position_receive_enable = false;
 bool box_search_enable = false;
 bool force_home_enable = true;
+bool task_status_change_receive_enable = false;
 
 //yaw set
 float yaw_sp;
@@ -200,6 +210,11 @@ state_machine::TASK_STATUS_CHANGE_P2M task_status_change;
 void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::ConstPtr& msg)
 {
     task_status_change = *msg;
+    if(task_status_change_receive_enable == true)
+    {
+        current_mission_state = task_status_change.task_status;
+        task_status_change_receive_enable = false;
+    }
 }
 
 state_machine::FIXED_TARGET_POSITION_P2M fix_target_position;
@@ -328,6 +343,11 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         position_grab_adjust.pose.orientation.z = sin(yaw_sp/2);
         position_grab_adjust.pose.orientation.w = cos(yaw_sp/2);
 
+        position_box_lost.pose.orientation.x = 0;
+        position_box_lost.pose.orientation.y = 0;
+        position_box_lost.pose.orientation.z = sin(yaw_sp/2);
+        position_box_lost.pose.orientation.w = cos(yaw_sp/2);
+
         fix_target_receive_enable = false;
     
         // //adjust angular,face north
@@ -394,12 +414,12 @@ void attitude_cb(const state_machine::Attitude::ConstPtr& msg)
     R[2][2]= cos(current_attitude.roll) * cos(current_attitude.pitch);
 }
 
-// state_machine::Distance distance;
-// void distance_cb(const state_machine::Distance::ConstPtr& msg)
-// {
-//     distance = *msg;
-//     ROS_INFO("distance:%f",distance.distance);
-// }
+state_machine::Distance distance;
+void distance_cb(const state_machine::Distance::ConstPtr& msg)
+{
+    distance = *msg;
+    ROS_INFO("distance:%f",distance.distance);
+}
 
 /*****************************main function*****************************/
 int main(int argc, char **argv)
@@ -444,6 +464,8 @@ int main(int argc, char **argv)
     vision_position_get.component_position_y = 0;
     vision_position_get.component_position_z = 0;
 
+    distance_measure.measure_enable = 0;
+
     //topic  subscribe
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
@@ -451,7 +473,7 @@ int main(int argc, char **argv)
     ros::Subscriber fixed_target_sub = nh.subscribe<state_machine::FIXED_TARGET_POSITION_P2M>("mavros/fixed_target_position_p2m",10,fixed_target_position_p2m_cb);    
     ros::Subscriber vision_position_sub = nh.subscribe<state_machine::Vision_Position_Raw>("vision_position",10,vision_position_cb);
     ros::Subscriber attitude_sub = nh.subscribe<state_machine::Attitude>("mavros/attitude",10,attitude_cb);
-    //ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
+    ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
 
     //topic publish
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
@@ -460,6 +482,7 @@ int main(int argc, char **argv)
     vision_position_pub = nh.advertise<state_machine::VISION_POSITION_GET_M2P>("mavros/vision_position_get_m2p",10);
     ros::Publisher grab_status_pub = nh.advertise<state_machine::GRAB_STATUS_M2P>("mavros/grab_status_m2p",10);
     ros::Publisher task_status_pub = nh.advertise<state_machine::TASK_STATUS_MONITOR_M2P>("mavros/task_status_monitor_m2p",10);
+    distance_measure_enable_pub = nh.advertise<state_machine::Distance_Measure_Enable>("distance_measure_enable",10);
 
     //land service
     land_client = nh.serviceClient<state_machine::CommandTOL>("mavros/cmd/land");
@@ -557,6 +580,8 @@ int main(int argc, char **argv)
         task_status_monitor.target_z = position_box.pose.position.z;
         task_status_monitor.sensor_distance = 0;
         task_status_pub.publish(task_status_monitor);
+
+        distance_measure_enable_pub.publish(distance_measure);
 
 		ros::spinOnce();
 		rate.sleep();
@@ -658,11 +683,11 @@ void state_machine_fun(void)
                 {
                     position_box.pose.position.x = position_y_aver;
                     position_box.pose.position.y = position_x_aver;
-                    position_box.pose.position.z = current_position.pose.position.z;
+                    position_box.pose.position.z = current_position.pose.position.z + BEST_RECOGNIZE_HEIGHT - position_z_aver;
 
-                    position_grab.pose.position.x = position_box.pose.position.x;
-                    position_grab.pose.position.y = position_box.pose.position.y;
-                    position_grab.pose.position.z = current_position.pose.position.z - position_z_aver + BIAS_ZED_FOOT;
+                    // position_grab.pose.position.x = position_box.pose.position.x;
+                    // position_grab.pose.position.y = position_box.pose.position.y;
+                    // position_grab.pose.position.z = current_position.pose.position.z - position_z_aver + BIAS_ZED_FOOT;
 
                     vision_count1 = 11;
 
@@ -709,6 +734,7 @@ void state_machine_fun(void)
         break;
         case box_above_locate:
         {
+            vision_position_receive_enable = true;
             pose_pub = position_box;
             local_pos_pub.publish(position_box);
             if (Distance_of_Two(current_position.pose.position.x,position_box.pose.position.x,
@@ -876,55 +902,216 @@ void state_machine_fun(void)
         //     }
         // }
         // break;
+        // case box_above_hover:
+        // {
+        //     static int accuracy_count1 = 0;  //for improve accuracy
+        //     static int hover_count1 = 0;
+        //     pose_pub = position_box;
+        //     local_pos_pub.publish(position_box);
+        //     if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && hover_count1 == 0)
+        //     {
+        //         hover_count1++;
+        //     }
+        //     if (ros::Time::now() - mission_last_time > ros::Duration(0.5) && hover_count1 > 0)
+        //     {
+        //         if (Distance_of_Two(current_position.pose.position.x,position_box.pose.position.x,
+        //                             current_position.pose.position.y,position_box.pose.position.y,
+        //                             current_position.pose.position.z,position_box.pose.position.z) < 0.10)
+        //         {
+        //             accuracy_count1++;
+        //             if(accuracy_count1 > 3)
+        //             {
+        //                 current_mission_state = box_get_close;
+        //                 accuracy_count1 = 0;
+        //                 hover_count1 = 0;
+        //                 mission_last_time = ros::Time::now();
+        //                 break;
+        //             }
+        //         }
+        //         else
+        //         {
+        //             accuracy_count1 = 0;
+        //         }
+        //     }           
+        //     hover_count1++;
+        //     if(hover_count1 > 15)
+        //     {
+        //         current_mission_state = box_get_close;
+        //         accuracy_count1 = 0;
+        //         hover_count1 = 0;
+        //         mission_last_time = ros::Time::now();
+        //         break;
+        //     }
+        // }
+        // break;
         case box_above_hover:
-        {
-            static int accuracy_count1 = 0;  //for improve accuracy
-            static int hover_count1 = 0;
+        {   
+            static float box_position_x_aver = 0;
+            static float box_position_y_aver = 0;
+            static float box_position_z_aver = 0;
+            static int vision_count2 = 11;
+            static int vision_lost_count2 = 0;
+
             pose_pub = position_box;
             local_pos_pub.publish(position_box);
-            if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && hover_count1 == 0)
+
+            if(vision_position_get.component_position_x != 0 || vision_position_get.component_position_y != 0 || 
+               vision_position_get.component_position_z != 0)
             {
-                hover_count1++;
-            }
-            if (ros::Time::now() - mission_last_time > ros::Duration(0.5) && hover_count1 > 0)
-            {
-                if (Distance_of_Two(current_position.pose.position.x,position_box.pose.position.x,
-                                    current_position.pose.position.y,position_box.pose.position.y,
-                                    current_position.pose.position.z,position_box.pose.position.z) < 0.10)
+                vision_lost_count2 = 0;
+
+                if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && vision_count2 > 10)
                 {
-                    accuracy_count1++;
-                    if(accuracy_count1 > 3)
+                    vision_count2 = 0;
+                }
+                if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && vision_count2 < 10)
+                {
+                    box_position_x_aver = (box_position_x_aver * vision_count2 + vision_position_get.component_position_x)/(vision_count2 + 1);
+                    box_position_y_aver = (box_position_y_aver * vision_count2 + vision_position_get.component_position_y)/(vision_count2 + 1);
+                    box_position_z_aver = (box_position_z_aver * vision_count2 + vision_position_get.component_position_z)/(vision_count2 + 1);
+                    // current_mission_state = component_locate;   //need change Z place to component_locate
+                    vision_count2++;
+                    //display_enable = true;
+                }
+                else if(vision_count2 == 10)
+                {
+                    // position_box.pose.position.x = box_position_y_aver;
+                    // position_box.pose.position.y = box_position_x_aver;
+                    // position_box.pose.position.z = current_position.pose.position.z;
+
+                    position_grab.pose.position.x = box_position_y_aver;
+                    position_grab.pose.position.y = box_position_x_aver;
+                    position_grab.pose.position.z = current_position.pose.position.z - box_position_z_aver + BIAS_ZED_FOOT;
+
+                    vision_count2 = 11;
+
+                    box_position_x_aver = 0;
+                    box_position_y_aver = 0;
+                    box_position_z_aver = 0;
+
+                    vision_position_get.component_position_x = 0;
+                    vision_position_get.component_position_y = 0;
+                    vision_position_get.component_position_z = 0;
+
+                    vision_position_receive_enable = false;
+
+                    if(abs(position_grab.pose.position.x - position_box.pose.position.x) > 3 ||
+                       abs(position_grab.pose.position.y - position_box.pose.position.y) > 3)
                     {
-                        current_mission_state = box_get_close;
-                        accuracy_count1 = 0;
-                        hover_count1 = 0;
+                        vision_position_receive_enable = true;
+                        current_mission_state = vision_fail_process;
                         mission_last_time = ros::Time::now();
                         break;
                     }
-                }
-                else
-                {
-                    accuracy_count1 = 0;
-                }
-            }           
-            hover_count1++;
-            if(hover_count1 > 15)
-            {
-                current_mission_state = box_get_close;
-                accuracy_count1 = 0;
-                hover_count1 = 0;
-                mission_last_time = ros::Time::now();
-                break;
+                    else
+                    {
+                        current_mission_state = box_get_close;
+                        mission_last_time = ros::Time::now();
+                        break;
+                    }
+                }  
             }
+            else 
+            {
+                vision_lost_count2++;
+                if (vision_lost_count2 > 40)
+                {
+                    vision_lost_count2 = 0;
+                    current_mission_state = vision_fail_process;
+
+                    mission_last_time = ros::Time::now();
+                    break;
+                }
+            }
+            
         }
         break;
         case box_get_close:
         {
             local_pos_pub.publish(position_grab);
             pose_pub = position_grab;
+            task_status_change_receive_enable = true;
             if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
                                 current_position.pose.position.y,position_grab.pose.position.y,
                                 current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_GRAB)
+            {
+                current_mission_state = box_grab;
+                mission_last_time = ros::Time::now();
+            }
+        }
+        break;
+        case grab_position_judge:
+        {
+
+            static float distance_aver = 0;
+            static int distance_count = 6;
+            static int distance_lost_count = 0;
+            static float distance_calculated = 0;
+
+            pose_pub = position_grab;
+            local_pos_pub.publish(position_grab);
+            distance_measure.measure_enable = 1;
+
+            if(distance.distance != 0)
+            {
+                distance_lost_count = 0;
+
+                if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && distance_count > 5)
+                {
+                    distance_count = 0;
+                }
+                if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && distance_count < 5)
+                {
+                    distance_aver = (distance_aver * distance_count + distance.distance)/(distance_count + 1);
+                    distance_count++;
+                }
+                else if(distance_count == 5)
+                {
+                    distance_calculated = distance_aver;
+                    distance_count = 5;
+                    distance_aver = 0;
+                    distance.distance = 0;
+                    distance_measure.measure_enable = 0;
+                    
+                    if (distance_calculated < DISTANCE_SENSOR_FOOT + 0.05)
+                    {
+                        current_mission_state = box_grab;
+                        mission_last_time = ros::Time::now();
+                        break;
+                    }
+                    else 
+                    {
+                        position_grab.pose.position.x = position_grab.pose.position.x;
+                        position_grab.pose.position.y = position_grab.pose.position.y;
+                        position_grab.pose.position.z = current_position.pose.position.z - distance_calculated + DISTANCE_SENSOR_FOOT;
+                        current_mission_state = grab_position_adjust;
+                        mission_last_time = ros::Time::now();
+                        break;
+                    }
+                }  
+            }
+            else 
+            {
+                distance_lost_count++;
+                if (distance_lost_count > 40)
+                {
+                    distance_lost_count = 0;
+                    distance_measure.measure_enable = 0;
+                    current_mission_state = box_grab;
+                    mission_last_time = ros::Time::now();
+                    break;
+                }
+            }
+        }
+        break;
+        case grab_position_adjust:
+        {
+            pose_pub = position_grab;
+            local_pos_pub.publish(position_grab);
+            if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
+                                current_position.pose.position.y,position_grab.pose.position.y,
+                                current_position.pose.position.z,position_grab.pose.position.z) < 0.10
+                || ros::Time::now() - mission_last_time > ros::Duration(5.0))
             {
                 current_mission_state = box_grab;
                 mission_last_time = ros::Time::now();
@@ -969,19 +1156,60 @@ void state_machine_fun(void)
         break;
         case grab_status_judge:
         {
+            static int grab_judge_count = 0;
+            distance_measure.measure_enable = 1;
             pose_pub = position_judge;
             local_pos_pub.publish(position_judge);
-            if(ros::Time::now() - mission_last_time > ros::Duration(5.0))
+            if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && grab_judge_count == 0)
             {
-                current_mission_state = position_construction_go;
-                mission_last_time = ros::Time::now();
+                grab_judge_count++;
             }
+            if (ros::Time::now() - mission_last_time > ros::Duration(0.5) && grab_judge_count > 0)
+            {
+                if (distance.distance < 1.5)
+                    {
+                        grab_judge_count++;
+                        if(grab_judge_count > 10)
+                        {
+                            grab_judge_count = 0;
+                            distance_measure.measure_enable = 0;
+                            current_mission_state = position_construction_go;
+                            mission_last_time = ros::Time::now();
+                            break;
+                        }
+                    }
+                else
+                {
+                    grab_judge_count = 0;
+                    distance_measure.measure_enable = 0;
+                    current_mission_state = hover_to_recognize;
+                    mission_last_time = ros::Time::now();
+                    break;
+                }               
+            }
+            // pose_pub = position_judge;
+            // local_pos_pub.publish(position_judge);
+            // if(ros::Time::now() - mission_last_time > ros::Duration(5.0))
+            // {
+            //     current_mission_state = position_construction_go;
+            //     mission_last_time = ros::Time::now();
+            // }
         }
         break;
         case position_construction_go:
         {
+            distance_measure.measure_enable = 1;
             pose_pub = position_construction;
             local_pos_pub.publish(position_construction);
+            // if(distance.distance > 2.0)
+            // {
+            //     position_box_lost.pose.position.x = current_position.pose.position.x;
+            //     position_box_lost.pose.position.x = current_position.pose.position.y;
+            //     position_box_lost.pose.position.z = current_position.pose.position.z;
+            //     current_mission_state = hover_after_lost;
+            //     distance_measure.measure_enable = 0;
+            //     mission_last_time = ros::Time::now();
+            // }
             if (Distance_of_Two(current_position.pose.position.x,position_construction.pose.position.x,
                                 current_position.pose.position.y,position_construction.pose.position.y,
                                 current_position.pose.position.z,position_construction.pose.position.z) < LOCATE_ACCURACY_HIGH)
@@ -1130,13 +1358,44 @@ void state_machine_fun(void)
         break;
         case place_status_judge:
         {
+            static int place_judge_count = 0;
+            distance_measure.measure_enable = 1;
             pose_pub = position_safe;
             local_pos_pub.publish(position_safe);
-            if(ros::Time::now() - mission_last_time > ros::Duration(5.0))
+            if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && place_judge_count == 0)
             {
-                current_mission_state = place_done;
-                mission_last_time = ros::Time::now();
+                place_judge_count++;
             }
+            if (ros::Time::now() - mission_last_time > ros::Duration(0.5) && place_judge_count >0)
+            {
+                if (distance.distance > 1.0)
+                    {
+                        place_judge_count++;
+                        if(place_judge_count > 3)
+                        {
+                            place_judge_count = 0;
+                            distance_measure.measure_enable = 0;
+                            current_mission_state = place_done;
+                            mission_last_time = ros::Time::now();
+                            break;
+                        }
+                    }
+                else
+                {
+                    place_judge_count = 0;
+                    distance_measure.measure_enable = 0;
+                    current_mission_state = place_point_get_close;
+                    mission_last_time = ros::Time::now();
+                    break;
+                }               
+            }
+            // pose_pub = position_safe;
+            // local_pos_pub.publish(position_safe);
+            // if(ros::Time::now() - mission_last_time > ros::Duration(5.0))
+            // {
+            //     current_mission_state = place_done;
+            //     mission_last_time = ros::Time::now();
+            // }
         }
         break;
         case place_done:
@@ -1318,6 +1577,17 @@ void state_machine_fun(void)
                     current_mission_state = position_observe_go;
                     mission_last_time = ros::Time::now();
                 }
+            }
+        }
+        break;
+        case hover_after_lost:
+        {
+            pose_pub = position_box_lost;
+            local_pos_pub.publish(position_box_lost);
+            if(ros::Time::now() - mission_last_time > ros::Duration(2.0))
+            {
+                current_mission_state = position_observe_go;
+                mission_last_time = ros::Time::now();
             }
         }
         break;

@@ -472,7 +472,7 @@ void state_machine_fun(void)
                     vision_position_get.component_position_y = 0;
                     vision_position_get.component_position_z = 0;
 
-                    vision_position_receive_enable == false;
+                    vision_position_receive_enable = false;
 
                     if(abs(current_position.pose.position.x - position_box.pose.position.x) > 5 ||
                        abs(current_position.pose.position.y - position_box.pose.position.y) > 5)
