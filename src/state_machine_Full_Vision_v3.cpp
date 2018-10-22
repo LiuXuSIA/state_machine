@@ -537,6 +537,22 @@ int main(int argc, char **argv)
 
         distance_measure_enable_pub.publish(distance_measure);
 
+        if(distance.distance > JUDGE_DIATANCE)
+        {
+            grab_status.grab_status = 0;
+        }
+        else if(current_mission_state == box_get_close || current_mission_state == box_get_fit ||
+                current_mission_state == box_grab)
+        {
+            grab_status.grab_status = 0;
+        }
+        else
+        {
+            grab_status.grab_status = 1;
+        }
+
+        grab_status_pub.publish(grab_status);
+
 		ros::spinOnce();
 		rate.sleep();
 	}
