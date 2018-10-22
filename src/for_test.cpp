@@ -168,25 +168,25 @@ int main(int argc, char **argv)
     
     ros::Rate rate(10.0);
 
- //    while(ros::ok() && !current_state.connected)
- //    {
- //    	ros::spinOnce();
- //    	rate.sleep();
- //    }
+    while(ros::ok() && !current_state.connected)
+    {
+    	ros::spinOnce();
+    	rate.sleep();
+    }
 
- //    ROS_INFO("Connect successfully!!");
+    ROS_INFO("Connect successfully!!");
 
- //    #ifdef orientation_debug
- //    ROS_INFO("send setpoint before takeoff,please wait");
+    //#ifdef orientation_debug
+    ROS_INFO("send setpoint before takeoff,please wait");
 
- //    for(int i =100; ros::ok() && i > 0; i--)
-	// {
-	// 	local_pos_pub.publish(pose_pub);
-	// 	ros::spinOnce();
-	// 	rate.sleep();
-	// }
+    for(int i =100; ros::ok() && i > 0; i--)
+	{
+		local_pos_pub.publish(pose_pub);
+		ros::spinOnce();
+		rate.sleep();
+	}
 
- //    ROS_INFO("Initialization finished");
+    ROS_INFO("Initialization finished");
  //    #endif
 
 	while(ros::ok())
@@ -194,37 +194,37 @@ int main(int argc, char **argv)
   //       while(receive_flag == false)
   //       {
 
-  //           task_status_pub.publish(task_status_monitor);
-  //           ros::spinOnce();
-  //           rate.sleep();
+            // task_status_pub.publish(task_status_monitor);
+            // ros::spinOnce();
+            // rate.sleep();
   //       }
 
-  //       fixed_target_pub.publish(fix_target_return);
-		// ros::spinOnce();
-		// rate.sleep();
+        fixed_target_pub.publish(fix_target_return);
+		ros::spinOnce();
+		rate.sleep();
 
-  //       grab_status_pub.publish(grab_status);
-  //       ros::spinOnce();
-  //       rate.sleep();
+        grab_status_pub.publish(grab_status);
+        ros::spinOnce();
+        rate.sleep();
 
-  //       task_status_pub.publish(task_status_monitor);
-  //       ros::spinOnce();
-  //       rate.sleep();
+        task_status_pub.publish(task_status_monitor);
+        ros::spinOnce();
+        rate.sleep();
 
-  //       vision_position_pub.publish(vision_position_get);
-  //       ros::spinOnce();
-  //       rate.sleep();
+        vision_position_pub.publish(vision_position_get);
+        ros::spinOnce();
+        rate.sleep();
 
-  //       yaw_sp_pub.publish(yaw_sp_calculated);
-  //       ros::spinOnce();
-  //       rate.sleep();
+        yaw_sp_pub.publish(yaw_sp_calculated);
+        ros::spinOnce();
+        rate.sleep();
 
   //       receive_flag = false;
 
         //break;
-        state_machine_fun();
+        //state_machine_fun();
         // ros::spinOnce();
-        rate.sleep();
+        //rate.sleep();
     }
 }
 

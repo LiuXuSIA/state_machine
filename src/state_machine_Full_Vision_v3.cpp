@@ -210,11 +210,8 @@ state_machine::TASK_STATUS_CHANGE_P2M task_status_change;
 void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::ConstPtr& msg)
 {
     task_status_change = *msg;
-    if(task_status_change_receive_enable == true)
-    {
-        current_mission_state = task_status_change.task_status;
-        task_status_change_receive_enable = false;
-    }
+    current_mission_state = task_status_change.task_status;
+    task_status_change_receive_enable = false;
 }
 
 state_machine::FIXED_TARGET_POSITION_P2M fix_target_position;

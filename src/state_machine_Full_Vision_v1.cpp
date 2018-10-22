@@ -175,6 +175,7 @@ bool initial_enable = false;
 bool vision_position_receive_enable = false;
 bool box_search_enable = false;
 bool force_home_enable = true;
+bool task_status_change_receive_enable = false;
 
 //yaw set
 float yaw_sp;
@@ -200,6 +201,8 @@ state_machine::TASK_STATUS_CHANGE_P2M task_status_change;
 void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::ConstPtr& msg)
 {
     task_status_change = *msg;
+    current_mission_state = task_status_change.task_status;
+    task_status_change_receive_enable = false;
 }
 
 state_machine::FIXED_TARGET_POSITION_P2M fix_target_position;
