@@ -199,23 +199,23 @@ int main(int argc, char **argv)
             // rate.sleep();
   //       }
 
-        fixed_target_pub.publish(fix_target_return);
-		ros::spinOnce();
-		rate.sleep();
+  //       fixed_target_pub.publish(fix_target_return);
+		// ros::spinOnce();
+		// rate.sleep();
 
-        grab_status_pub.publish(grab_status);
-        ros::spinOnce();
-        rate.sleep();
+  //       grab_status_pub.publish(grab_status);
+  //       ros::spinOnce();
+  //       rate.sleep();
 
-        task_status_pub.publish(task_status_monitor);
-        ros::spinOnce();
-        rate.sleep();
+  //       task_status_pub.publish(task_status_monitor);
+  //       ros::spinOnce();
+  //       rate.sleep();
 
-        vision_position_pub.publish(vision_position_get);
-        ros::spinOnce();
-        rate.sleep();
+  //       vision_position_pub.publish(vision_position_get);
+  //       ros::spinOnce();
+  //       rate.sleep();
 
-        yaw_sp_pub.publish(yaw_sp_calculated);
+  //       yaw_sp_pub.publish(yaw_sp_calculated);
         ros::spinOnce();
         rate.sleep();
 
