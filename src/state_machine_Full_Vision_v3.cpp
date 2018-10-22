@@ -1200,7 +1200,7 @@ void state_machine_fun(void)
             distance_measure.measure_enable = 1;
             pose_pub = position_judge;
             local_pos_pub.publish(position_judge);
-            if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && grab_judge_count == 0)
+            if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && grab_judge_count == 0)
             {
                 grab_judge_count++;
             }
@@ -1402,7 +1402,7 @@ void state_machine_fun(void)
             distance_measure.measure_enable = 1;
             pose_pub = position_safe;
             local_pos_pub.publish(position_safe);
-            if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && place_judge_count == 0)
+            if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && place_judge_count == 0)
             {
                 place_judge_count++;
             }
