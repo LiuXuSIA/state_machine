@@ -53,9 +53,9 @@ float wrap_pi(float angle_rad);
 #define DESCEND_VELOCITY        0.3
 #define RECOGNIZE_HEIGHT        2.5
 #define BOX_HEIGET              0.25
-#define PLACE_HEIGET            0.5
+#define PLACE_HEIGET            0.3
 #define BIAS_ZED_FOOT           0.09
-#define GRAB_HEIGHT_MARGIN      0.02
+#define GRAB_HEIGHT_MARGIN      0.05
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
@@ -1033,91 +1033,133 @@ void state_machine_fun(void)
             task_status_change_receive_enable = true;
             if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
                                 current_position.pose.position.y,position_grab.pose.position.y,
-                                current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_GRAB)
+                                current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_ROUGH)
             {
-                current_mission_state = box_grab;
+                current_mission_state = box_get_fit;
                 mission_last_time = ros::Time::now();
             }
         }
         break;
-        case grab_position_judge:
+        case box_get_fit:
         {
-
-            static float distance_aver = 0;
-            static int distance_count = 6;
-            static int distance_lost_count = 0;
-            static float distance_calculated = 0;
-
+            static int accuracy_count4 = 0;  //for improve accuracy
+            static int hover_count4 = 0;
             pose_pub = position_grab;
             local_pos_pub.publish(position_grab);
-            distance_measure.measure_enable = 1;
-
-            if(distance.distance != 0)
+            if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && hover_count4 == 0)
             {
-                distance_lost_count = 0;
-
-                if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && distance_count > 5)
+                hover_count4++;
+            }
+            if (ros::Time::now() - mission_last_time > ros::Duration(0.5) && hover_count4 > 0)
+            {
+                if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
+                                    current_position.pose.position.y,position_grab.pose.position.y,
+                                    current_position.pose.position.z,position_grab.pose.position.z) < 0.15)
                 {
-                    distance_count = 0;
-                }
-                if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && distance_count < 5)
-                {
-                    distance_aver = (distance_aver * distance_count + distance.distance)/(distance_count + 1);
-                    distance_count++;
-                }
-                else if(distance_count == 5)
-                {
-                    distance_calculated = distance_aver;
-                    distance_count = 5;
-                    distance_aver = 0;
-                    distance.distance = 0;
-                    distance_measure.measure_enable = 0;
-                    
-                    if (distance_calculated < DISTANCE_SENSOR_FOOT + 0.05)
+                    accuracy_count4++;
+                    if(accuracy_count4 > 3)
                     {
                         current_mission_state = box_grab;
+                        accuracy_count4 = 0;
+                        hover_count4 = 0;
                         mission_last_time = ros::Time::now();
                         break;
                     }
-                    else 
-                    {
-                        position_grab.pose.position.x = position_grab.pose.position.x;
-                        position_grab.pose.position.y = position_grab.pose.position.y;
-                        position_grab.pose.position.z = current_position.pose.position.z - distance_calculated + DISTANCE_SENSOR_FOOT;
-                        current_mission_state = grab_position_adjust;
-                        mission_last_time = ros::Time::now();
-                        break;
-                    }
-                }  
-            }
-            else 
-            {
-                distance_lost_count++;
-                if (distance_lost_count > 40)
-                {
-                    distance_lost_count = 0;
-                    distance_measure.measure_enable = 0;
-                    current_mission_state = box_grab;
-                    mission_last_time = ros::Time::now();
-                    break;
                 }
-            }
-        }
-        break;
-        case grab_position_adjust:
-        {
-            pose_pub = position_grab;
-            local_pos_pub.publish(position_grab);
-            if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
-                                current_position.pose.position.y,position_grab.pose.position.y,
-                                current_position.pose.position.z,position_grab.pose.position.z) < 0.10
-                || ros::Time::now() - mission_last_time > ros::Duration(5.0))
+                else
+                {
+                    accuracy_count4 = 0;
+                }
+            }           
+            hover_count4++;
+            if(hover_count4 > 20)
             {
                 current_mission_state = box_grab;
+                accuracy_count4 = 0;
+                hover_count4 = 0;
                 mission_last_time = ros::Time::now();
+                break;
             }
         }
         break;
+        // case grab_position_judge:
+        // {
+
+        //     static float distance_aver = 0;
+        //     static int distance_count = 6;
+        //     static int distance_lost_count = 0;
+        //     static float distance_calculated = 0;
+
+        //     pose_pub = position_grab;
+        //     local_pos_pub.publish(position_grab);
+        //     distance_measure.measure_enable = 1;
+
+        //     if(distance.distance != 0)
+        //     {
+        //         distance_lost_count = 0;
+
+        //         if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && distance_count > 5)
+        //         {
+        //             distance_count = 0;
+        //         }
+        //         if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && distance_count < 5)
+        //         {
+        //             distance_aver = (distance_aver * distance_count + distance.distance)/(distance_count + 1);
+        //             distance_count++;
+        //         }
+        //         else if(distance_count == 5)
+        //         {
+        //             distance_calculated = distance_aver;
+        //             distance_count = 5;
+        //             distance_aver = 0;
+        //             distance.distance = 0;
+        //             distance_measure.measure_enable = 0;
+                    
+        //             if (distance_calculated < DISTANCE_SENSOR_FOOT + 0.05)
+        //             {
+        //                 current_mission_state = box_grab;
+        //                 mission_last_time = ros::Time::now();
+        //                 break;
+        //             }
+        //             else 
+        //             {
+        //                 position_grab.pose.position.x = position_grab.pose.position.x;
+        //                 position_grab.pose.position.y = position_grab.pose.position.y;
+        //                 position_grab.pose.position.z = current_position.pose.position.z - distance_calculated + DISTANCE_SENSOR_FOOT;
+        //                 current_mission_state = grab_position_adjust;
+        //                 mission_last_time = ros::Time::now();
+        //                 break;
+        //             }
+        //         }  
+        //     }
+        //     else 
+        //     {
+        //         distance_lost_count++;
+        //         if (distance_lost_count > 40)
+        //         {
+        //             distance_lost_count = 0;
+        //             distance_measure.measure_enable = 0;
+        //             current_mission_state = box_grab;
+        //             mission_last_time = ros::Time::now();
+        //             break;
+        //         }
+        //     }
+        // }
+        // break;
+        // case grab_position_adjust:
+        // {
+        //     pose_pub = position_grab;
+        //     local_pos_pub.publish(position_grab);
+        //     if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
+        //                         current_position.pose.position.y,position_grab.pose.position.y,
+        //                         current_position.pose.position.z,position_grab.pose.position.z) < 0.10
+        //         || ros::Time::now() - mission_last_time > ros::Duration(5.0))
+        //     {
+        //         current_mission_state = box_grab;
+        //         mission_last_time = ros::Time::now();
+        //     }
+        // }
+        // break;
         case box_grab:
         {
             static int grab_count = 0;
@@ -1198,7 +1240,7 @@ void state_machine_fun(void)
         break;
         case position_construction_go:
         {
-            distance_measure.measure_enable = 1;
+            //distance_measure.measure_enable = 1;
             pose_pub = position_construction;
             local_pos_pub.publish(position_construction);
             // if(distance.distance > 2.0)

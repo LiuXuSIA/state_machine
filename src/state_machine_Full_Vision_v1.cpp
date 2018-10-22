@@ -52,7 +52,7 @@ float wrap_pi(float angle_rad);
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.5
 #define BIAS_ZED_FOOT           0.09
-#define GRAB_HEIGHT_MARGIN      0.02
+#define GRAB_HEIGHT_MARGIN      0.05
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
@@ -662,7 +662,7 @@ void state_machine_fun(void)
 
                     position_grab.pose.position.x = position_box.pose.position.x;
                     position_grab.pose.position.y = position_box.pose.position.y;
-                    position_grab.pose.position.z = current_position.pose.position.z - position_z_aver + BIAS_ZED_FOOT;
+                    position_grab.pose.position.z = current_position.pose.position.z - position_z_aver + BIAS_ZED_FOOT + GRAB_HEIGHT_MARGIN;
 
                     vision_count1 = 11;
 
@@ -924,11 +924,53 @@ void state_machine_fun(void)
             pose_pub = position_grab;
             if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
                                 current_position.pose.position.y,position_grab.pose.position.y,
-                                current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_GRAB
-                || ros::Time::now() - mission_last_time > ros::Duration(20.0))
+                                current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_ROUGH
+                || ros::Time::now() - mission_last_time > ros::Duration(10.0))
+            {
+                current_mission_state = box_get_fit;
+                mission_last_time = ros::Time::now();
+            }
+        }
+        break;
+        case box_get_fit:
+        {
+            static int accuracy_count4 = 0;  //for improve accuracy
+            static int hover_count4 = 0;
+            pose_pub = position_grab;
+            local_pos_pub.publish(position_grab);
+            if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && hover_count4 == 0)
+            {
+                hover_count4++;
+            }
+            if (ros::Time::now() - mission_last_time > ros::Duration(0.5) && hover_count4 > 0)
+            {
+                if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
+                                    current_position.pose.position.y,position_grab.pose.position.y,
+                                    current_position.pose.position.z,position_grab.pose.position.z) < 0.15)
+                {
+                    accuracy_count4++;
+                    if(accuracy_count4 > 3)
+                    {
+                        current_mission_state = box_grab;
+                        accuracy_count4 = 0;
+                        hover_count4 = 0;
+                        mission_last_time = ros::Time::now();
+                        break;
+                    }
+                }
+                else
+                {
+                    accuracy_count4 = 0;
+                }
+            }           
+            hover_count4++;
+            if(hover_count4 > 20)
             {
                 current_mission_state = box_grab;
+                accuracy_count4 = 0;
+                hover_count4 = 0;
                 mission_last_time = ros::Time::now();
+                break;
             }
         }
         break;
