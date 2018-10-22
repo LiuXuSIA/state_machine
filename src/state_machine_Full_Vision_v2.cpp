@@ -1017,7 +1017,8 @@ void state_machine_fun(void)
             task_status_change_receive_enable = true;
             if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
                                 current_position.pose.position.y,position_grab.pose.position.y,
-                                current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_GRAB)
+                                current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_GRAB
+                || ros::Time::now() - mission_last_time > ros::Duration(5.0))
             {
                 current_mission_state = box_grab;
                 mission_last_time = ros::Time::now();
