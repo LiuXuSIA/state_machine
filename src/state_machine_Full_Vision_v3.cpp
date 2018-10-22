@@ -415,7 +415,7 @@ state_machine::Distance distance;
 void distance_cb(const state_machine::Distance::ConstPtr& msg)
 {
     distance = *msg;
-    ROS_INFO("distance:%f",distance.distance);
+    //ROS_INFO("distance:%f",distance.distance);
 }
 
 /*****************************main function*****************************/
@@ -572,10 +572,10 @@ int main(int argc, char **argv)
 
         task_status_monitor.task_status = current_mission_state;
         task_status_monitor.loop_value = loop;
-        task_status_monitor.target_x = position_box.pose.position.y;
-        task_status_monitor.target_y = position_box.pose.position.x;
-        task_status_monitor.target_z = position_box.pose.position.z;
-        task_status_monitor.sensor_distance = 0;
+        task_status_monitor.target_x = pose_pub.pose.position.y;
+        task_status_monitor.target_y = pose_pub.pose.position.x;
+        task_status_monitor.target_z = pose_pub.pose.position.z;
+        task_status_monitor.sensor_distance = distance.distance;
         task_status_pub.publish(task_status_monitor);
 
         distance_measure_enable_pub.publish(distance_measure);
