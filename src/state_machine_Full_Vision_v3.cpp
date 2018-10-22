@@ -55,7 +55,7 @@ float wrap_pi(float angle_rad);
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.3
 #define BIAS_ZED_FOOT           0.09
-#define GRAB_HEIGHT_MARGIN      0.05
+#define GRAB_HEIGHT_MARGIN      0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
@@ -663,7 +663,7 @@ void state_machine_fun(void)
             {
                 vision_lost_count = 0;
 
-                if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && vision_count1 > 10)
+                if(ros::Time::now() - mission_last_time > ros::Duration(4.0) && vision_count1 > 10)
                 {
                     vision_count1 = 0;
                 }
@@ -957,7 +957,7 @@ void state_machine_fun(void)
             {
                 vision_lost_count2 = 0;
 
-                if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && vision_count2 > 10)
+                if(ros::Time::now() - mission_last_time > ros::Duration(5.0) && vision_count2 > 10)
                 {
                     vision_count2 = 0;
                 }
@@ -978,7 +978,7 @@ void state_machine_fun(void)
 
                     position_grab.pose.position.x = box_position_y_aver;
                     position_grab.pose.position.y = box_position_x_aver;
-                    position_grab.pose.position.z = current_position.pose.position.z - box_position_z_aver + BIAS_ZED_FOOT;
+                    position_grab.pose.position.z = current_position.pose.position.z - box_position_z_aver + BIAS_ZED_FOOT + GRAB_HEIGHT_MARGIN;
 
                     vision_count2 = 11;
 
@@ -1027,7 +1027,7 @@ void state_machine_fun(void)
         {
             local_pos_pub.publish(position_grab);
             pose_pub = position_grab;
-            task_status_change_receive_enable = true;
+            task_status_change_receive_enable = true; 
             if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
                                 current_position.pose.position.y,position_grab.pose.position.y,
                                 current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_ROUGH

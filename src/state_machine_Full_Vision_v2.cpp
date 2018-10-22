@@ -52,7 +52,7 @@ float wrap_pi(float angle_rad);
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.5
 #define BIAS_ZED_FOOT           0.09
-#define GRAB_HEIGHT_MARGIN      0.04
+#define GRAB_HEIGHT_MARGIN      0.30//0.04
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
@@ -647,7 +647,7 @@ void state_machine_fun(void)
             {
                 vision_lost_count = 0;
 
-                if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && vision_count1 > 10)
+                if(ros::Time::now() - mission_last_time > ros::Duration(4.0) && vision_count1 > 10)
                 {
                     vision_count1 = 0;
                 }
@@ -941,7 +941,7 @@ void state_machine_fun(void)
             {
                 vision_lost_count2 = 0;
 
-                if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && vision_count2 > 10)
+                if(ros::Time::now() - mission_last_time > ros::Duration(5.0) && vision_count2 > 10)
                 {
                     vision_count2 = 0;
                 }

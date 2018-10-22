@@ -52,7 +52,7 @@ float wrap_pi(float angle_rad);
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.5
 #define BIAS_ZED_FOOT           0.09
-#define GRAB_HEIGHT_MARGIN      0.05
+#define GRAB_HEIGHT_MARGIN      0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
@@ -644,7 +644,7 @@ void state_machine_fun(void)
             {
                 vision_lost_count = 0;
 
-                if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && vision_count1 > 10)
+                if(ros::Time::now() - mission_last_time > ros::Duration(4.0) && vision_count1 > 10)
                 {
                     vision_count1 = 0;
                 }
@@ -893,7 +893,7 @@ void state_machine_fun(void)
             {
                 if (Distance_of_Two(current_position.pose.position.x,position_box.pose.position.x,
                                     current_position.pose.position.y,position_box.pose.position.y,
-                                    current_position.pose.position.z,position_box.pose.position.z) < 0.10)
+                                    current_position.pose.position.z,position_box.pose.position.z) < 0.15)
                 {
                     accuracy_count1++;
                     if(accuracy_count1 > 3)
@@ -989,7 +989,7 @@ void state_machine_fun(void)
             if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && grab_count > 0)
             {
                 grab_count++;
-                if(grab_count > 30)
+                if(grab_count > 20)
                 {
                     grab_count = 0;
                     current_mission_state = box_leave;
