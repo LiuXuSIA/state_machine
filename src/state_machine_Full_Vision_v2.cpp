@@ -64,7 +64,7 @@ float wrap_pi(float angle_rad);
 #define BODY_X_VELOCITY         0.5
 #define BODY_Y_VELOCITY         0.1
 #define OBSERVE_HEIGHT_MAX      5
-#define BEST_RECOGNIZE_HEIGHT   5
+#define BEST_RECOGNIZE_HEIGHT   1.5
 
 /***************************variable definition*************************/
 //fixed position  ENU
