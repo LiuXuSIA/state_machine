@@ -994,7 +994,8 @@ void state_machine_fun(void)
             local_pos_pub.publish(position_place);
             if (Distance_of_Two(current_position.pose.position.x,position_place.pose.position.x,
                                 current_position.pose.position.y,position_place.pose.position.y,
-                                current_position.pose.position.z,position_place.pose.position.z) < LOCATE_ACCURACY_HIGH)
+                                current_position.pose.position.z,position_place.pose.position.z) < LOCATE_ACCURACY_HIGH
+                || ros::Time::now() - mission_last_time > ros::Duration(10.0))
             {
                 current_mission_state = place_point_adjust;
                 mission_last_time = ros::Time::now();

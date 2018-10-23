@@ -54,7 +54,7 @@ float wrap_pi(float angle_rad);
 #define DESCEND_VELOCITY        0.3
 #define RECOGNIZE_HEIGHT        2.5
 #define BOX_HEIGET              0.25
-#define PLACE_HEIGET            0.5
+#define PLACE_HEIGET            0.3
 #define BIAS_ZED_FOOT           0.09
 #define GRAB_HEIGHT_MARGIN      0.10//0.30//0.04
 #define LOCATE_ACCURACY_HIGH    0.5
@@ -1209,7 +1209,8 @@ void state_machine_fun(void)
             local_pos_pub.publish(position_place);
             if (Distance_of_Two(current_position.pose.position.x,position_place.pose.position.x,
                                 current_position.pose.position.y,position_place.pose.position.y,
-                                current_position.pose.position.z,position_place.pose.position.z) < LOCATE_ACCURACY_HIGH)
+                                current_position.pose.position.z,position_place.pose.position.z) < LOCATE_ACCURACY_HIGH
+                || ros::Time::now() - mission_last_time > ros::Duration(10.0))
             {
                 current_mission_state = place_point_adjust;
                 mission_last_time = ros::Time::now();
