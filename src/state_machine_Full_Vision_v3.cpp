@@ -59,8 +59,8 @@ float wrap_pi(float angle_rad);
 #define DISTANCE_SENSOR_FOOT    0.14
 #define LINE_MOVE_DISTANCE      1.20
 #define ROW_MOVE_DISTANCE       0.70
-#define BOX_LINE                3
-#define BOX_ROW                 3
+#define BOX_LINE                2
+#define BOX_ROW                 2
 #define BODY_X_VELOCITY         0.5
 #define BODY_Y_VELOCITY         0.1
 #define OBSERVE_HEIGHT_MAX      7
