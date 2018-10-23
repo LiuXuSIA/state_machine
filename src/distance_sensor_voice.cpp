@@ -30,7 +30,7 @@ state_machine::Distance_Measure_Enable distance_measure;
 void distance_measure_enable_cb(const state_machine::Distance_Measure_Enable::ConstPtr& msg)
 {
     distance_measure = *msg;
-    //ROS_INFO("distance:%d",distance_measure.measure_enable);
+    ROS_INFO("distance:%d",distance_measure.measure_enable);
 }
 
 int main (int argc, char** argv) 
