@@ -69,6 +69,9 @@ float wrap_pi(float angle_rad);
 #define BODY_Y_VELOCITY         0.1
 #define OBSERVE_HEIGHT_MAX      7
 #define BEST_RECOGNIZE_HEIGHT   1.5
+#define VISION_ROUGH_FRAME      1
+#define VISION_ACCURACY_FRAME   10
+#define VISION_LOST_MAX         40
 
 /***************************variable definition*************************/
 //fixed position  ENU
@@ -666,7 +669,7 @@ void state_machine_fun(void)
             static float position_x_aver = 0;
             static float position_y_aver = 0;
             static float position_z_aver = 0;
-            static int vision_count1 = 11;
+            static int vision_count1 = VISION_ROUGH_FRAME + 1;
             static int vision_lost_count = 0;
 
             pose_pub = position_observe;
@@ -677,11 +680,11 @@ void state_machine_fun(void)
             {
                 vision_lost_count = 0;
 
-                if(ros::Time::now() - mission_last_time > ros::Duration(4.0) && vision_count1 > 10)
+                if(ros::Time::now() - mission_last_time > ros::Duration(4.0) && vision_count1 > VISION_ROUGH_FRAME)
                 {
                     vision_count1 = 0;
                 }
-                if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && vision_count1 < 10)
+                if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && vision_count1 < VISION_ROUGH_FRAME)
                 {
                     position_x_aver = (position_x_aver * vision_count1 + vision_position_get.component_position_x)/(vision_count1 + 1);
                     position_y_aver = (position_y_aver * vision_count1 + vision_position_get.component_position_y)/(vision_count1 + 1);
@@ -690,7 +693,7 @@ void state_machine_fun(void)
                     vision_count1++;
                     //display_enable = true;
                 }
-                else if(vision_count1 == 10)
+                else if(vision_count1 == VISION_ROUGH_FRAME)
                 {
                     position_box.pose.position.x = position_y_aver;
                     position_box.pose.position.y = position_x_aver;
@@ -700,7 +703,7 @@ void state_machine_fun(void)
                     // position_grab.pose.position.y = position_box.pose.position.y;
                     // position_grab.pose.position.z = current_position.pose.position.z - position_z_aver + BIAS_ZED_FOOT;
 
-                    vision_count1 = 11;
+                    vision_count1 = VISION_ROUGH_FRAME + 1;
 
                     position_x_aver = 0;
                     position_y_aver = 0;
@@ -731,7 +734,7 @@ void state_machine_fun(void)
             else 
             {
                 vision_lost_count++;
-                if (vision_lost_count > 40)
+                if (vision_lost_count > VISION_LOST_MAX)
                 {
                     vision_lost_count = 0;
                     current_mission_state = vision_fail_process;
@@ -960,7 +963,7 @@ void state_machine_fun(void)
             static float box_position_x_aver = 0;
             static float box_position_y_aver = 0;
             static float box_position_z_aver = 0;
-            static int vision_count2 = 11;
+            static int vision_count2 = VISION_ACCURACY_FRAME + 1;
             static int vision_lost_count2 = 0;
 
             pose_pub = position_box;
@@ -971,11 +974,11 @@ void state_machine_fun(void)
             {
                 vision_lost_count2 = 0;
 
-                if(ros::Time::now() - mission_last_time > ros::Duration(6.0) && vision_count2 > 10)
+                if(ros::Time::now() - mission_last_time > ros::Duration(6.0) && vision_count2 > VISION_ACCURACY_FRAME)
                 {
                     vision_count2 = 0;
                 }
-                if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && vision_count2 < 10)
+                if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && vision_count2 < VISION_ACCURACY_FRAME)
                 {
                     box_position_x_aver = (box_position_x_aver * vision_count2 + vision_position_get.component_position_x)/(vision_count2 + 1);
                     box_position_y_aver = (box_position_y_aver * vision_count2 + vision_position_get.component_position_y)/(vision_count2 + 1);
@@ -984,7 +987,7 @@ void state_machine_fun(void)
                     vision_count2++;
                     //display_enable = true;
                 }
-                else if(vision_count2 == 10)
+                else if(vision_count2 == VISION_ACCURACY_FRAME)
                 {
                     // position_box.pose.position.x = box_position_y_aver;
                     // position_box.pose.position.y = box_position_x_aver;
@@ -994,7 +997,7 @@ void state_machine_fun(void)
                     position_grab.pose.position.y = box_position_x_aver;
                     position_grab.pose.position.z = current_position.pose.position.z - box_position_z_aver + BIAS_ZED_FOOT + GRAB_HEIGHT_MARGIN;
 
-                    vision_count2 = 11;
+                    vision_count2 = VISION_ACCURACY_FRAME + 1;
 
                     box_position_x_aver = 0;
                     box_position_y_aver = 0;
@@ -1025,7 +1028,7 @@ void state_machine_fun(void)
             else 
             {
                 vision_lost_count2++;
-                if (vision_lost_count2 > 40)
+                if (vision_lost_count2 > VISION_LOST_MAX)
                 {
                     vision_lost_count2 = 0;
                     current_mission_state = vision_fail_process;
