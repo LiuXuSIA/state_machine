@@ -41,7 +41,8 @@ double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, do
 float wrap_pi(float angle_rad);
 
 /*************************constant definition***************************/
-#define MAX_MISSION_TIME        180
+
+#define MAX_MISSION_TIME        200
 #define HOME_HEIGHT             5.0
 #define OBSERVE_HEIGET          5.0
 #define CONSTRUCT_HEIGET        5.0
@@ -64,8 +65,8 @@ float wrap_pi(float angle_rad);
 #define BODY_X_VELOCITY         0.5
 #define BODY_Y_VELOCITY         0.1
 #define OBSERVE_HEIGHT_MAX      7
-#define BEST_RECOGNIZE_HEIGHT   1.5
-#define SEARCH_TIME_SINGLE      4.0
+#define BEST_RECOGNIZE_HEIGHT   2.1
+#define SEARCH_TIME_SINGLE      6.0
 #define JUDGE_HEIGHT            4.0
 #define JUDGE_DIATANCE          1.0
 #define VISION_ROUGH_FRAME      1
