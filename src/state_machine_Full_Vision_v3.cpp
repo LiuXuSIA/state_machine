@@ -41,7 +41,7 @@ double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, do
 float wrap_pi(float angle_rad);
 
 /*************************constant definition***************************/
-#define MAX_MISSION_TIME        300
+#define MAX_MISSION_TIME        180
 #define HOME_HEIGHT             5.0
 #define OBSERVE_HEIGET          5.0
 #define CONSTRUCT_HEIGET        5.0
@@ -52,7 +52,7 @@ float wrap_pi(float angle_rad);
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.3
 #define BIAS_ZED_FOOT           0.09
-#define GRAB_HEIGHT_MARGIN      0.30//0.05
+#define GRAB_HEIGHT_MARGIN      0.10//0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
