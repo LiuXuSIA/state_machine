@@ -459,6 +459,8 @@ int main(int argc, char **argv)
 
     distance_measure.measure_enable = 1;
 
+    grab_status.grab_status = 0;
+
     //topic  subscribe
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
@@ -575,6 +577,22 @@ int main(int argc, char **argv)
         task_status_pub.publish(task_status_monitor);
 
         distance_measure_enable_pub.publish(distance_measure);
+
+        if(distance.distance > 1.0)
+        {
+            grab_status.grab_status = 0;
+        }
+        else if(current_mission_state == box_get_close || current_mission_state == box_get_fit ||
+                current_mission_state == box_grab || current_mission_state == takeoff)
+        {
+            grab_status.grab_status = 0;
+        }
+        else
+        {
+            grab_status.grab_status = 1;
+        }
+
+        grab_status_pub.publish(grab_status);
 
 		ros::spinOnce();
 		rate.sleep();

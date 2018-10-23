@@ -67,7 +67,7 @@ float wrap_pi(float angle_rad);
 #define BEST_RECOGNIZE_HEIGHT   1.5
 #define SEARCH_TIME_SINGLE      4.0
 #define JUDGE_HEIGHT            4.0
-#define JUDGE_DIATANCE          1.5
+#define JUDGE_DIATANCE          1.0
 
 /***************************variable definition*************************/
 //fixed position  ENU
@@ -416,6 +416,8 @@ int main(int argc, char **argv)
 
     distance_measure.measure_enable = 0;
 
+    grab_status.grab_status = 0;
+
     //topic  subscribe
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
@@ -542,7 +544,7 @@ int main(int argc, char **argv)
             grab_status.grab_status = 0;
         }
         else if(current_mission_state == box_get_close || current_mission_state == box_get_fit ||
-                current_mission_state == box_grab)
+                current_mission_state == box_grab || current_mission_state == takeoff)
         {
             grab_status.grab_status = 0;
         }
