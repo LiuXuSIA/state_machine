@@ -47,8 +47,8 @@ float wrap_pi(float angle_rad);
 #define OBSERVE_HEIGET          5.0
 #define CONSTRUCT_HEIGET        5.0
 #define TAKE_OFF_HEIGHT         3.0
-#define ASCEND_VELOCITY_CON     0.6
-#define ASCEND_VELOCITY_COM     1.0
+#define ASCEND_VELOCITY_CON     0.5
+#define ASCEND_VELOCITY_COM     0.8
 #define TAKE_OFF_VELOCITY       1.5
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.3
@@ -67,13 +67,15 @@ float wrap_pi(float angle_rad);
 #define OBSERVE_HEIGHT_MAX      7
 #define BEST_RECOGNIZE_HEIGHT   2.1
 #define SEARCH_TIME_SINGLE      6.0
-#define JUDGE_HEIGHT            4.0
+#define JUDGE_HEIGHT            3.5
 #define JUDGE_DIATANCE          2.0
 #define VISION_ROUGH_FRAME      1
 #define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
 #define GRAB_LOST_ADJUST        0.02
 #define PLACE_GLUE_HEIGHT       0.15
+#define PLACE_NUMBR_COUNT       50
+#define WAIT_TIME               5.0
 
 /***************************variable definition*************************/
 //fixed position  ENU
@@ -556,10 +558,18 @@ int main(int argc, char **argv)
         {
             grab_status.grab_status = 0;
         }
-        else if(current_mission_state == box_get_close || current_mission_state == box_get_fit ||
-                current_mission_state == box_grab || current_mission_state == takeoff)
+        else if(current_mission_state == box_get_close || current_mission_state == box_get_fit
+                || current_mission_state == box_grab || current_mission_state == takeoff)
         {
             grab_status.grab_status = 0;
+        }
+        else if(mission_loop == -1)
+        {
+            if(current_mission_state == place_point_get_close || current_mission_state == place_status_judge
+               || component_place == component_place)
+            {
+                 grab_status.grab_status = 0;
+            }
         }
         else
         {
@@ -1075,13 +1085,28 @@ void state_machine_fun(void)
             if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && place_count > 0)
             {
                 place_count++;
-                if(place_count > 20)
+                if(place_count > PLACE_NUMBR_COUNT)
                 {
                     place_count = 0;
-                    current_mission_state = construction_leave;
+                    current_mission_state = wait_for_a_while;
                     mission_last_time = ros::Time::now();
                     break;
                 }
+            }
+        }
+        case wait_for_a_while:
+        {
+            pose_pub = position_place;
+            local_pos_pub.publish(position_place);
+            if(current_mission_state == -1)
+            {
+                current_mission_state = construction_leave;
+                mission_last_time = ros::Time::now();
+            }
+            else if(ros::Time::now() - mission_last_time > ros::Duration(WAIT_TIME))
+            {
+                current_mission_state = construction_leave;
+                mission_last_time = ros::Time::now();
             }
         }
         break;
