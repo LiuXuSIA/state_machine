@@ -49,11 +49,11 @@ float wrap_pi(float angle_rad);
 #define TAKE_OFF_HEIGHT         3.0
 #define ASCEND_VELOCITY_CON     0.6
 #define ASCEND_VELOCITY_COM     1.0
-#define TAKE_OFF_VELOCITY       2.0
+#define TAKE_OFF_VELOCITY       1.5
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.3
 #define BIAS_ZED_FOOT           0.09
-#define GRAB_HEIGHT_MARGIN      0.04//0.30//0.05
+#define GRAB_HEIGHT_MARGIN      0.01//0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
@@ -68,7 +68,7 @@ float wrap_pi(float angle_rad);
 #define BEST_RECOGNIZE_HEIGHT   2.1
 #define SEARCH_TIME_SINGLE      6.0
 #define JUDGE_HEIGHT            4.0
-#define JUDGE_DIATANCE          1.0
+#define JUDGE_DIATANCE          2.0
 #define VISION_ROUGH_FRAME      1
 #define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
@@ -418,7 +418,7 @@ int main(int argc, char **argv)
     vision_position_get.component_position_y = 0;
     vision_position_get.component_position_z = 0;
 
-    distance_measure.measure_enable = 0;
+    distance_measure.measure_enable = 1;
 
     grab_status.grab_status = 0;
 
@@ -888,10 +888,10 @@ void state_machine_fun(void)
         case grab_status_judge:
         {
             static int grab_judge_count = 0;
-            distance_measure.measure_enable = 1;
+            //distance_measure.measure_enable = 1;
             pose_pub = position_judge;
             local_pos_pub.publish(position_judge);
-            if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && grab_judge_count == 0)
+            if(ros::Time::now() - mission_last_time > ros::Duration(4.0) && grab_judge_count == 0)
             {
                 grab_judge_count++;
             }
@@ -900,10 +900,10 @@ void state_machine_fun(void)
                 if (distance.distance < JUDGE_DIATANCE)
                     {
                         grab_judge_count++;
-                        if(grab_judge_count > 5)
+                        if(grab_judge_count > 3)
                         {
                             grab_judge_count = 0;
-                            distance_measure.measure_enable = 0;
+                            //distance_measure.measure_enable = 0;
                             current_mission_state = position_construction_go;
                             mission_last_time = ros::Time::now();
                             break;
@@ -912,7 +912,7 @@ void state_machine_fun(void)
                 else
                 {
                     grab_judge_count = 0;
-                    distance_measure.measure_enable = 0;
+                    //distance_measure.measure_enable = 0;
                     current_mission_state = hover_to_recognize;
                     mission_last_time = ros::Time::now();
                     break;
@@ -1083,7 +1083,7 @@ void state_machine_fun(void)
         case place_status_judge:
         {
             static int place_judge_count = 0;
-            distance_measure.measure_enable = 1;
+            //distance_measure.measure_enable = 1;
             pose_pub = position_safe;
             local_pos_pub.publish(position_safe);
             if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && place_judge_count == 0)
@@ -1098,7 +1098,7 @@ void state_machine_fun(void)
                         if(place_judge_count > 5)
                         {
                             place_judge_count = 0;
-                            distance_measure.measure_enable = 0;
+                            //distance_measure.measure_enable = 0;
                             current_mission_state = place_done;
                             mission_last_time = ros::Time::now();
                             break;
@@ -1107,7 +1107,7 @@ void state_machine_fun(void)
                 else
                 {
                     place_judge_count = 0;
-                    distance_measure.measure_enable = 0;
+                    //distance_measure.measure_enable = 0;
                     current_mission_state = place_point_get_close;
                     mission_last_time = ros::Time::now();
                     break;
