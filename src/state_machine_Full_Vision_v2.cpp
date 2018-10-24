@@ -42,21 +42,21 @@ double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, do
 float wrap_pi(float angle_rad);
 
 /*************************constant definition***************************/
-#define MAX_MISSION_TIME        200
+#define MAX_MISSION_TIME        300
 #define HOME_HEIGHT             5.0
 #define OBSERVE_HEIGET          5.0
 #define CONSTRUCT_HEIGET        5.0
 #define TAKE_OFF_HEIGHT         1.5
 #define ASCEND_VELOCITY_CON     0.3
 #define ASCEND_VELOCITY_COM     0.6
-#define TAKE_OFF_VELOCITY       1.5
+#define TAKE_OFF_VELOCITY       2.0
 #define SEARCH_VELOCITY         1.5
 #define DESCEND_VELOCITY        0.3
 #define RECOGNIZE_HEIGHT        2.5
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.3
 #define BIAS_ZED_FOOT           0.09
-#define GRAB_HEIGHT_MARGIN      0.10//0.30//0.04
+#define GRAB_HEIGHT_MARGIN      0.08//0.30//0.04
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0

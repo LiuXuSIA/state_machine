@@ -61,6 +61,7 @@ int main (int argc, char** argv)
     if(ser.isOpen()) 
     { 
         ROS_INFO_STREAM("Serial Port initialized"); 
+        ROS_INFO_STREAM("Waitting for distance mersure...");
     } 
     else 
     { 
@@ -69,7 +70,7 @@ int main (int argc, char** argv)
 
     while(ros::ok()) 
     { 
-        if(distance_measure.measure_enable == 1)
+        //if(distance_measure.measure_enable == 1)
         {
             if(ser.available())
             { 
