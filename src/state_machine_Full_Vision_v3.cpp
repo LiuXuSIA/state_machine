@@ -53,7 +53,7 @@ float wrap_pi(float angle_rad);
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.3
 #define BIAS_ZED_FOOT           0.09
-#define GRAB_HEIGHT_MARGIN      0.08//0.30//0.05
+#define GRAB_HEIGHT_MARGIN      0.04//0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
@@ -70,7 +70,7 @@ float wrap_pi(float angle_rad);
 #define JUDGE_HEIGHT            4.0
 #define JUDGE_DIATANCE          1.0
 #define VISION_ROUGH_FRAME      1
-#define VISION_ACCURACY_FRAME   10
+#define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
 
 /***************************variable definition*************************/

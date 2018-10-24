@@ -18,7 +18,7 @@
 using namespace std;
 
 //distance sensor
-const int write_data[4] = {0xe8, 0x02, 0xbc}; 
+const int write_data[4] = {0xe8, 0x02, 0xb4}; 
 
 const vector<uint8_t> read_once(write_data,write_data + 3);
 
