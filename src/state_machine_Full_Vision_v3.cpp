@@ -72,6 +72,7 @@ float wrap_pi(float angle_rad);
 #define VISION_ROUGH_FRAME      1
 #define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
+#define GRAB_LOST_ADJUST        0.02
 
 /***************************variable definition*************************/
 //fixed position  ENU
@@ -184,6 +185,9 @@ bool force_home_enable = true;
 
 //yaw set
 float yaw_sp;
+
+//yaw set
+int grab_lost_count;
 
 
 /***************************callback function definition***************/
@@ -421,6 +425,10 @@ int main(int argc, char **argv)
     distance_measure.measure_enable = 1;
 
     grab_status.grab_status = 0;
+
+    grab_lost_count = 0;
+
+    yaw_sp = 0;
 
     //topic  subscribe
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
@@ -747,7 +755,7 @@ void state_machine_fun(void)
                 {
                     position_grab.pose.position.x = box_position_y_aver;
                     position_grab.pose.position.y = box_position_x_aver;
-                    position_grab.pose.position.z = current_position.pose.position.z - box_position_z_aver + BIAS_ZED_FOOT + GRAB_HEIGHT_MARGIN;
+                    position_grab.pose.position.z = current_position.pose.position.z - box_position_z_aver + BIAS_ZED_FOOT + GRAB_HEIGHT_MARGIN - grab_lost_count * GRAB_LOST_ADJUST;
 
                     vision_count2 = VISION_ACCURACY_FRAME + 1;
 
@@ -903,6 +911,7 @@ void state_machine_fun(void)
                         if(grab_judge_count > 3)
                         {
                             grab_judge_count = 0;
+                            grab_lost_count = 0;
                             //distance_measure.measure_enable = 0;
                             current_mission_state = position_construction_go;
                             mission_last_time = ros::Time::now();
@@ -912,6 +921,7 @@ void state_machine_fun(void)
                 else
                 {
                     grab_judge_count = 0;
+                    grab_lost_count++;
                     //distance_measure.measure_enable = 0;
                     current_mission_state = hover_to_recognize;
                     vision_position_receive_enable = true;
