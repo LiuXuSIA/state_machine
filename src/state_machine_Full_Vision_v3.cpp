@@ -914,6 +914,7 @@ void state_machine_fun(void)
                     grab_judge_count = 0;
                     //distance_measure.measure_enable = 0;
                     current_mission_state = hover_to_recognize;
+                    vision_position_receive_enable = true;
                     mission_last_time = ros::Time::now();
                     break;
                 }               
