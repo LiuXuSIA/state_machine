@@ -51,21 +51,21 @@ float wrap_pi(float angle_rad);
 #define ASCEND_VELOCITY_COM     0.8
 #define TAKE_OFF_VELOCITY       1.5
 #define BOX_HEIGET              0.25
-#define PLACE_HEIGET            0.3
+#define PLACE_HEIGET            0.27
 #define BIAS_ZED_FOOT           0.09
 #define GRAB_HEIGHT_MARGIN      0.01//0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
 #define LOCATE_ACCURACY_ROUGH   1.0
-#define DISTANCE_SENSOR_FOOT    0.14
+#define DISTANCE_SENSOR_FOOT    0.07
 #define LINE_MOVE_DISTANCE      1.20
 #define ROW_MOVE_DISTANCE       0.70
 #define BOX_LINE                2
-#define BOX_ROW                 2
+#define BOX_ROW                 1
 #define BODY_X_VELOCITY         0.5
 #define BODY_Y_VELOCITY         0.1
 #define OBSERVE_HEIGHT_MAX      7
-#define BEST_RECOGNIZE_HEIGHT   2.1
+#define BEST_RECOGNIZE_HEIGHT   2.0
 #define SEARCH_TIME_SINGLE      6.0
 #define JUDGE_HEIGHT            3.5
 #define JUDGE_DIATANCE          2.0
@@ -74,7 +74,7 @@ float wrap_pi(float angle_rad);
 #define VISION_LOST_MAX         40
 #define GRAB_LOST_ADJUST        0.02
 #define PLACE_GLUE_HEIGHT       0.15
-#define PLACE_NUMBR_COUNT       50
+#define PLACE_NUMBR_COUNT       30
 #define WAIT_TIME               5.0
 
 /***************************variable definition*************************/
@@ -155,6 +155,8 @@ static const int grab_position_judge = 27;
 static const int grab_position_adjust = 28;
 static const int box_search = 29;
 static const int search_start_point_go = 30;
+
+static const int wait_for_a_while = 31;
 
 //mission 
 int current_mission_state = takeoff;
