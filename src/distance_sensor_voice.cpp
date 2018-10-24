@@ -46,7 +46,7 @@ int main (int argc, char** argv)
 
     try 
     { 
-        ser.setPort("/dev/ttyUSB0"); 
+        ser.setPort("/dev/ttyUSB1"); 
         ser.setBaudrate(9600); 
         serial::Timeout to = serial::Timeout::simpleTimeout(1000); 
         ser.setTimeout(to); 
@@ -70,7 +70,7 @@ int main (int argc, char** argv)
 
     while(ros::ok()) 
     { 
-        //if(distance_measure.measure_enable == 1)
+        if(distance_measure.measure_enable == 1)
         {
             if(ser.available())
             { 
