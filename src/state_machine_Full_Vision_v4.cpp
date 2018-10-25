@@ -76,7 +76,7 @@ float wrap_pi(float angle_rad);
 #define PLACE_GLUE_HEIGHT       1.0
 #define PLACE_NUMBR_COUNT       30
 #define WAIT_TIME               5.0
-#define GLUE_X_VELOCITY         0.3
+#define GLUE_X_VELOCITY         0.5
 #define GLUE_Y_VELOCITY         0
 #define GLUE_TIME_SINGLE        2.0
 
