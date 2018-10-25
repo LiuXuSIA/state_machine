@@ -67,7 +67,7 @@ float wrap_pi(float angle_rad);
 #define OBSERVE_HEIGHT_MAX      7
 #define BEST_RECOGNIZE_HEIGHT   2.0
 #define SEARCH_TIME_SINGLE      6.0
-#define JUDGE_HEIGHT            3.5
+#define JUDGE_HEIGHT            3.0
 #define JUDGE_DIATANCE          2.0
 #define VISION_ROUGH_FRAME      1
 #define VISION_ACCURACY_FRAME   2
@@ -76,7 +76,7 @@ float wrap_pi(float angle_rad);
 #define PLACE_GLUE_HEIGHT       1.0
 #define PLACE_NUMBR_COUNT       30
 #define WAIT_TIME               5.0
-#define GLUE_X_VELOCITY         0.5
+#define GLUE_X_VELOCITY         0.6
 #define GLUE_Y_VELOCITY         0
 #define GLUE_TIME_SINGLE        2.0
 
@@ -925,7 +925,7 @@ void state_machine_fun(void)
             //distance_measure.measure_enable = 1; 
             pose_pub = position_judge;
             local_pos_pub.publish(position_judge);
-            if(ros::Time::now() - mission_last_time > ros::Duration(4.0) && grab_judge_count == 0)
+            if(ros::Time::now() - mission_last_time > ros::Duration(3.0) && grab_judge_count == 0)
             {
                 grab_judge_count++;
             }
