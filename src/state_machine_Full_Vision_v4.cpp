@@ -76,6 +76,10 @@ float wrap_pi(float angle_rad);
 #define PLACE_GLUE_HEIGHT       0.15
 #define PLACE_NUMBR_COUNT       30
 #define WAIT_TIME               5.0
+#define GLUE_X_VELOCITY         0.3
+#define GLUE_Y_VELOCITY         0
+#define GLUE_TIME_SINGLE        2.0
+
 
 /***************************variable definition*************************/
 //fixed position  ENU
@@ -90,11 +94,18 @@ geometry_msgs::TwistStamped vel_ascend_com;
 geometry_msgs::TwistStamped vel_ascend_con;
 geometry_msgs::TwistStamped vel_search_ned;
 geometry_msgs::TwistStamped vel_search_enu;
+geometry_msgs::TwistStamped vel_glue_ned;
+geometry_msgs::TwistStamped vel_glue_enu;
 
 //search velcity for body coordinte
 float vel_search_body_x;
 float vel_search_body_y;
 float vel_search_body_z;
+
+//search velcity for body coordinte
+float vel_glue_body_x;
+float vel_glue_body_y;
+float vel_glue_body_z;
 
 //position for hover  ENU
 geometry_msgs::PoseStamped position_observe;
@@ -1078,21 +1089,100 @@ void state_machine_fun(void)
         case component_place:
         {
             static int place_count = 0;
-            pose_pub = position_place;
-            local_pos_pub.publish(position_place);
-            if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && place_count == 0)
+            static bool dis_enable2 = true;
+
+            if(mission_loop == -1)
             {
-                place_count++;
-            }
-            if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && place_count > 0)
-            {
-                place_count++;
-                if(place_count > PLACE_NUMBR_COUNT)
+                if (ros::Time::now() - mission_last_time < ros::Duration(GLUE_TIME_SINGLE))
                 {
-                    place_count = 0;
+                    dis_enable2 = true;
+                    vel_glue_body_x = GLUE_X_VELOCITY; 
+                    vel_glue_body_y = 0;
+                    vel_glue_body_z = 0;
+
+                    vel_glue_ned.twist.linear.x = (R[0][0] * vel_glue_body_x + R[0][1] * vel_glue_body_y + R[0][2] * vel_glue_body_z);
+                    vel_glue_ned.twist.linear.y = (R[1][0] * vel_glue_body_x + R[1][1] * vel_glue_body_y + R[1][2] * vel_glue_body_z);
+                    vel_glue_ned.twist.linear.z = (R[2][0] * vel_glue_body_x + R[2][1] * vel_glue_body_y + R[2][2] * vel_glue_body_z);
+                    vel_glue_ned.twist.angular.x = 0.0f;
+                    vel_glue_ned.twist.angular.y = 0.0f;
+                    vel_glue_ned.twist.angular.z = 0.0f;
+                    if (dis_enable2 == true)
+                    {
+                        ROS_INFO("search box route 1");
+                        dis_enable2 = false;
+                    }
+                }
+
+                else if (ros::Time::now() - mission_last_time < ros::Duration(GLUE_TIME_SINGLE * 3))
+                {
+                    vel_glue_body_x = -GLUE_X_VELOCITY; 
+                    vel_glue_body_y = 0;
+                    vel_glue_body_z = 0;
+
+                    vel_glue_ned.twist.linear.x = (R[0][0] * vel_glue_body_x + R[0][1] * vel_glue_body_y + R[0][2] * vel_glue_body_z);
+                    vel_glue_ned.twist.linear.y = (R[1][0] * vel_glue_body_x + R[1][1] * vel_glue_body_y + R[1][2] * vel_glue_body_z);
+                    vel_glue_ned.twist.linear.z = (R[2][0] * vel_glue_body_x + R[2][1] * vel_glue_body_y + R[2][2] * vel_glue_body_z);
+                    vel_glue_ned.twist.angular.x = 0.0f;
+                    vel_glue_ned.twist.angular.y = 0.0f;
+                    vel_glue_ned.twist.angular.z = 0.0f;
+                    if (dis_enable2 == false)
+                    {
+                        ROS_INFO("search box route 2");
+                        dis_enable2 = true;
+                    }
+                }
+                else if (ros::Time::now() - mission_last_time < ros::Duration(GLUE_TIME_SINGLE * 4))
+                {
+                    vel_glue_body_x = GLUE_X_VELOCITY; 
+                    vel_glue_body_y = 0;
+                    vel_glue_body_z = 0;
+
+                    vel_glue_ned.twist.linear.x = (R[0][0] * vel_glue_body_x + R[0][1] * vel_glue_body_y + R[0][2] * vel_glue_body_z);
+                    vel_glue_ned.twist.linear.y = (R[1][0] * vel_glue_body_x + R[1][1] * vel_glue_body_y + R[1][2] * vel_glue_body_z);
+                    vel_glue_ned.twist.linear.z = (R[2][0] * vel_glue_body_x + R[2][1] * vel_glue_body_y + R[2][2] * vel_glue_body_z);
+                    vel_glue_ned.twist.angular.x = 0.0f;
+                    vel_glue_ned.twist.angular.y = 0.0f;
+                    vel_glue_ned.twist.angular.z = 0.0f;
+                    if (dis_enable2 == true)
+                    {
+                        ROS_INFO("search box route 3");
+                        dis_enable2 = false;
+                    }
+                }
+                else
+                {
                     current_mission_state = wait_for_a_while;
                     mission_last_time = ros::Time::now();
                     break;
+                }
+
+                vel_glue_enu.twist.linear.x = vel_search_ned.twist.linear.y;
+                vel_glue_enu.twist.linear.y = vel_search_ned.twist.linear.x;
+                vel_glue_enu.twist.linear.z = vel_search_ned.twist.linear.z;
+                vel_glue_enu.twist.angular.x = 0.0f;
+                vel_glue_enu.twist.angular.y = 0.0f;
+                vel_glue_enu.twist.angular.z = 0.0f;
+
+                local_vel_pub.publish(vel_search_enu);
+            }
+            else
+            {
+                pose_pub = position_place;
+                local_pos_pub.publish(position_place);
+                if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && place_count == 0)
+                {
+                    place_count++;
+                }
+                if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && place_count > 0)
+                {
+                    place_count++;
+                    if(place_count > PLACE_NUMBR_COUNT)
+                    {
+                        place_count = 0;
+                        current_mission_state = wait_for_a_while;
+                        mission_last_time = ros::Time::now();
+                        break;
+                    }
                 }
             }
         }
