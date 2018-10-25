@@ -471,6 +471,8 @@ int main(int argc, char **argv)
 
     ros::Rate rate(10.0);
 
+    ROS_INFO("Start state_machine_Full_Vision_v1 ...");
+
     while(ros::ok() && !current_state.connected)
     {
     	ros::spinOnce();
