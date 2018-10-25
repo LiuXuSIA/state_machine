@@ -76,9 +76,9 @@ float wrap_pi(float angle_rad);
 #define PLACE_GLUE_HEIGHT       0.40
 #define PLACE_NUMBR_COUNT       30
 #define WAIT_TIME               5.0
-#define GLUE_X_VELOCITY         0.3
+#define GLUE_X_VELOCITY         0.5
 #define GLUE_Y_VELOCITY         0
-#define GLUE_TIME_SINGLE        2.0
+#define GLUE_TIME_SINGLE        3.0
 
 
 /***************************variable definition*************************/
@@ -1114,7 +1114,6 @@ void state_machine_fun(void)
                         dis_enable2 = false;
                     }
                 }
-
                 else if (ros::Time::now() - mission_last_time < ros::Duration(GLUE_TIME_SINGLE * 3))
                 {
                     vel_glue_body_x = -GLUE_X_VELOCITY; 
