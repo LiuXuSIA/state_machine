@@ -51,7 +51,7 @@ float wrap_pi(float angle_rad);
 #define ASCEND_VELOCITY_COM     0.8
 #define TAKE_OFF_VELOCITY       1.5
 #define BOX_HEIGET              0.25
-#define PLACE_HEIGET            0.27
+#define PLACE_HEIGET            3.0//0.27
 #define BIAS_ZED_FOOT           0.09
 #define GRAB_HEIGHT_MARGIN      0.01//0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.5
@@ -67,7 +67,7 @@ float wrap_pi(float angle_rad);
 #define OBSERVE_HEIGHT_MAX      7
 #define BEST_RECOGNIZE_HEIGHT   2.0
 #define SEARCH_TIME_SINGLE      6.0
-#define JUDGE_HEIGHT            3.0
+#define JUDGE_HEIGHT            4.0//3.0
 #define JUDGE_DIATANCE          2.0
 #define VISION_ROUGH_FRAME      1
 #define VISION_ACCURACY_FRAME   2
