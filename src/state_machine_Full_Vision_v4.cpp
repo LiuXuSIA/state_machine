@@ -73,7 +73,7 @@ float wrap_pi(float angle_rad);
 #define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
 #define GRAB_LOST_ADJUST        0.03
-#define PLACE_GLUE_HEIGHT       0.40
+#define PLACE_GLUE_HEIGHT       1.0
 #define PLACE_NUMBR_COUNT       30
 #define WAIT_TIME               5.0
 #define GLUE_X_VELOCITY         0.3
