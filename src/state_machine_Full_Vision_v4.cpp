@@ -72,13 +72,13 @@ float wrap_pi(float angle_rad);
 #define VISION_ROUGH_FRAME      1
 #define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
-#define GRAB_LOST_ADJUST        0.02
+#define GRAB_LOST_ADJUST        0.03
 #define PLACE_GLUE_HEIGHT       0.40
 #define PLACE_NUMBR_COUNT       30
 #define WAIT_TIME               5.0
-#define GLUE_X_VELOCITY         0.5
+#define GLUE_X_VELOCITY         0.3
 #define GLUE_Y_VELOCITY         0
-#define GLUE_TIME_SINGLE        3.0
+#define GLUE_TIME_SINGLE        2.0
 
 
 /***************************variable definition*************************/
@@ -948,6 +948,7 @@ void state_machine_fun(void)
                 {
                     grab_judge_count = 0;
                     grab_lost_count++;
+                    ROS_INFO("grab_lost_count:%d",grab_lost_count);
                     //distance_measure.measure_enable = 0;
                     current_mission_state = hover_to_recognize;
                     vision_position_receive_enable = true;
@@ -1187,6 +1188,7 @@ void state_machine_fun(void)
                 }
             }
         }
+        break;
         case wait_for_a_while:
         {
             pose_pub = position_place;
