@@ -52,7 +52,7 @@ float wrap_pi(float angle_rad);
 #define TAKE_OFF_VELOCITY       1.5
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.26//3.0//0.27
-#define BIAS_ZED_FOOT           0.09
+#define BIAS_ZED_FOOT           0.06
 #define GRAB_HEIGHT_MARGIN      0.01//0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.5
 #define LOCATE_ACCURACY_GRAB    0.2
@@ -643,7 +643,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_hover_after_takeoff;
             local_pos_pub.publish(position_hover_after_takeoff);
-            if(ros::Time::now() - mission_last_time > ros::Duration(2.0))
+            if(ros::Time::now() - mission_last_time > ros::Duration(0.5))
             {
                 current_mission_state = position_construction_go;
                 mission_last_time = ros::Time::now();
