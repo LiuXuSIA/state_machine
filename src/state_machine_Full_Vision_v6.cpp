@@ -493,7 +493,7 @@ int main(int argc, char **argv)
 
     ros::Rate rate(10.0);
 
-    ROS_INFO("Start state_machine_Full_Vision_v4 ...");
+    ROS_INFO("Start state_machine_Full_Vision_v6 ...");
 
     while(ros::ok() && !current_state.connected)
     {
