@@ -79,7 +79,7 @@ float wrap_pi(float angle_rad);
 #define GLUE_Y_VELOCITY         0
 #define GLUE_TIME_SINGLE        2.0
 #define DISTANCE_TO_GROUND_MIN  0.20
-#define MOVE_DISTANCE_SINGLE    0.15
+#define MOVE_DISTANCE_SINGLE    1.2
 
 
 /***************************variable definition*************************/
