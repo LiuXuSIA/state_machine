@@ -506,10 +506,6 @@ int main(int argc, char **argv)
                 {
                     force_home_enable = false;
 
-                    position_timer_out.pose.position.x = current_position.pose.position.x;
-                    position_timer_out.pose.position.y = current_position.pose.position.y;
-                    position_timer_out.pose.position.z = current_position.pose.position.z;
-
                     current_mission_state = time_out_hover;
 
                     mission_last_time = ros::Time::now();
@@ -553,6 +549,10 @@ int main(int argc, char **argv)
                     landing_last_request = ros::Time::now();
                 }
         }
+
+        position_timer_out.pose.position.x = current_position.pose.position.x;
+        position_timer_out.pose.position.y = current_position.pose.position.y;
+        position_timer_out.pose.position.z = current_position.pose.position.z;
 
         task_status_monitor.task_status = current_mission_state;
         task_status_monitor.loop_value = loop;

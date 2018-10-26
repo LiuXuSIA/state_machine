@@ -101,35 +101,31 @@ int main (int argc, char** argv)
 
             ROS_INFO_STREAM("Reading:"); 
             std_msgs::String position_data; 
-            float position_x_min_distance,position_y_min_distance,position_z_min_distance,position_d_min_distance;
-            float position_x_min_deepth,position_y_min_deepth,position_z_min_deepth,position_d_min_deepth;
-            std_msgs::String position_x_temp_dis,position_y_temp_dis,position_z_temp_dis,position_d_temp_dis;
-            std_msgs::String position_x_temp_deep,position_y_temp_deep,position_z_temp_deep,position_d_temp_deep;
+            float position_x_min_distance,position_y_min_distance,position_z_min_distance;
+            float position_x_min_deepth,position_y_min_deepth,position_z_min_deepth;
+            std_msgs::String position_x_temp_dis,position_y_temp_dis,position_z_temp_dis;
+            std_msgs::String position_x_temp_deep,position_y_temp_deep,position_z_temp_deep;
             position_data.data = ser.read(ser.available()); 
             ROS_INFO_STREAM("Read: " << position_data.data);
 
             if(position_data.data.substr(0,4) == "SSSS" &&
-                position_data.data.substr(74,4) == "EEEE")
+               position_data.data.substr(position_data.data.length() - 4,4) == "EEEE")
             {
-                position_x_temp_deep.data = position_data.data.substr(5,5);
-                position_y_temp_deep.data = position_data.data.substr(11,5);
-                position_z_temp_deep.data = position_data.data.substr(17,5);
-                position_d_temp_deep.data = position_data.data.substr(23,4);
+                position_x_temp_dis.data = position_data.data.substr(5,5);
+                position_y_temp_dis.data = position_data.data.substr(11,5);
+                position_z_temp_dis.data = position_data.data.substr(17,5);
 
-                position_x_temp_dis.data = position_data.data.substr(42,5);
-                position_y_temp_dis.data = position_data.data.substr(48,5);
-                position_z_temp_dis.data = position_data.data.substr(54,5);
-                position_d_temp_dis.data = position_data.data.substr(60,4);
+                position_x_temp_deep.data = position_data.data.substr(25,5);
+                position_y_temp_deep.data = position_data.data.substr(31,5);
+                position_z_temp_deep.data = position_data.data.substr(37,5);
 
                 position_x_min_deepth = atof(position_x_temp_deep.data.substr(1,4).c_str());
                 position_y_min_deepth = atof(position_y_temp_deep.data.substr(1,4).c_str());
                 position_z_min_deepth = atof(position_z_temp_deep.data.substr(1,4).c_str());
-                position_d_min_deepth = atof(position_d_temp_deep.data.substr(0,4).c_str());
 
                 position_x_min_distance = atof(position_x_temp_dis.data.substr(1,4).c_str());
                 position_y_min_distance = atof(position_y_temp_dis.data.substr(1,4).c_str());
                 position_z_min_distance = atof(position_z_temp_dis.data.substr(1,4).c_str());
-                position_d_min_distance = atof(position_d_temp_dis.data.substr(0,4).c_str());
 
                 if(position_x_temp_deep.data[0] == '0')
                 {
@@ -157,15 +153,13 @@ int main (int argc, char** argv)
                     position_z_min_distance = -position_z_min_distance; 
                 }
 
-                ROS_INFO("deep_x:%f",position_x_temp_deep);
-                ROS_INFO("deep_y:%f",position_y_temp_deep);
-                ROS_INFO("deep_z:%f",position_z_temp_deep);
-                ROS_INFO("deep_d:%f",position_d_temp_deep); 
+                ROS_INFO("deep_x:%f",position_x_min_deepth);
+                ROS_INFO("deep_y:%f",position_y_min_deepth);
+                ROS_INFO("deep_z:%f",position_z_min_deepth);
 
                 ROS_INFO("dis_x:%f",position_x_min_distance);
                 ROS_INFO("dis_y:%f",position_y_min_distance);
                 ROS_INFO("dis_z:%f",position_z_min_distance);
-                ROS_INFO("dis_d:%f",position_d_min_distance); 
 
                 body_pose_x_deep = -position_x_min_deepth;
                 body_pose_y_deep = -position_y_min_deepth;

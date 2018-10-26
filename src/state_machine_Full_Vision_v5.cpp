@@ -522,10 +522,6 @@ int main(int argc, char **argv)
                 {
                     force_home_enable = false;
 
-                    // position_timer_out.pose.position.x = current_position.pose.position.x;
-                    // position_timer_out.pose.position.y = current_position.pose.position.y;
-                    // position_timer_out.pose.position.z = current_position.pose.position.z;
-
                     current_mission_state = time_out_hover;
 
                     mission_last_time = ros::Time::now();
@@ -754,13 +750,13 @@ void state_machine_fun(void)
         break;
         case box_above_locate:
         {
-            vision_position_receive_enable = true;
             pose_pub = position_box;
             local_pos_pub.publish(position_box);
             if (Distance_of_Two(current_position.pose.position.x,position_box.pose.position.x,
                                 current_position.pose.position.y,position_box.pose.position.y,
                                 current_position.pose.position.z,position_box.pose.position.z) < LOCATE_ACCURACY_HIGH)
             {
+                vision_position_receive_enable = true;
                 current_mission_state = box_above_hover;
                 mission_last_time = ros::Time::now();
             }

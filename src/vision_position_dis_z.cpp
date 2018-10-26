@@ -70,7 +70,7 @@ int main (int argc, char** argv)
 
     try 
     { 
-        ser.setPort("/dev/ttyUSB1"); 
+        ser.setPort("/dev/ttyUSB0"); 
         ser.setBaudrate(9600); 
         serial::Timeout to = serial::Timeout::simpleTimeout(1000); 
         ser.setTimeout(to); 
@@ -99,23 +99,21 @@ int main (int argc, char** argv)
 
             ROS_INFO_STREAM("Reading:"); 
             std_msgs::String position_data; 
-            float position_x,position_y,position_z,position_d;
-            std_msgs::String position_x_temp,position_y_temp,position_z_temp,position_d_temp;
+            float position_x,position_y,position_z;
+            std_msgs::String position_x_temp,position_y_temp,position_z_temp;
             position_data.data = ser.read(ser.available()); 
             ROS_INFO_STREAM("Read: " << position_data.data);
 
             if(position_data.data.substr(0,4) == "SSSS" &&
-                position_data.data.substr(27,4) == "EEEE")
+               position_data.data.substr(position_data.data.length() - 4,4) == "EEEE")
             {
                 position_x_temp.data = position_data.data.substr(5,5);
                 position_y_temp.data = position_data.data.substr(11,5);
                 position_z_temp.data = position_data.data.substr(17,5);
-                position_d_temp.data = position_data.data.substr(23,5);
 
                 position_x = atof(position_x_temp.data.substr(1,4).c_str());
                 position_y = atof(position_y_temp.data.substr(1,4).c_str());
                 position_z = atof(position_z_temp.data.substr(1,4).c_str());
-                position_d = atof(position_d_temp.data.substr(1,3).c_str());
 
                 if(position_x_temp.data[0] == '0')
                 {
@@ -133,7 +131,6 @@ int main (int argc, char** argv)
                 ROS_INFO("x:%f",position_x);
                 ROS_INFO("y:%f",position_y);
                 ROS_INFO("z:%f",position_z);
-                ROS_INFO("d:%f",position_d); 
 
                 body_pose_x = -position_x + 170;
                 body_pose_y = -position_y - 10;

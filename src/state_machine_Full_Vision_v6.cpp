@@ -72,7 +72,7 @@ float wrap_pi(float angle_rad);
 #define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
 #define GRAB_LOST_ADJUST        0.04
-#define PLACE_GLUE_HEIGHT       1.0
+#define PLACE_GLUE_HEIGHT       0.4
 #define PLACE_NUMBR_COUNT       30
 #define WAIT_TIME               5.0
 #define GLUE_X_VELOCITY         1.0
@@ -352,6 +352,16 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         position_box_lost.pose.orientation.y = 0;
         position_box_lost.pose.orientation.z = sin(yaw_sp/2);
         position_box_lost.pose.orientation.w = cos(yaw_sp/2);
+        //hover after take off
+        position_hover_after_takeoff.pose.orientation.x = 0;
+        position_hover_after_takeoff.pose.orientation.y = 0;
+        position_hover_after_takeoff.pose.orientation.z = sin(yaw_sp/2);
+        position_hover_after_takeoff.pose.orientation.w = cos(yaw_sp/2);
+        //place glue
+        position_place_glue.pose.orientation.x = 0;
+        position_place_glue.pose.orientation.y = 0;
+        position_place_glue.pose.orientation.z = sin(yaw_sp/2);
+        position_place_glue.pose.orientation.w = cos(yaw_sp/2);
 
         fix_target_receive_enable = false;
     }
@@ -377,20 +387,22 @@ void vision_position_cb(const state_machine::Vision_Position_Multiple::ConstPtr&
         vision_position_get_dis.component_position_z = vision_position_multiple.z_dis;
     }
 
+    vision_position_m2p_deep.loop_value = mission_loop;
+    vision_position_m2p_deep.component_position_x = vision_position_multiple.x_deep;
+    vision_position_m2p_deep.component_position_y = vision_position_multiple.y_deep;
+    vision_position_m2p_deep.component_position_z = vision_position_multiple.z_deep;
+
+    vision_position_m2p_dis.loop_value = mission_loop;
+    vision_position_m2p_dis.component_position_x = vision_position_multiple.x_dis;
+    vision_position_m2p_dis.component_position_y = vision_position_multiple.y_dis;
+    vision_position_m2p_dis.component_position_z = vision_position_multiple.z_dis;
+
     if(current_mission_state == hover_to_recognize || current_mission_state == position_observe_go)
     {
-        vision_position_m2p_deep.loop_value = mission_loop;
-        vision_position_m2p_deep.component_position_x = vision_position_multiple.x_deep;
-        vision_position_m2p_deep.component_position_y = vision_position_multiple.y_deep;
-        vision_position_m2p_deep.component_position_z = vision_position_multiple.z_deep;
         vision_position_pub.publish(vision_position_m2p_deep);
     }
     else
-    {
-        vision_position_m2p_dis.loop_value = mission_loop;
-        vision_position_m2p_dis.component_position_x = vision_position_multiple.x_dis;
-        vision_position_m2p_dis.component_position_y = vision_position_multiple.y_dis;
-        vision_position_m2p_dis.component_position_z = vision_position_multiple.z_dis;
+    {    
         vision_position_pub.publish(vision_position_m2p_dis);
     }
 }
@@ -531,10 +543,6 @@ int main(int argc, char **argv)
                 {
                     force_home_enable = false;
 
-                    position_timer_out.pose.position.x = current_position.pose.position.x;
-                    position_timer_out.pose.position.y = current_position.pose.position.y;
-                    position_timer_out.pose.position.z = current_position.pose.position.z;
-
                     current_mission_state = time_out_hover;
 
                     mission_last_time = ros::Time::now();
@@ -580,6 +588,10 @@ int main(int argc, char **argv)
                     landing_last_request = ros::Time::now();
                 }
         }
+
+        position_timer_out.pose.position.x = current_position.pose.position.x;
+        position_timer_out.pose.position.y = current_position.pose.position.y;
+        position_timer_out.pose.position.z = current_position.pose.position.z;
 
         task_status_monitor.task_status = current_mission_state;
         task_status_monitor.loop_value = mission_loop;
@@ -763,13 +775,13 @@ void state_machine_fun(void)
         break;
         case box_above_locate:
         {
-            vision_position_receive_enable = true;
             pose_pub = position_box;
             local_pos_pub.publish(position_box);
             if (Distance_of_Two(current_position.pose.position.x,position_box.pose.position.x,
                                 current_position.pose.position.y,position_box.pose.position.y,
                                 current_position.pose.position.z,position_box.pose.position.z) < LOCATE_ACCURACY_HIGH)
             {
+                vision_position_receive_enable = true;
                 current_mission_state = box_above_hover;
                 mission_last_time = ros::Time::now();
             }
