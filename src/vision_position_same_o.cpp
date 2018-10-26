@@ -111,12 +111,12 @@ int main (int argc, char** argv)
                 position_x_temp.data = position_data.data.substr(5,5);
                 position_y_temp.data = position_data.data.substr(11,5);
                 position_z_temp.data = position_data.data.substr(17,5);
-                position_d_temp.data = position_data.data.substr(23,5);
+                position_d_temp.data = position_data.data.substr(23,4);
 
                 position_x = atof(position_x_temp.data.substr(1,4).c_str());
                 position_y = atof(position_y_temp.data.substr(1,4).c_str());
                 position_z = atof(position_z_temp.data.substr(1,4).c_str());
-                position_d = atof(position_d_temp.data.substr(1,3).c_str());
+                position_d = atof(position_d_temp.data.substr(0,4).c_str());
 
                 if(position_x_temp.data[0] == '0')
                 {

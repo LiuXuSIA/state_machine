@@ -1,10 +1,9 @@
 /*************************************************************************
-@file           state_machine_Full_Vision_v3.cpp
+@file           state_machine_Full_Vision_v4.cpp
 @date           2018/10/20
 @author         liuxu
 @email          liuxu.ccc@gmail.com
-@description    vision test 
-                recognize->go->fall->grab->rise->fall->place->rise->move->land
+@description    place glue
 *************************************************************************/
 
 /****************************header files********************************/
@@ -51,7 +50,7 @@ float wrap_pi(float angle_rad);
 #define ASCEND_VELOCITY_COM     0.8
 #define TAKE_OFF_VELOCITY       1.5
 #define BOX_HEIGET              0.25
-#define PLACE_HEIGET            3.0//0.27
+#define PLACE_HEIGET            0.26//3.0//0.27
 #define BIAS_ZED_FOOT           0.09
 #define GRAB_HEIGHT_MARGIN      0.01//0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.5
@@ -79,6 +78,7 @@ float wrap_pi(float angle_rad);
 #define GLUE_X_VELOCITY         1.0
 #define GLUE_Y_VELOCITY         0
 #define GLUE_TIME_SINGLE        2.0
+#define DISTANCE_TO_GROUND_MIN  0.15
 
 
 /***************************variable definition*************************/
@@ -693,6 +693,14 @@ void state_machine_fun(void)
                     position_box.pose.position.y = position_x_aver;
                     position_box.pose.position.z = current_position.pose.position.z + BEST_RECOGNIZE_HEIGHT - position_z_aver;
 
+                    if(position_box.pose.position.z + fix_target_position.component_z < DISTANCE_TO_GROUND_MIN)
+                    {
+                        vision_position_receive_enable = true;
+                        current_mission_state = vision_fail_process;
+                        mission_last_time = ros::Time::now();
+                        break; 
+                    }
+
                     vision_count1 = VISION_ROUGH_FRAME + 1;
 
                     position_x_aver = 0;
@@ -783,6 +791,14 @@ void state_machine_fun(void)
                     position_grab.pose.position.y = box_position_x_aver;
                     position_grab.pose.position.z = current_position.pose.position.z - box_position_z_aver + BIAS_ZED_FOOT + GRAB_HEIGHT_MARGIN - grab_lost_count * GRAB_LOST_ADJUST;
 
+                    if(position_grab.pose.position.z + fix_target_position.component_z < DISTANCE_TO_GROUND_MIN)
+                    {
+                        vision_position_receive_enable = true;
+                        current_mission_state = vision_fail_process;
+                        mission_last_time = ros::Time::now();
+                        break; 
+                    }
+
                     vision_count2 = VISION_ACCURACY_FRAME + 1;
 
                     box_position_x_aver = 0;
@@ -832,7 +848,7 @@ void state_machine_fun(void)
             if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
                                 current_position.pose.position.y,position_grab.pose.position.y,
                                 current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_ROUGH
-                || ros::Time::now() - mission_last_time > ros::Duration(10.0))
+                || ros::Time::now() - mission_last_time > ros::Duration(8.0))
             {
                 current_mission_state = box_get_fit;
                 mission_last_time = ros::Time::now();
@@ -873,7 +889,7 @@ void state_machine_fun(void)
                 }
             }           
             hover_count4++;
-            if(hover_count4 > 20)
+            if(hover_count4 > 30)
             {
                 current_mission_state = box_grab;
                 accuracy_count4 = 0;
@@ -1039,8 +1055,8 @@ void state_machine_fun(void)
             local_pos_pub.publish(position_place);
             if (Distance_of_Two(current_position.pose.position.x,position_place.pose.position.x,
                                 current_position.pose.position.y,position_place.pose.position.y,
-                                current_position.pose.position.z,position_place.pose.position.z) < LOCATE_ACCURACY_HIGH
-                || ros::Time::now() - mission_last_time > ros::Duration(10.0))
+                                current_position.pose.position.z,position_place.pose.position.z) < LOCATE_ACCURACY_ROUGH
+                || ros::Time::now() - mission_last_time > ros::Duration(8.0))
             {
                 current_mission_state = place_point_adjust;
                 mission_last_time = ros::Time::now();
@@ -1079,7 +1095,7 @@ void state_machine_fun(void)
                 }
             }           
             hover_count3++;
-            if(hover_count3 > 20)
+            if(hover_count3 > 30)
             {
                 current_mission_state = component_place;
                 accuracy_count3 = 0;

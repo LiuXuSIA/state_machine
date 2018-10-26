@@ -3,8 +3,7 @@
 @date           2018/10/20
 @author         liuxu
 @email          liuxu.ccc@gmail.com
-@description    vision test 
-                recognize->go->fall->grab->rise->fall->place->rise->move->land
+@description    vision acuracy locate
 *************************************************************************/
 
 /****************************header files********************************/

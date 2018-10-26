@@ -39,6 +39,8 @@ add_message_files(
   FIXED_BOX_POSITION_P2M.msg
   FIXED_BOX_RETURN_M2P.msg
   Distance_Measure_Enable.msg
+  Task_Status_to_Vision.msg
+  Vision_Position_Multiple.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -125,6 +127,9 @@ add_executable(state_machine_Full_Vision_v1             src/state_machine_Full_V
 add_executable(state_machine_Full_Vision_v2             src/state_machine_Full_Vision_v2.cpp)
 add_executable(state_machine_Full_Vision_v3             src/state_machine_Full_Vision_v3.cpp)
 add_executable(state_machine_Full_Vision_v4             src/state_machine_Full_Vision_v4.cpp)
+add_executable(state_machine_Full_Vision_v5             src/state_machine_Full_Vision_v5.cpp)
+add_executable(state_machine_Full_Vision_v6             src/state_machine_Full_Vision_v6.cpp)
+add_executable(vision_position_multiple             src/vision_position_multiple.cpp)
 add_executable(distance_sensor_test             src/distance_sensor_test.cpp)
 #add_executable(send_expected_pos 		src/send_expected_pos.cpp)
 #add_executable(send10picture_position 	src/send10picture_position.cpp)
@@ -186,6 +191,9 @@ add_dependencies(state_machine_Full_Vision_v1            state_machine_generate_
 add_dependencies(state_machine_Full_Vision_v2            state_machine_generate_messages_cpp)
 add_dependencies(state_machine_Full_Vision_v3            state_machine_generate_messages_cpp)
 add_dependencies(state_machine_Full_Vision_v4            state_machine_generate_messages_cpp)
+add_dependencies(state_machine_Full_Vision_v5            state_machine_generate_messages_cpp)
+add_dependencies(state_machine_Full_Vision_v6            state_machine_generate_messages_cpp)
+add_dependencies(vision_position_multiple            state_machine_generate_messages_cpp)
 add_dependencies(distance_sensor_test            state_machine_generate_messages_cpp)
 #add_dependencies(send_expected_pos 		state_machine_generate_messages_cpp)
 #add_dependencies(send10picture_position state_machine_generate_messages_cpp)
@@ -246,6 +254,9 @@ target_link_libraries(state_machine_Full_Vision_v1              ${catkin_LIBRARI
 target_link_libraries(state_machine_Full_Vision_v2              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_Full_Vision_v3              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_Full_Vision_v4              ${catkin_LIBRARIES})
+target_link_libraries(state_machine_Full_Vision_v5              ${catkin_LIBRARIES})
+target_link_libraries(state_machine_Full_Vision_v6              ${catkin_LIBRARIES})
+target_link_libraries(vision_position_multiple              ${catkin_LIBRARIES})
 target_link_libraries(distance_sensor_test              ${catkin_LIBRARIES})
 #target_link_libraries(send_expected_pos  		${catkin_LIBRARIES})
 #target_link_libraries(send10picture_position  	${catkin_LIBRARIES})
