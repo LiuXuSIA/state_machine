@@ -353,6 +353,16 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         position_box_lost.pose.orientation.y = 0;
         position_box_lost.pose.orientation.z = sin(yaw_sp/2);
         position_box_lost.pose.orientation.w = cos(yaw_sp/2);
+        //after_taer_off
+        position_hover_after_takeoff.pose.orientation.x = 0;
+        position_hover_after_takeoff.pose.orientation.y = 0;
+        position_hover_after_takeoff.pose.orientation.z = sin(yaw_sp/2);
+        position_hover_after_takeoff.pose.orientation.w = cos(yaw_sp/2);
+        //place glue
+        position_place_glue.pose.orientation.x = 0;
+        position_place_glue.pose.orientation.y = 0;
+        position_place_glue.pose.orientation.z = sin(yaw_sp/2);
+        position_place_glue.pose.orientation.w = cos(yaw_sp/2);
 
         fix_target_receive_enable = false;
     }
