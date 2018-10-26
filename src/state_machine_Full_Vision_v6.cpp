@@ -47,7 +47,7 @@ float wrap_pi(float angle_rad);
 #define CONSTRUCT_HEIGET        5.0
 #define TAKE_OFF_HEIGHT         4.0
 #define ASCEND_VELOCITY_CON     0.5
-#define ASCEND_VELOCITY_COM     0.9
+#define ASCEND_VELOCITY_COM     1.0
 #define TAKE_OFF_VELOCITY       1.5
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.26//3.0//0.27
@@ -59,7 +59,7 @@ float wrap_pi(float angle_rad);
 #define DISTANCE_SENSOR_FOOT    0.07
 #define LINE_MOVE_DISTANCE      1.20
 #define ROW_MOVE_DISTANCE       0.70
-#define BOX_LINE                1
+#define BOX_LINE                2
 #define BOX_ROW                 1
 #define BODY_X_VELOCITY         0.5
 #define BODY_Y_VELOCITY         0.1
@@ -78,8 +78,10 @@ float wrap_pi(float angle_rad);
 #define GLUE_X_VELOCITY         1.0
 #define GLUE_Y_VELOCITY         0
 #define GLUE_TIME_SINGLE        2.0
-#define DISTANCE_TO_GROUND_MIN  0.20
+#define DISTANCE_TO_GROUND_MIN  0.6
 #define MOVE_DISTANCE_SINGLE    1.2
+#define BOX_REGION_LIMIT_ROUGH  4.0
+#define BOX_REGION_LIMIT_ACCUR  2.0
 
 
 /***************************variable definition*************************/
@@ -742,8 +744,8 @@ void state_machine_fun(void)
 
                     vision_position_receive_enable = false;
 
-                    if(abs(current_position.pose.position.x - position_box.pose.position.x) > 5 ||
-                       abs(current_position.pose.position.y - position_box.pose.position.y) > 5)
+                    if(abs(current_position.pose.position.x - position_box.pose.position.x) > BOX_REGION_LIMIT_ROUGH ||
+                       abs(current_position.pose.position.y - position_box.pose.position.y) > BOX_REGION_LIMIT_ROUGH)
                     {
                         vision_position_receive_enable = true;
                         current_mission_state = vision_fail_process;
@@ -844,8 +846,8 @@ void state_machine_fun(void)
 
                     vision_position_receive_enable = false;
 
-                    if(abs(position_grab.pose.position.x - position_box.pose.position.x) > 3 ||
-                       abs(position_grab.pose.position.y - position_box.pose.position.y) > 3)
+                    if(abs(position_grab.pose.position.x - position_box.pose.position.x) > BOX_REGION_LIMIT_ACCUR ||
+                       abs(position_grab.pose.position.y - position_box.pose.position.y) > BOX_REGION_LIMIT_ACCUR)
                     {
                         vision_position_receive_enable = true;
                         current_mission_state = vision_fail_process;

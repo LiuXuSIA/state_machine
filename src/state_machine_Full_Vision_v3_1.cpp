@@ -3,7 +3,8 @@
 @date           2018/10/20
 @author         liuxu
 @email          liuxu.ccc@gmail.com
-@description    distance sensor judge
+@description    distance sensor judge  take off mode and min distance from ground
+                vision_position_same_o
 *************************************************************************/
 
 /****************************header files********************************/
@@ -50,7 +51,7 @@ float wrap_pi(float angle_rad);
 #define ASCEND_VELOCITY_COM     1.0
 #define TAKE_OFF_VELOCITY       1.5
 #define BOX_HEIGET              0.25
-#define PLACE_HEIGET            0.3
+#define PLACE_HEIGET            0.26
 #define BIAS_ZED_FOOT           0.06
 #define GRAB_HEIGHT_MARGIN      0.01//0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.5
@@ -71,7 +72,10 @@ float wrap_pi(float angle_rad);
 #define VISION_ROUGH_FRAME      1
 #define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
-#define GRAB_LOST_ADJUST        0.02
+#define GRAB_LOST_ADJUST        0.04
+#define DISTANCE_TO_GROUND_MIN  0.6
+#define BOX_REGION_LIMIT_ROUGH  4.0
+#define BOX_REGION_LIMIT_ACCUR  2.0
 
 /***************************variable definition*************************/
 //fixed position  ENU
@@ -121,8 +125,8 @@ state_machine::Distance_Measure_Enable distance_measure;
 
 //state_machine state
 static const int takeoff = 1;              
-static const int position_home_go = 2;
-static const int position_home_hover = 3;
+static const int hover_after_takeoff = 2;
+//static const int position_home_hover = 3;
 static const int position_observe_go = 4;
 static const int hover_to_recognize = 5;
 static const int box_above_locate = 6;
@@ -598,29 +602,20 @@ void state_machine_fun(void)
             }
             if((current_position.pose.position.z + fix_target_position.home_z) > TAKE_OFF_HEIGHT)
             {
-                current_mission_state = position_home_go;
+                position_hover_after_takeoff.pose.position.x = current_position.pose.position.x;
+                position_hover_after_takeoff.pose.position.y = current_position.pose.position.y;
+                position_hover_after_takeoff.pose.position.z = current_position.pose.position.z;
+
+                current_mission_state = hover_after_takeoff;
                 mission_last_time = ros::Time::now();
             }
         }
         break;
-        case position_home_go:
+        case hover_after_takeoff:
         {
-            local_pos_pub.publish(position_home);
-            pose_pub = position_home;
-            if (Distance_of_Two(current_position.pose.position.x,position_home.pose.position.x,
-                                current_position.pose.position.y,position_home.pose.position.y,
-                                current_position.pose.position.z,position_home.pose.position.z) < LOCATE_ACCURACY_ROUGH)
-            {
-                current_mission_state = position_home_hover;
-                mission_last_time = ros::Time::now();
-            }
-        }
-        break;
-        case position_home_hover:
-        {
-            pose_pub = position_home;
-            local_pos_pub.publish(position_home);
-            if(ros::Time::now() - mission_last_time > ros::Duration(1.0))
+            pose_pub = position_hover_after_takeoff;
+            local_pos_pub.publish(position_hover_after_takeoff);
+            if(ros::Time::now() - mission_last_time > ros::Duration(0.5))
             {
                 current_mission_state = position_observe_go;
                 mission_last_time = ros::Time::now();
@@ -674,6 +669,14 @@ void state_machine_fun(void)
                     position_box.pose.position.y = position_x_aver;
                     position_box.pose.position.z = current_position.pose.position.z + BEST_RECOGNIZE_HEIGHT - position_z_aver;
 
+                    if(position_box.pose.position.z + fix_target_position.component_z < DISTANCE_TO_GROUND_MIN)
+                    {
+                        vision_position_receive_enable = true;
+                        current_mission_state = vision_fail_process;
+                        mission_last_time = ros::Time::now();
+                        break; 
+                    }
+
                     vision_count1 = VISION_ROUGH_FRAME + 1;
 
                     position_x_aver = 0;
@@ -686,8 +689,8 @@ void state_machine_fun(void)
 
                     vision_position_receive_enable = false;
 
-                    if(abs(current_position.pose.position.x - position_box.pose.position.x) > 5 ||
-                       abs(current_position.pose.position.y - position_box.pose.position.y) > 5)
+                    if(abs(current_position.pose.position.x - position_box.pose.position.x) > BOX_REGION_LIMIT_ROUGH ||
+                       abs(current_position.pose.position.y - position_box.pose.position.y) > BOX_REGION_LIMIT_ROUGH)
                     {
                         vision_position_receive_enable = true;
                         current_mission_state = vision_fail_process;
@@ -764,6 +767,14 @@ void state_machine_fun(void)
                     position_grab.pose.position.y = box_position_x_aver;
                     position_grab.pose.position.z = current_position.pose.position.z - box_position_z_aver + BIAS_ZED_FOOT + GRAB_HEIGHT_MARGIN - grab_lost_count * GRAB_LOST_ADJUST;
 
+                    if(position_grab.pose.position.z + fix_target_position.component_z < DISTANCE_TO_GROUND_MIN)
+                    {
+                        vision_position_receive_enable = true;
+                        current_mission_state = vision_fail_process;
+                        mission_last_time = ros::Time::now();
+                        break; 
+                    }
+
                     vision_count2 = VISION_ACCURACY_FRAME + 1;
 
                     box_position_x_aver = 0;
@@ -776,8 +787,8 @@ void state_machine_fun(void)
 
                     vision_position_receive_enable = false;
 
-                    if(abs(position_grab.pose.position.x - position_box.pose.position.x) > 3 ||
-                       abs(position_grab.pose.position.y - position_box.pose.position.y) > 3)
+                    if(abs(position_grab.pose.position.x - position_box.pose.position.x) > BOX_REGION_LIMIT_ACCUR ||
+                       abs(position_grab.pose.position.y - position_box.pose.position.y) > BOX_REGION_LIMIT_ACCUR)
                     {
                         vision_position_receive_enable = true;
                         current_mission_state = vision_fail_process;
@@ -813,7 +824,7 @@ void state_machine_fun(void)
             if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
                                 current_position.pose.position.y,position_grab.pose.position.y,
                                 current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_ROUGH
-                || ros::Time::now() - mission_last_time > ros::Duration(10.0))
+                || ros::Time::now() - mission_last_time > ros::Duration(8.0))
             {
                 current_mission_state = box_get_fit;
                 mission_last_time = ros::Time::now();
