@@ -55,18 +55,18 @@ float wrap_pi(float angle_rad);
 #define PLACE_HEIGET            0.26
 #define BIAS_ZED_FOOT           0.06
 #define GRAB_HEIGHT_MARGIN      0.01//0.30//0.05
-#define LOCATE_ACCURACY_HIGH    0.5
-#define LOCATE_ACCURACY_GRAB    0.2
-#define LOCATE_ACCURACY_ROUGH   1.0
-#define DISTANCE_SENSOR_FOOT    0.14
+#define LOCATE_ACCURACY_HIGH    0.4
+#define LOCATE_ACCURACY_GRAB    0.12
+#define LOCATE_ACCURACY_ROUGH   0.8
+#define DISTANCE_SENSOR_FOOT    0.07
 #define LINE_MOVE_DISTANCE      1.20
 #define ROW_MOVE_DISTANCE       0.70
-#define BOX_LINE                2
+#define BOX_LINE                3
 #define BOX_ROW                 1
 #define BODY_X_VELOCITY         0.5
 #define BODY_Y_VELOCITY         0.1
-#define OBSERVE_HEIGHT_MAX      7
-#define BEST_RECOGNIZE_HEIGHT   2.1
+#define OBSERVE_HEIGHT_MAX      7.0
+#define BEST_RECOGNIZE_HEIGHT   2.0
 #define SEARCH_TIME_SINGLE      6.0
 #define JUDGE_HEIGHT            4.0
 #define JUDGE_DIATANCE          2.0
@@ -487,7 +487,7 @@ int main(int argc, char **argv)
 
     ros::Rate rate(10.0);
 
-    ROS_INFO("Start state_machine_Full_Vision_v3 ...");
+    ROS_INFO("Start state_machine_Full_Vision_v3_2 ...");
 
     while(ros::ok() && !current_state.connected)
     {
@@ -878,7 +878,7 @@ void state_machine_fun(void)
             {
                 if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
                                     current_position.pose.position.y,position_grab.pose.position.y,
-                                    current_position.pose.position.z,position_grab.pose.position.z) < 0.12)
+                                    current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_GRAB)
                 {
                     accuracy_count4++;
                     if(accuracy_count4 > 3)
@@ -972,6 +972,11 @@ void state_machine_fun(void)
                     grab_judge_count = 0;
                     grab_lost_count++;
                     //distance_measure.measure_enable = 0;
+
+                    position_observe.pose.position.x = current_position.pose.position.x;
+                    position_observe.pose.position.y = current_position.pose.position.y;
+                    position_observe.pose.position.z = current_position.pose.position.z;
+
                     current_mission_state = hover_to_recognize;
                     vision_position_receive_enable = true;
                     mission_last_time = ros::Time::now();

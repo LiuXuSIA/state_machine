@@ -54,9 +54,9 @@ float wrap_pi(float angle_rad);
 #define PLACE_HEIGET            0.26
 #define BIAS_ZED_FOOT           0.06
 #define GRAB_HEIGHT_MARGIN      0.01//0.30//0.05
-#define LOCATE_ACCURACY_HIGH    0.5
-#define LOCATE_ACCURACY_GRAB    0.2
-#define LOCATE_ACCURACY_ROUGH   1.0
+#define LOCATE_ACCURACY_HIGH    0.4
+#define LOCATE_ACCURACY_GRAB    0.15
+#define LOCATE_ACCURACY_ROUGH   0.8
 #define DISTANCE_SENSOR_FOOT    0.14
 #define LINE_MOVE_DISTANCE      1.20
 #define ROW_MOVE_DISTANCE       0.70
@@ -865,7 +865,7 @@ void state_machine_fun(void)
                 }
             }           
             hover_count4++;
-            if(hover_count4 > 20)
+            if(hover_count4 > 30)
             {
                 current_mission_state = box_grab;
                 accuracy_count4 = 0;
