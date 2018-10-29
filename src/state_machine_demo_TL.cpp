@@ -20,7 +20,8 @@ double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, do
 
 /***************************variable definition*************************/
 
-geometry_msgs::PoseStamped pose_pub;  //ENU
+geometry_msgs::PoseStamped pose_pub;
+geometry_msgs::PoseStamped pose_pub_descent;  //ENU
 geometry_msgs::TwistStamped vel_pub;
 ros::Publisher local_pos_pub;
 ros::Publisher local_vel_pub;
@@ -29,7 +30,8 @@ ros::Publisher local_vel_pub;
 static const int takeoff = 1;
 static const int target_go = 2;
 static const int hover = 3;
-static const int land = 4;
+static const int descent = 4;
+static const int land = 5;
 
 //mission 
 int current_pos_state = takeoff;
@@ -76,7 +78,11 @@ int main(int argc, char **argv)
 
     pose_pub.pose.position.x = 0;
     pose_pub.pose.position.y = 0;
-    pose_pub.pose.position.z = 3;
+    pose_pub.pose.position.z = 5;
+
+    pose_pub_descent.pose.position.x = 0;
+    pose_pub_descent.pose.position.y = 0;
+    pose_pub_descent.pose.position.z = 0.5;
 
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
@@ -149,6 +155,16 @@ void state_machine_fun(void)
         case hover:
         {
             local_pos_pub.publish(pose_pub);
+            if(ros::Time::now() - last_time > ros::Duration(3.0))
+            {
+                current_pos_state = descent;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case descent:
+        {
+            local_pos_pub.publish(pose_pub_descent);
             if(ros::Time::now() - last_time > ros::Duration(6.0))
             {
                 current_pos_state = land;
