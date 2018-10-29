@@ -52,7 +52,7 @@ float wrap_pi(float angle_rad);
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.26//3.0//0.27
 #define BIAS_ZED_FOOT           0.02
-#define GRAB_HEIGHT_MARGIN      0.01//0.30//0.05
+#define GRAB_HEIGHT_MARGIN      0.20//0.01//0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.4
 #define LOCATE_ACCURACY_GRAB    0.12
 #define LOCATE_ACCURACY_ROUGH   0.8
