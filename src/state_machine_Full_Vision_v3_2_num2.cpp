@@ -75,7 +75,7 @@ float wrap_pi(float angle_rad);
 #define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
 #define GRAB_LOST_ADJUST        0.04
-#define DISTANCE_TO_GROUND_MIN  0.6
+#define DISTANCE_TO_GROUND_MIN  0.3
 #define BOX_REGION_LIMIT_ROUGH  4.0
 #define BOX_REGION_LIMIT_ACCUR  2.0
 
@@ -695,6 +695,7 @@ void state_machine_fun(void)
 
                     if(position_box.pose.position.z + fix_target_position.component_z < DISTANCE_TO_GROUND_MIN)
                     {
+                        ROS_ERROR_STREAM("Vision error 1");
                         vision_position_receive_enable = true;
                         current_mission_state = vision_fail_process;
                         mission_last_time = ros::Time::now();
@@ -720,6 +721,7 @@ void state_machine_fun(void)
                     if(abs(current_position.pose.position.x - position_box.pose.position.x) > BOX_REGION_LIMIT_ROUGH ||
                        abs(current_position.pose.position.y - position_box.pose.position.y) > BOX_REGION_LIMIT_ROUGH)
                     {
+                        ROS_ERROR_STREAM("Vision error 2");
                         vision_position_receive_enable = true;
                         current_mission_state = vision_fail_process;
                         mission_last_time = ros::Time::now();
@@ -738,6 +740,7 @@ void state_machine_fun(void)
                 vision_lost_count++;
                 if (vision_lost_count > VISION_LOST_MAX)
                 {
+                    ROS_ERROR_STREAM("Vision error 3");
                     vision_lost_count = 0;
                     current_mission_state = vision_fail_process;
 
@@ -797,6 +800,7 @@ void state_machine_fun(void)
 
                     if(position_grab.pose.position.z + fix_target_position.component_z < DISTANCE_TO_GROUND_MIN)
                     {
+                        ROS_ERROR_STREAM("Vision error 4");
                         vision_position_receive_enable = true;
                         current_mission_state = vision_fail_process;
                         mission_last_time = ros::Time::now();
@@ -822,6 +826,7 @@ void state_machine_fun(void)
                     if(abs(position_grab.pose.position.x - position_box.pose.position.x) > BOX_REGION_LIMIT_ACCUR ||
                        abs(position_grab.pose.position.y - position_box.pose.position.y) > BOX_REGION_LIMIT_ACCUR)
                     {
+                        ROS_ERROR_STREAM("Vision error 5");
                         vision_position_receive_enable = true;
                         current_mission_state = vision_fail_process;
                         mission_last_time = ros::Time::now();
@@ -840,6 +845,7 @@ void state_machine_fun(void)
                 vision_lost_count2++;
                 if (vision_lost_count2 > VISION_LOST_MAX)
                 {
+                    ROS_ERROR_STREAM("Vision error 6");
                     vision_lost_count2 = 0;
                     current_mission_state = vision_fail_process;
 
@@ -972,6 +978,10 @@ void state_machine_fun(void)
                 {
                     grab_judge_count = 0;
                     grab_lost_count++;
+                    if(grab_lost_count > 2)
+                    {
+                        grab_lost_count = 2;
+                    }
                     //distance_measure.measure_enable = 0;
 
                     position_observe.pose.position.x = current_position.pose.position.x;

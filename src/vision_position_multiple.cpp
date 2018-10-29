@@ -161,21 +161,21 @@ int main (int argc, char** argv)
                 ROS_INFO("dis_y:%f",position_y_min_distance);
                 ROS_INFO("dis_z:%f",position_z_min_distance);
 
-                // body_pose_x_deep = -position_x_min_deepth;
-                // body_pose_y_deep = -position_y_min_deepth;
-                // body_pose_z_deep = position_z_min_deepth;
-
-                // body_pose_x_dis = -position_x_min_distance;
-                // body_pose_y_dis = -position_y_min_distance;
-                // body_pose_z_dis = position_z_min_distance;
-
-                body_pose_x_deep = position_x_min_deepth;
-                body_pose_y_deep = position_y_min_deepth;
+                body_pose_x_deep = -position_x_min_deepth;
+                body_pose_y_deep = -position_y_min_deepth;
                 body_pose_z_deep = position_z_min_deepth;
 
-                body_pose_x_dis = position_x_min_distance;
-                body_pose_y_dis = position_y_min_distance;
+                body_pose_x_dis = -position_x_min_distance;
+                body_pose_y_dis = -position_y_min_distance;
                 body_pose_z_dis = position_z_min_distance;
+
+                // body_pose_x_deep = position_x_min_deepth;
+                // body_pose_y_deep = position_y_min_deepth;
+                // body_pose_z_deep = position_z_min_deepth;
+
+                // body_pose_x_dis = position_x_min_distance;
+                // body_pose_y_dis = position_y_min_distance;
+                // body_pose_z_dis = position_z_min_distance;
 
                 vision_position_multiple.x_deep = (R[0][0] * body_pose_x_deep + R[0][1] * body_pose_y_deep + R[0][2] * body_pose_z_deep)/1000 + current_position.pose.position.y;
                 vision_position_multiple.y_deep = (R[1][0] * body_pose_x_deep + R[1][1] * body_pose_y_deep + R[1][2] * body_pose_z_deep)/1000 + current_position.pose.position.x;
