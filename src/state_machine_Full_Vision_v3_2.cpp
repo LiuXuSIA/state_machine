@@ -6,6 +6,7 @@
 @description    distance sensor judge  take off mode and min distance from ground
                 vision position deep and distance
                 match vision_position_multiple
+                observe position after grab fail;
 *************************************************************************/
 
 /****************************header files********************************/
