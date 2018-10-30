@@ -61,15 +61,15 @@ float wrap_pi(float angle_rad);
 #define LOCATE_ACCURACY_ROUGH   0.8
 #define DISTANCE_SENSOR_FOOT    0.07
 #define LINE_MOVE_DISTANCE      1.20
-#define ROW_MOVE_DISTANCE       1.8
+#define ROW_MOVE_DISTANCE       2.0
 #define BOX_LINE                1
 #define BOX_ROW                 3
 #define BODY_X_VELOCITY         0.5
 #define BODY_Y_VELOCITY         0.1
 #define OBSERVE_HEIGHT_MAX      7.0
-#define BEST_RECOGNIZE_HEIGHT   1.6
+#define BEST_RECOGNIZE_HEIGHT   1.5
 #define SEARCH_TIME_SINGLE      6.0
-#define JUDGE_HEIGHT            5.0
+#define JUDGE_HEIGHT            4.0
 #define JUDGE_DIATANCE          2.0
 #define VISION_ROUGH_FRAME      1
 #define VISION_ACCURACY_FRAME   2
@@ -629,7 +629,7 @@ void state_machine_fun(void)
             {
                 position_hover_after_takeoff.pose.position.x = current_position.pose.position.x;
                 position_hover_after_takeoff.pose.position.y = current_position.pose.position.y;
-                position_hover_after_takeoff.pose.position.z = current_position.pose.position.z;
+                position_hover_after_takeoff.pose.position.z = current_position.pose.position.z + 0.2;
 
                 current_mission_state = hover_after_takeoff;
                 mission_last_time = ros::Time::now();
@@ -640,7 +640,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_hover_after_takeoff;
             local_pos_pub.publish(position_hover_after_takeoff);
-            if(ros::Time::now() - mission_last_time > ros::Duration(0.5))
+            if(ros::Time::now() - mission_last_time > ros::Duration(1.0))
             {
                 current_mission_state = position_observe_go;
                 mission_last_time = ros::Time::now();
@@ -875,7 +875,7 @@ void state_machine_fun(void)
             if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
                                 current_position.pose.position.y,position_grab.pose.position.y,
                                 current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_ROUGH
-                || ros::Time::now() - mission_last_time > ros::Duration(6.0))
+                || ros::Time::now() - mission_last_time > ros::Duration(5.0))
             {
                 current_mission_state = box_get_fit;
                 mission_last_time = ros::Time::now();
@@ -968,7 +968,7 @@ void state_machine_fun(void)
             //distance_measure.measure_enable = 1; 
             pose_pub = position_judge;
             local_pos_pub.publish(position_judge);
-            if(ros::Time::now() - mission_last_time > ros::Duration(4.0) && grab_judge_count == 0)
+            if(ros::Time::now() - mission_last_time > ros::Duration(3.0) && grab_judge_count == 0)
             {
                 grab_judge_count++;
             }
@@ -995,6 +995,7 @@ void state_machine_fun(void)
                     {
                         grab_lost_count = 2;
                     }
+                    ROS_INFO("grab_lost_count:%d",grab_lost_count);
                     //distance_measure.measure_enable = 0;
 
                     position_observe.pose.position.x = current_position.pose.position.x;
@@ -1186,7 +1187,7 @@ void state_machine_fun(void)
                 if (distance.distance > JUDGE_DIATANCE)
                     {
                         place_judge_count++;
-                        if(place_judge_count > 5)
+                        if(place_judge_count > 3)
                         {
                             place_judge_count = 0;
                             //distance_measure.measure_enable = 0;
