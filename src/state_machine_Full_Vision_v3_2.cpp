@@ -45,23 +45,23 @@ float wrap_pi(float angle_rad);
 /*************************constant definition***************************/
 
 #define MAX_MISSION_TIME        300
-#define HOME_HEIGHT             5.0
-#define OBSERVE_HEIGET          5.0
-#define CONSTRUCT_HEIGET        5.0
-#define TAKE_OFF_HEIGHT         4.0
+#define HOME_HEIGHT             6.5
+#define OBSERVE_HEIGET          6.0
+#define CONSTRUCT_HEIGET        6.5
+#define TAKE_OFF_HEIGHT         5.0
 #define ASCEND_VELOCITY_CON     0.5
-#define ASCEND_VELOCITY_COM     1.0
+#define ASCEND_VELOCITY_COM     0.7
 #define TAKE_OFF_VELOCITY       1.5
 #define BOX_HEIGET              0.25
 #define PLACE_HEIGET            0.26
-#define BIAS_ZED_FOOT           0.00
+#define BIAS_ZED_FOOT           0.01
 #define GRAB_HEIGHT_MARGIN      0.01//0.01//0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.4
 #define LOCATE_ACCURACY_GRAB    0.12
 #define LOCATE_ACCURACY_ROUGH   0.8
 #define DISTANCE_SENSOR_FOOT    0.07
 #define LINE_MOVE_DISTANCE      1.20
-#define ROW_MOVE_DISTANCE       1.4
+#define ROW_MOVE_DISTANCE       1.8
 #define BOX_LINE                1
 #define BOX_ROW                 3
 #define BODY_X_VELOCITY         0.5
@@ -69,7 +69,7 @@ float wrap_pi(float angle_rad);
 #define OBSERVE_HEIGHT_MAX      7.0
 #define BEST_RECOGNIZE_HEIGHT   2.0
 #define SEARCH_TIME_SINGLE      6.0
-#define JUDGE_HEIGHT            4.0
+#define JUDGE_HEIGHT            6.5
 #define JUDGE_DIATANCE          2.0
 #define VISION_ROUGH_FRAME      1
 #define VISION_ACCURACY_FRAME   2
@@ -902,6 +902,7 @@ void state_machine_fun(void)
                     accuracy_count4++;
                     if(accuracy_count4 > 3)
                     {
+                        ROS_INFO("grab locate accurate arrive!!");
                         current_mission_state = box_grab;
                         accuracy_count4 = 0;
                         hover_count4 = 0;
@@ -915,8 +916,9 @@ void state_machine_fun(void)
                 }
             }           
             hover_count4++;
-            if(hover_count4 > 20)
+            if(hover_count4 > 30)
             {
+                ROS_INFO("grab locate accurate do not arrive!!");
                 current_mission_state = box_grab;
                 accuracy_count4 = 0;
                 hover_count4 = 0;
@@ -1109,6 +1111,7 @@ void state_machine_fun(void)
                     accuracy_count3++;
                     if(accuracy_count3 > 3)
                     {
+                        ROS_INFO("place locate accurate arrive!!");
                         current_mission_state = component_place;
                         accuracy_count3 = 0;
                         hover_count3 = 0;
@@ -1124,6 +1127,7 @@ void state_machine_fun(void)
             hover_count3++;
             if(hover_count3 > 20)
             {
+                ROS_INFO("place locate accurate do not arrive!!");
                 current_mission_state = component_place;
                 accuracy_count3 = 0;
                 hover_count3 = 0;
