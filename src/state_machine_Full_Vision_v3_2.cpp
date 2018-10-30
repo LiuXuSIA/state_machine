@@ -53,7 +53,7 @@ float wrap_pi(float angle_rad);
 #define ASCEND_VELOCITY_COM     0.7
 #define TAKE_OFF_VELOCITY       1.5
 #define BOX_HEIGET              0.25
-#define PLACE_HEIGET            4.0//0.26
+#define PLACE_HEIGET            0.25
 #define BIAS_ZED_FOOT           0.01
 #define GRAB_HEIGHT_MARGIN      0.01//0.01//0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.4
@@ -78,7 +78,7 @@ float wrap_pi(float angle_rad);
 #define DISTANCE_TO_GROUND_MIN  0.6
 #define BOX_REGION_LIMIT_ROUGH  4.0
 #define BOX_REGION_LIMIT_ACCUR  2.0
-#define CLOSE_TO_BOX_HEIGHT     0.30
+#define DISTANCE_FROM_BOX_TOP   0.15
 
 /***************************variable definition*************************/
 //fixed position  ENU
@@ -110,7 +110,6 @@ geometry_msgs::PoseStamped position_timer_out;
 geometry_msgs::PoseStamped position_return_home;
 geometry_msgs::PoseStamped position_box_lost;
 geometry_msgs::PoseStamped position_hover_after_takeoff;
-geometry_msgs::PoseStamped position_close_to_box;
 
 //topic declare
 ros::Publisher local_pos_pub;
@@ -160,7 +159,6 @@ static const int grab_position_judge = 27;
 static const int grab_position_adjust = 28;
 static const int box_search = 29;
 static const int search_start_point_go = 30;
-static const int close_to_box_hover = 31;
 
 //mission 
 int current_mission_state = takeoff;
@@ -348,11 +346,6 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         position_hover_after_takeoff.pose.orientation.y = 0;
         position_hover_after_takeoff.pose.orientation.z = sin(yaw_sp/2);
         position_hover_after_takeoff.pose.orientation.w = cos(yaw_sp/2);
-
-        position_close_to_box.pose.orientation.x = 0;
-        position_close_to_box.pose.orientation.y = 0;
-        position_close_to_box.pose.orientation.z = sin(yaw_sp/2);
-        position_close_to_box.pose.orientation.w = cos(yaw_sp/2);
 
         fix_target_receive_enable = false;
     }
@@ -660,7 +653,7 @@ void state_machine_fun(void)
             local_pos_pub.publish(position_observe);
             if (Distance_of_Two(current_position.pose.position.x,position_observe.pose.position.x,
                                 current_position.pose.position.y,position_observe.pose.position.y,
-                                current_position.pose.position.z,position_observe.pose.position.z) < LOCATE_ACCURACY_ROUGH)
+                                current_position.pose.position.z,position_observe.pose.position.z) < LOCATE_ACCURACY_HIGH)
             {
                 vision_position_receive_enable = true;
                 current_mission_state = hover_to_recognize;
@@ -809,13 +802,9 @@ void state_machine_fun(void)
                 }
                 else if(vision_count2 == VISION_ACCURACY_FRAME)
                 {
-                    position_close_to_box.pose.position.x = box_position_y_aver;
-                    position_close_to_box.pose.position.y = box_position_x_aver;
-                    position_close_to_box.pose.position.z = current_position.pose.position.z - box_position_z_aver + BIAS_ZED_FOOT + CLOSE_TO_BOX_HEIGHT;
-
                     position_grab.pose.position.x = box_position_y_aver;
                     position_grab.pose.position.y = box_position_x_aver;
-                    position_grab.pose.position.z = current_position.pose.position.z - box_position_z_aver + BIAS_ZED_FOOT + GRAB_HEIGHT_MARGIN - grab_lost_count * GRAB_LOST_ADJUST;
+                    position_grab.pose.position.z = current_position.pose.position.z - box_position_z_aver + BIAS_ZED_FOOT + GRAB_HEIGHT_MARGIN - DISTANCE_FROM_BOX_TOP - grab_lost_count * GRAB_LOST_ADJUST;
 
                     if(position_grab.pose.position.z + fix_target_position.component_z < DISTANCE_TO_GROUND_MIN)
                     {
@@ -881,60 +870,15 @@ void state_machine_fun(void)
         break;
         case box_get_close:
         {
-            local_pos_pub.publish(position_close_to_box);
-            pose_pub = position_close_to_box;
-            if (Distance_of_Two(current_position.pose.position.x,position_close_to_box.pose.position.x,
-                                current_position.pose.position.y,position_close_to_box.pose.position.y,
-                                current_position.pose.position.z,position_close_to_box.pose.position.z) < 0.12)
+            local_pos_pub.publish(position_grab);
+            pose_pub = position_grab;
+            if (Distance_of_Two(current_position.pose.position.x,position_grab.pose.position.x,
+                                current_position.pose.position.y,position_grab.pose.position.y,
+                                current_position.pose.position.z,position_grab.pose.position.z) < LOCATE_ACCURACY_ROUGH
+                || ros::Time::now() - mission_last_time > ros::Duration(6.0))
             {
-                current_mission_state = close_to_box_hover;
-                mission_last_time = ros::Time::now();
-            }
-        }
-        break;
-        case close_to_box_hover:
-        {
-            static int accuracy_count5 = 0;  //for improve accuracy
-            static int hover_count5 = 0;
-
-            pose_pub = position_close_to_box;
-            local_pos_pub.publish(position_close_to_box);
-
-            if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && hover_count5 == 0)
-            {
-                hover_count5++;
-            }
-            if (ros::Time::now() - mission_last_time > ros::Duration(0.5) && hover_count5 > 0)
-            {
-                if (Distance_of_Two(current_position.pose.position.x,position_close_to_box.pose.position.x,
-                                    current_position.pose.position.y,position_close_to_box.pose.position.y,
-                                    current_position.pose.position.z,position_close_to_box.pose.position.z) < 0.08)
-                {
-                    accuracy_count5++;
-                    if(accuracy_count5 > 3)
-                    {
-                        ROS_INFO("close to box locate accurate arrive!!");
-                        current_mission_state = box_get_fit;
-                        accuracy_count5 = 0;
-                        hover_count5 = 0;
-                        mission_last_time = ros::Time::now();
-                        break;
-                    }
-                }
-                else
-                {
-                    accuracy_count5 = 0;
-                }
-            }           
-            hover_count5++;
-            if(hover_count5 > 20)
-            {
-                ROS_INFO("close to box locate accurate do not arrive!!");
                 current_mission_state = box_get_fit;
-                accuracy_count5 = 0;
-                hover_count5 = 0;
                 mission_last_time = ros::Time::now();
-                break;
             }
         }
         break;
@@ -946,7 +890,7 @@ void state_machine_fun(void)
             pose_pub = position_grab;
             local_pos_pub.publish(position_grab);
 
-            if(ros::Time::now() - mission_last_time > ros::Duration(3.0) && hover_count4 == 0)
+            if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && hover_count4 == 0)
             {
                 hover_count4++;
             }
@@ -959,7 +903,6 @@ void state_machine_fun(void)
                     accuracy_count4++;
                     if(accuracy_count4 > 3)
                     {
-                        ROS_INFO("grab locate accurate arrive!!");
                         current_mission_state = box_grab;
                         accuracy_count4 = 0;
                         hover_count4 = 0;
@@ -973,9 +916,8 @@ void state_machine_fun(void)
                 }
             }           
             hover_count4++;
-            if(hover_count4 > 30)
+            if(hover_count4 > 20)
             {
-                ROS_INFO("grab locate accurate do not arrive!!");
                 current_mission_state = box_grab;
                 accuracy_count4 = 0;
                 hover_count4 = 0;
