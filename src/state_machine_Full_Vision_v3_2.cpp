@@ -667,6 +667,7 @@ void state_machine_fun(void)
             static float position_z_aver = 0;
             static int vision_count1 = VISION_ROUGH_FRAME + 1;
             static int vision_lost_count = 0;
+            static int vision_recognize_count = 0;
 
             pose_pub = position_observe;
             local_pos_pub.publish(position_observe);
@@ -701,6 +702,11 @@ void state_machine_fun(void)
                         mission_last_time = ros::Time::now();
                         break; 
                     }
+
+                    ROS_INFO("recognize number:%d",++vision_recognize_count);
+                    ROS_INFO("position_box_x:%f",position_box.pose.position.x);
+                    ROS_INFO("position_box_y:%f",position_box.pose.position.y);
+                    ROS_INFO("position_box_z:%f",position_box.pose.position.z);
 
                     vision_count1 = VISION_ROUGH_FRAME + 1;
 
@@ -772,6 +778,7 @@ void state_machine_fun(void)
             static float box_position_z_aver = 0;
             static int vision_count2 = VISION_ACCURACY_FRAME + 1;
             static int vision_lost_count2 = 0;
+            static int vision_recognize_count2 = 0;
 
             pose_pub = position_box;
             local_pos_pub.publish(position_box);
@@ -806,6 +813,11 @@ void state_machine_fun(void)
                         mission_last_time = ros::Time::now();
                         break; 
                     }
+
+                    ROS_INFO("recognize number:%d",++vision_recognize_count2);
+                    ROS_INFO("position_grab_x:%f",position_grab.pose.position.x);
+                    ROS_INFO("position_grab_y:%f",position_grab.pose.position.y);
+                    ROS_INFO("position_grab_z:%f",position_grab.pose.position.z);
 
                     vision_count2 = VISION_ACCURACY_FRAME + 1;
 
