@@ -60,10 +60,10 @@ float wrap_pi(float angle_rad);
 #define LOCATE_ACCURACY_GRAB    0.12
 #define LOCATE_ACCURACY_ROUGH   0.8
 #define DISTANCE_SENSOR_FOOT    0.07
-#define LINE_MOVE_DISTANCE      1.20
-#define ROW_MOVE_DISTANCE       2.0
-#define BOX_LINE                2
-#define BOX_ROW                 2
+#define LINE_MOVE_DISTANCE      2.0
+#define ROW_MOVE_DISTANCE       1.5
+#define BOX_LINE                3
+#define BOX_ROW                 4
 #define BODY_X_VELOCITY         0.5
 #define BODY_Y_VELOCITY         0.1
 #define OBSERVE_HEIGHT_MAX      7.0
@@ -75,7 +75,7 @@ float wrap_pi(float angle_rad);
 #define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
 #define GRAB_LOST_ADJUST        0.04
-#define DISTANCE_TO_GROUND_MIN  0.4
+#define DISTANCE_TO_GROUND_MIN  1.0
 #define BOX_REGION_LIMIT_ROUGH  4.0
 #define BOX_REGION_LIMIT_ACCUR  2.0
 #define DISTANCE_FROM_BOX_TOP   0.20
