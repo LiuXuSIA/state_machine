@@ -75,7 +75,7 @@ float wrap_pi(float angle_rad);
 #define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
 #define GRAB_LOST_ADJUST        0.04
-#define DISTANCE_TO_GROUND_MIN  0.6
+#define DISTANCE_TO_GROUND_MIN  0.05
 #define BOX_REGION_LIMIT_ROUGH  4.0
 #define BOX_REGION_LIMIT_ACCUR  2.0
 #define DISTANCE_FROM_BOX_TOP   0.15
@@ -868,7 +868,7 @@ void state_machine_fun(void)
             }   
         }
         break;
-        case box_get_close:
+        case box_get_close:ROS_INFO("grab_lost_count:%d",grab_lost_count);
         {
             local_pos_pub.publish(position_grab);
             pose_pub = position_grab;
