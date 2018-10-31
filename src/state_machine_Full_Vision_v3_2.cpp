@@ -78,7 +78,7 @@ float wrap_pi(float angle_rad);
 #define DISTANCE_TO_GROUND_MIN  0.6
 #define BOX_REGION_LIMIT_ROUGH  4.0
 #define BOX_REGION_LIMIT_ACCUR  2.0
-#define DISTANCE_FROM_BOX_TOP   0.15
+#define DISTANCE_FROM_BOX_TOP   0.20
 
 /***************************variable definition*************************/
 //fixed position  ENU
