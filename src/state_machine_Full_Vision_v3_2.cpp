@@ -194,6 +194,9 @@ bool force_home_enable = true;
 float yaw_sp;
 
 //yaw set
+float yaw_sp_con;
+
+//yaw set
 int grab_lost_count;
 
 //fail type
@@ -201,6 +204,9 @@ int fail_type;
 
 //if return side
 bool return_side_enable = true;
+
+//if adjust yaw in construction point
+bool construction_yaw_adjust_enable = true;
 
 
 /***************************callback function definition***************/
@@ -286,6 +292,7 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
 
         //yaw calculate
         yaw_sp = wrap_pi(M_PI_2 - fix_target_return.component_yaw_sp * M_PI/180);
+        yaw_sp_con = wrap_pi(M_PI_2 - fix_target_return.construction_yaw_sp * M_PI/180);
 
         //home
         position_home.pose.orientation.x = 0;
@@ -318,10 +325,20 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
         position_judge.pose.orientation.z = sin(yaw_sp/2);
         position_judge.pose.orientation.w = cos(yaw_sp/2);
         //place
-        position_place.pose.orientation.x = 0;
-        position_place.pose.orientation.y = 0;
-        position_place.pose.orientation.z = sin(yaw_sp/2);
-        position_place.pose.orientation.w = cos(yaw_sp/2);
+        if(construction_yaw_adjust_enable == true)
+        {
+            position_place.pose.orientation.x = 0;
+            position_place.pose.orientation.y = 0;
+            position_place.pose.orientation.z = sin(yaw_sp_con/2);
+            position_place.pose.orientation.w = cos(yaw_sp_con/2);
+        }
+        else
+        {
+            position_place.pose.orientation.x = 0;
+            position_place.pose.orientation.y = 0;
+            position_place.pose.orientation.z = sin(yaw_sp/2);
+            position_place.pose.orientation.w = cos(yaw_sp/2);
+        }
         //safe
         position_safe.pose.orientation.x = 0;
         position_safe.pose.orientation.y = 0;
@@ -635,7 +652,7 @@ void state_machine_fun(void)
             {
                 position_hover_after_takeoff.pose.position.x = current_position.pose.position.x;
                 position_hover_after_takeoff.pose.position.y = current_position.pose.position.y;
-                position_hover_after_takeoff.pose.position.z = current_position.pose.position.z + 0.2;
+                position_hover_after_takeoff.pose.position.z = current_position.pose.position.z + 0.5;
 
                 current_mission_state = hover_after_takeoff;
                 mission_last_time = ros::Time::now();
