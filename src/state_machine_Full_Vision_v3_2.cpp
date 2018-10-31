@@ -868,7 +868,7 @@ void state_machine_fun(void)
             }   
         }
         break;
-        case box_get_close:ROS_INFO("grab_lost_count:%d",grab_lost_count);
+        case box_get_close:
         {
             local_pos_pub.publish(position_grab);
             pose_pub = position_grab;
@@ -903,6 +903,7 @@ void state_machine_fun(void)
                     accuracy_count4++;
                     if(accuracy_count4 > 3)
                     {
+                        ROS_INFO("grab locate accurate arrive!!");
                         current_mission_state = box_grab;
                         accuracy_count4 = 0;
                         hover_count4 = 0;
@@ -916,8 +917,9 @@ void state_machine_fun(void)
                 }
             }           
             hover_count4++;
-            if(hover_count4 > 20)
+            if(hover_count4 > 15)
             {
+                ROS_INFO("grab locate accurate do not arrive!!");
                 current_mission_state = box_grab;
                 accuracy_count4 = 0;
                 hover_count4 = 0;
@@ -1098,7 +1100,7 @@ void state_machine_fun(void)
             static int hover_count3 = 0;
             pose_pub = position_place;
             local_pos_pub.publish(position_place);
-            if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && hover_count3 == 0)
+            if(ros::Time::now() - mission_last_time > ros::Duration(1.0) && hover_count3 == 0)
             {
                 hover_count3++;
             }
@@ -1125,7 +1127,7 @@ void state_machine_fun(void)
                 }
             }           
             hover_count3++;
-            if(hover_count3 > 20)
+            if(hover_count3 > 10)
             {
                 ROS_INFO("place locate accurate do not arrive!!");
                 current_mission_state = component_place;
@@ -1148,7 +1150,7 @@ void state_machine_fun(void)
             if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && place_count > 0)
             {
                 place_count++;
-                if(place_count > 20)
+                if(place_count > 10)
                 {
                     place_count = 0;
                     current_mission_state = construction_leave;
