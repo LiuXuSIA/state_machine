@@ -69,7 +69,7 @@ float wrap_pi(float angle_rad);
 #define OBSERVE_HEIGHT_MAX      8.0
 #define BEST_RECOGNIZE_HEIGHT   1.8
 #define SEARCH_TIME_SINGLE      6.0
-#define JUDGE_HEIGHT            6.0
+#define JUDGE_HEIGHT            7.5
 #define JUDGE_DIATANCE          2.0
 #define VISION_ROUGH_FRAME      1
 #define VISION_ACCURACY_FRAME   2
