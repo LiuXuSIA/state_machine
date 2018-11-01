@@ -1209,7 +1209,7 @@ void state_machine_fun(void)
             //distance_measure.measure_enable = 1;
             pose_pub = position_safe;
             local_pos_pub.publish(position_safe);
-            if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && place_judge_count == 0)
+            if(ros::Time::now() - mission_last_time > ros::Duration(4.0) && place_judge_count == 0)
             {
                 place_judge_count++;
             }
