@@ -45,10 +45,10 @@ float wrap_pi(float angle_rad);
 /*************************constant definition***************************/
 
 #define MAX_MISSION_TIME        300
-#define HOME_HEIGHT             5.5
-#define OBSERVE_HEIGET          6.5
-#define CONSTRUCT_HEIGET        6.5
-#define TAKE_OFF_HEIGHT         5.5
+#define HOME_HEIGHT             5.0
+#define OBSERVE_HEIGET          5.0
+#define CONSTRUCT_HEIGET        5.0
+#define TAKE_OFF_HEIGHT         4.0
 #define ASCEND_VELOCITY_CON     0.5
 #define ASCEND_VELOCITY_COM     0.7
 #define TAKE_OFF_VELOCITY       1.5
@@ -66,10 +66,10 @@ float wrap_pi(float angle_rad);
 #define BOX_ROW                 2
 #define BODY_X_VELOCITY         0.5
 #define BODY_Y_VELOCITY         0.1
-#define OBSERVE_HEIGHT_MAX      8.0
+#define OBSERVE_HEIGHT_MAX      7.0
 #define BEST_RECOGNIZE_HEIGHT   1.8
 #define SEARCH_TIME_SINGLE      6.0
-#define JUDGE_HEIGHT            7.5
+#define JUDGE_HEIGHT            4.0
 #define JUDGE_DIATANCE          2.0
 #define VISION_ROUGH_FRAME      1
 #define VISION_ACCURACY_FRAME   2

@@ -162,11 +162,11 @@ int main (int argc, char** argv)
                 ROS_INFO("dis_z:%f",position_z_min_distance);
 
                 body_pose_x_deep = -position_x_min_deepth;
-                body_pose_y_deep = -position_y_min_deepth + 0.01;
+                body_pose_y_deep = -position_y_min_deepth;
                 body_pose_z_deep = position_z_min_deepth;
 
                 body_pose_x_dis = -position_x_min_distance;
-                body_pose_y_dis = -position_y_min_distance + 0.01;
+                body_pose_y_dis = -position_y_min_distance;
                 body_pose_z_dis = position_z_min_distance;
 
                 // body_pose_x_deep = position_x_min_deepth;
