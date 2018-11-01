@@ -75,7 +75,7 @@ float wrap_pi(float angle_rad);
 #define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
 #define GRAB_LOST_ADJUST        0.04
-#define DISTANCE_TO_GROUND_MIN  1.0
+#define DISTANCE_TO_GROUND_MIN  0.4//1.2
 #define BOX_REGION_LIMIT_ROUGH  4.0
 #define BOX_REGION_LIMIT_ACCUR  2.0
 #define DISTANCE_FROM_BOX_TOP   0.20
@@ -832,7 +832,7 @@ void state_machine_fun(void)
                     position_grab.pose.position.y = box_position_x_aver;
                     position_grab.pose.position.z = current_position.pose.position.z - box_position_z_aver + BIAS_ZED_FOOT + GRAB_HEIGHT_MARGIN - DISTANCE_FROM_BOX_TOP - grab_lost_count * GRAB_LOST_ADJUST;
 
-                    if(position_grab.pose.position.z + fix_target_position.component_z < DISTANCE_TO_GROUND_MIN)
+                    if(position_grab.pose.position.z + fix_target_position.component_z < DISTANCE_TO_GROUND_MIN - DISTANCE_FROM_BOX_TOP)
                     {
                         ROS_ERROR_STREAM("Vision error 4");
                         fail_type = 1;

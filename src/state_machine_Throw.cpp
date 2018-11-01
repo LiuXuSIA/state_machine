@@ -832,7 +832,7 @@ void state_machine_fun(void)
                     position_grab.pose.position.y = box_position_x_aver;
                     position_grab.pose.position.z = current_position.pose.position.z - box_position_z_aver + BIAS_ZED_FOOT + GRAB_HEIGHT_MARGIN - DISTANCE_FROM_BOX_TOP - grab_lost_count * GRAB_LOST_ADJUST;
 
-                    if(position_grab.pose.position.z + fix_target_position.component_z < DISTANCE_TO_GROUND_MIN)
+                    if(position_grab.pose.position.z + fix_target_position.component_z < DISTANCE_TO_GROUND_MIN - DISTANCE_FROM_BOX_TOP)
                     {
                         ROS_ERROR_STREAM("Vision error 4");
                         fail_type = 1;
