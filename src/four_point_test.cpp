@@ -48,9 +48,11 @@ ros::Publisher fixed_target_pub;
 
 //state_machine state,every state need target position
 static const int takeoff = 1;
-static const int target_go = 2;
-static const int hover = 3;
-static const int land = 4;
+static const int home_go = 2;
+static const int hover1 = 3;
+static const int component_go = 4;
+static const int hover2 = 5;
+static const int land = 6;
 
 //mission 
 int loop = 0;
@@ -76,13 +78,21 @@ bool velocity_control_enable = true;
 
 float yaw_sp;
 
+//observe position move count
+int line_move_count = 1; 
+int row_move_count = 1; 
+
 /*************************constant defunition***************************/
 
 #define HOME_HEIGHT            5
 #define ASCEND_VELOCITY        1.5
 #define OBSERVE_HEIGET         5
 #define CONSTRUCT_HEIGET       5
-#define LOCATE_ACCURACY        0.5
+#define LOCATE_ACCURACY        0.8
+#define LINE_MOVE_DISTANCE     3.0
+#define ROW_MOVE_DISTANCE      3.0
+#define BOX_LINE               2
+#define BOX_ROW                2
 
 
 /***************************callback function definition***************/
@@ -299,12 +309,12 @@ void state_machine_fun(void)
             local_vel_pub.publish(vel_pub);
             if((current_position.pose.position.z + fix_target_position.home_z) > 3)
             {
-                current_pos_state = target_go;
+                current_pos_state = home_go;
                 last_time = ros::Time::now();
             }
         }
         break;
-        case target_go:
+        case home_go:
         {
             local_pos_pub.publish(position_home);
             pose_pub = position_home;
@@ -312,19 +322,71 @@ void state_machine_fun(void)
                                 current_position.pose.position.y,position_home.pose.position.y,
                                 current_position.pose.position.z,position_home.pose.position.z) < LOCATE_ACCURACY)
             {
-                current_pos_state = hover;
+                current_pos_state = hover1;
                 last_time = ros::Time::now();
             }
         }
         break;
-        case hover:
+        case hover1:
         {
             pose_pub = position_home;
             local_pos_pub.publish(position_home);
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            if(ros::Time::now() - last_time > ros::Duration(2.0))
             {
-                current_pos_state = land;
+                current_pos_state = component_go;
                 last_time = ros::Time::now();
+            }
+        }
+        break;
+        case component_go:
+        {
+            local_pos_pub.publish(position_component);
+            pose_pub = position_component;
+            if (Distance_of_Two(current_position.pose.position.x,position_component.pose.position.x,
+                                current_position.pose.position.y,position_component.pose.position.y,
+                                current_position.pose.position.z,position_component.pose.position.z) < LOCATE_ACCURACY)
+            {
+                current_pos_state = hover2;
+                last_time = ros::Time::now();
+            } 
+        }
+        break;
+        case hover2:
+        {
+            local_pos_pub.publish(position_component);
+            pose_pub = position_component;
+            if(ros::Time::now() - last_time > ros::Duration(4.0))
+            {
+                if (line_move_count < BOX_LINE)
+                {
+                    position_component.pose.position.x = position_component.pose.position.x + line_move_count * LINE_MOVE_DISTANCE * cos(yaw_sp) - (row_move_count -1 ) * ROW_MOVE_DISTANCE * sin(yaw_sp);
+                    position_component.pose.position.y = position_component.pose.position.y + line_move_count * LINE_MOVE_DISTANCE * sin(yaw_sp) + (row_move_count -1 ) * ROW_MOVE_DISTANCE * cos(yaw_sp);
+                    position_component.pose.position.z = position_component.pose.position.z;
+                    line_move_count++;
+                    current_pos_state = component_go;
+                    last_time = ros::Time::now();
+                }
+                else if (line_move_count == BOX_LINE && row_move_count < BOX_ROW)
+                {
+                    position_component.pose.position.x = position_component.pose.position.x - row_move_count * ROW_MOVE_DISTANCE * sin(yaw_sp);
+                    position_component.pose.position.y = position_component.pose.position.y + row_move_count * ROW_MOVE_DISTANCE * cos(yaw_sp);
+                    position_component.pose.position.z = position_component.pose.position.z;
+                    row_move_count++;
+                    line_move_count = 1;
+                    current_pos_state = component_go;
+                    last_time = ros::Time::now();
+                }
+                else if (line_move_count == BOX_LINE && row_move_count == BOX_ROW)
+                {
+                    position_component.pose.position.x = position_component.pose.position.x;
+                    position_component.pose.position.y = position_component.pose.position.y;
+                    position_component.pose.position.z = position_component.pose.position.z;
+                    row_move_count = 1;
+                    line_move_count = 1;
+                    current_pos_state = land;
+                    last_time = ros::Time::now();
+                }
+                
             }
         }
         break;
