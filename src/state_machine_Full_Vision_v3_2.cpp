@@ -1292,11 +1292,15 @@ void state_machine_fun(void)
         {
             if (fail_type == 1)
             {
-                position_observe.pose.position.x = position_component.pose.position.x;
-                position_observe.pose.position.y = position_component.pose.position.y;
-                position_observe.pose.position.z = position_component.pose.position.z;
-
-                current_mission_state = position_observe_go;
+                local_vel_pub.publish(vel_ascend_con);
+                if ((current_position.pose.position.z + fix_target_position.component_z) > OBSERVE_HEIGET)
+                {
+                    position_observe.pose.position.x = position_component.pose.position.x;
+                    position_observe.pose.position.y = position_component.pose.position.y;
+                    position_observe.pose.position.z = position_component.pose.position.z;
+                
+                    current_mission_state = position_observe_go;
+                }
             }
             else
             {
