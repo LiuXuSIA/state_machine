@@ -45,15 +45,15 @@ float wrap_pi(float angle_rad);
 /*************************constant definition***************************/
 
 #define MAX_MISSION_TIME        300
-#define HOME_HEIGHT             5.0
-#define OBSERVE_HEIGET          5.0
-#define CONSTRUCT_HEIGET        5.0
+#define HOME_HEIGHT             5.5
+#define OBSERVE_HEIGET          5.5
+#define CONSTRUCT_HEIGET        5.5
 #define TAKE_OFF_HEIGHT         4.0
 #define ASCEND_VELOCITY_CON     0.5
 #define ASCEND_VELOCITY_COM     0.7
 #define TAKE_OFF_VELOCITY       1.5
 #define BOX_HEIGET              0.25
-#define PLACE_HEIGET            0.25
+#define PLACE_HEIGET            2.5//0.25
 #define BIAS_ZED_FOOT           0.01
 #define GRAB_HEIGHT_MARGIN      0.01//0.01//0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.4
@@ -75,7 +75,7 @@ float wrap_pi(float angle_rad);
 #define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
 #define GRAB_LOST_ADJUST        0.04
-#define DISTANCE_TO_GROUND_MIN  1.0
+#define DISTANCE_TO_GROUND_MIN  0.4//1.0
 #define BOX_REGION_LIMIT_ROUGH  4.0
 #define BOX_REGION_LIMIT_ACCUR  2.0
 #define DISTANCE_FROM_BOX_TOP   0.20
@@ -195,6 +195,9 @@ float yaw_sp;
 
 //yaw set
 int grab_lost_count;
+
+//fail type
+int fail_type;
 
 
 /***************************callback function definition***************/
@@ -698,6 +701,7 @@ void state_machine_fun(void)
                     if(position_box.pose.position.z + fix_target_position.component_z < DISTANCE_TO_GROUND_MIN)
                     {
                         ROS_ERROR_STREAM("Vision error 1");
+                        fail_type = 1;
                         vision_position_receive_enable = true;
                         current_mission_state = vision_fail_process;
                         mission_last_time = ros::Time::now();
@@ -729,6 +733,7 @@ void state_machine_fun(void)
                        abs(current_position.pose.position.y - position_box.pose.position.y) > BOX_REGION_LIMIT_ROUGH)
                     {
                         ROS_ERROR_STREAM("Vision error 2");
+                        fail_type = 2;
                         vision_position_receive_enable = true;
                         current_mission_state = vision_fail_process;
                         mission_last_time = ros::Time::now();
@@ -748,6 +753,7 @@ void state_machine_fun(void)
                 if (vision_lost_count > VISION_LOST_MAX)
                 {
                     ROS_ERROR_STREAM("Vision error 3");
+                    fail_type = 3;
                     vision_lost_count = 0;
                     current_mission_state = vision_fail_process;
 
@@ -809,6 +815,7 @@ void state_machine_fun(void)
                     if(position_grab.pose.position.z + fix_target_position.component_z < DISTANCE_TO_GROUND_MIN)
                     {
                         ROS_ERROR_STREAM("Vision error 4");
+                        fail_type = 1;
                         vision_position_receive_enable = true;
                         current_mission_state = vision_fail_process;
                         mission_last_time = ros::Time::now();
@@ -840,6 +847,7 @@ void state_machine_fun(void)
                        abs(position_grab.pose.position.y - position_box.pose.position.y) > BOX_REGION_LIMIT_ACCUR)
                     {
                         ROS_ERROR_STREAM("Vision error 5");
+                        fail_type = 2;
                         vision_position_receive_enable = true;
                         current_mission_state = vision_fail_process;
                         mission_last_time = ros::Time::now();
@@ -859,6 +867,7 @@ void state_machine_fun(void)
                 if (vision_lost_count2 > VISION_LOST_MAX)
                 {
                     ROS_ERROR_STREAM("Vision error 6");
+                    fail_type = 3;
                     vision_lost_count2 = 0;
                     current_mission_state = vision_fail_process;
 
@@ -1150,7 +1159,7 @@ void state_machine_fun(void)
             if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && place_count > 0)
             {
                 place_count++;
-                if(place_count > 10)
+                if(place_count > 30)
                 {
                     place_count = 0;
                     current_mission_state = construction_leave;
@@ -1245,22 +1254,37 @@ void state_machine_fun(void)
         break;
         case vision_fail_process:
         {
-            if (position_observe.pose.position.z + fix_target_position.component_z > OBSERVE_HEIGHT_MAX)
+            if (fail_type == 1)
             {
-                position_observe.pose.position.x = position_component.pose.position.x;
-                position_observe.pose.position.y = position_component.pose.position.y;
-                position_observe.pose.position.z = position_component.pose.position.z + 1;
+                local_vel_pub.publish(vel_ascend_con);
+                if ((current_position.pose.position.z + fix_target_position.component_z) > OBSERVE_HEIGET)
+                {
+                    position_observe.pose.position.x = position_component.pose.position.x;
+                    position_observe.pose.position.y = position_component.pose.position.y;
+                    position_observe.pose.position.z = position_component.pose.position.z + 1;
+                
+                    current_mission_state = position_observe_go;
+                }
+            }
+            else
+            {
+                if (position_observe.pose.position.z + fix_target_position.component_z > OBSERVE_HEIGHT_MAX)
+                {
+                    position_observe.pose.position.x = position_component.pose.position.x;
+                    position_observe.pose.position.y = position_component.pose.position.y;
+                    position_observe.pose.position.z = position_component.pose.position.z + 1;
 
-                current_mission_state = search_start_point_go;
+                    current_mission_state = search_start_point_go;
+                }
+                else 
+                {
+                    position_observe.pose.position.x = current_position.pose.position.x;
+                    position_observe.pose.position.y = current_position.pose.position.y;
+                    position_observe.pose.position.z = current_position.pose.position.z + 1.5;
+                    current_mission_state = position_observe_go;
+                }
             }
-            else 
-            {
-                position_observe.pose.position.x = current_position.pose.position.x;
-                position_observe.pose.position.y = current_position.pose.position.y;
-                position_observe.pose.position.z = current_position.pose.position.z + 1.5;
-                current_mission_state = position_observe_go;
-            }
-            
+            fail_type = 0;
             mission_last_time = ros::Time::now();
         }
         break;
