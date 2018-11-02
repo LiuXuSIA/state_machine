@@ -44,7 +44,7 @@ float wrap_pi(float angle_rad);
 
 /*************************constant definition***************************/
 
-#define MAX_MISSION_TIME        300
+#define MAX_MISSION_TIME        360
 #define HOME_HEIGHT             5.5
 #define OBSERVE_HEIGET          6.0
 #define CONSTRUCT_HEIGET        5.5
