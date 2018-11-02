@@ -60,7 +60,7 @@ float wrap_pi(float angle_rad);
 #define LOCATE_ACCURACY_GRAB    0.12
 #define LOCATE_ACCURACY_ROUGH   0.8
 #define DISTANCE_SENSOR_FOOT    0.07
-#define LINE_MOVE_DISTANCE      4.5
+#define LINE_MOVE_DISTANCE      4.0
 #define ROW_MOVE_DISTANCE       4.5
 #define BOX_LINE                2
 #define BOX_ROW                 1
