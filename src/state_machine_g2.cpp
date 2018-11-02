@@ -1258,9 +1258,9 @@ void state_machine_fun(void)
                 local_vel_pub.publish(vel_ascend_con);
                 if ((current_position.pose.position.z + fix_target_position.component_z) > OBSERVE_HEIGET)
                 {
-                    position_observe.pose.position.x = position_component.pose.position.x;
-                    position_observe.pose.position.y = position_component.pose.position.y;
-                    position_observe.pose.position.z = position_component.pose.position.z + 1;
+                    position_observe.pose.position.x = position_component.pose.position.x + 0.5 * LINE_MOVE_DISTANCE * cos(yaw_sp) - 0.5 * ROW_MOVE_DISTANCE * sin(yaw_sp);
+                    position_observe.pose.position.y = position_component.pose.position.y + 0.5 * LINE_MOVE_DISTANCE * sin(yaw_sp) + 0.5 * ROW_MOVE_DISTANCE * cos(yaw_sp);
+                    position_observe.pose.position.z = position_component.pose.position.z;
                     fail_type = 0;
                     current_mission_state = position_observe_go;
                 }
