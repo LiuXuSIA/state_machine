@@ -35,6 +35,7 @@ float wrap_pi(float angle_rad);
 geometry_msgs::PoseStamped position_home;
 geometry_msgs::PoseStamped position_component;
 geometry_msgs::PoseStamped position_construction;
+geometry_msgs::PoseStamped position_observe;
 
 //topic
 geometry_msgs::PoseStamped pose_pub; 
@@ -50,7 +51,7 @@ ros::Publisher fixed_target_pub;
 static const int takeoff = 1;
 static const int home_go = 2;
 static const int hover1 = 3;
-static const int component_go = 4;
+static const int observe_go = 4;
 static const int hover2 = 5;
 static const int land = 6;
 
@@ -165,6 +166,10 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     position_construction.pose.position.y = fix_target_position.construction_x;
     position_construction.pose.position.z = CONSTRUCT_HEIGET - fix_target_position.construction_z;
     
+    position_observe.pose.position.x = position_component.construction_x;
+    position_observe.pose.position.y = position_component.construction_y;
+    position_observe.pose.position.z = position_component.construction_z;
+    
     // //adjust angular,face north
     yaw_sp = wrap_pi(M_PI_2 - fix_target_return.component_yaw_sp * M_PI/180);
     //home
@@ -182,6 +187,11 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     position_construction.pose.orientation.y = 0;
     position_construction.pose.orientation.z = sin(yaw_sp/2);
     position_construction.pose.orientation.w = cos(yaw_sp/2);
+
+    position_observe.pose.orientation.x = 0;
+    position_observe.pose.orientation.y = 0;
+    position_observe.pose.orientation.z = sin(yaw_sp/2);
+    position_observe.pose.orientation.w = cos(yaw_sp/2);
 }
 
 state_machine::TASK_STATUS_CHANGE_P2M task_status_change;
@@ -333,18 +343,18 @@ void state_machine_fun(void)
             local_pos_pub.publish(position_home);
             if(ros::Time::now() - last_time > ros::Duration(2.0))
             {
-                current_pos_state = component_go;
+                current_pos_state = observe_go;
                 last_time = ros::Time::now();
             }
         }
         break;
-        case component_go:
+        case observe_go:
         {
-            local_pos_pub.publish(position_component);
-            pose_pub = position_component;
-            if (Distance_of_Two(current_position.pose.position.x,position_component.pose.position.x,
-                                current_position.pose.position.y,position_component.pose.position.y,
-                                current_position.pose.position.z,position_component.pose.position.z) < LOCATE_ACCURACY)
+            local_pos_pub.publish(position_observe);
+            pose_pub = observe_go;
+            if (Distance_of_Two(current_position.pose.position.x,position_observe.pose.position.x,
+                                current_position.pose.position.y,position_observe.pose.position.y,
+                                current_position.pose.position.z,position_observe.pose.position.z) < LOCATE_ACCURACY)
             {
                 current_pos_state = hover2;
                 last_time = ros::Time::now();
@@ -353,34 +363,34 @@ void state_machine_fun(void)
         break;
         case hover2:
         {
-            local_pos_pub.publish(position_component);
-            pose_pub = position_component;
+            local_pos_pub.publish(observe_go);
+            pose_pub = observe_go;
             if(ros::Time::now() - last_time > ros::Duration(4.0))
             {
                 if (line_move_count < BOX_LINE)
                 {
-                    position_component.pose.position.x = position_component.pose.position.x + line_move_count * LINE_MOVE_DISTANCE * cos(yaw_sp) - (row_move_count -1 ) * ROW_MOVE_DISTANCE * sin(yaw_sp);
-                    position_component.pose.position.y = position_component.pose.position.y + line_move_count * LINE_MOVE_DISTANCE * sin(yaw_sp) + (row_move_count -1 ) * ROW_MOVE_DISTANCE * cos(yaw_sp);
-                    position_component.pose.position.z = position_component.pose.position.z;
+                    position_observe.pose.position.x = position_component.pose.position.x + line_move_count * LINE_MOVE_DISTANCE * cos(yaw_sp) - (row_move_count -1 ) * ROW_MOVE_DISTANCE * sin(yaw_sp);
+                    position_observe.pose.position.y = position_component.pose.position.y + line_move_count * LINE_MOVE_DISTANCE * sin(yaw_sp) + (row_move_count -1 ) * ROW_MOVE_DISTANCE * cos(yaw_sp);
+                    position_observe.pose.position.z = position_component.pose.position.z;
                     line_move_count++;
-                    current_pos_state = component_go;
+                    current_pos_state = observe_go;
                     last_time = ros::Time::now();
                 }
                 else if (line_move_count == BOX_LINE && row_move_count < BOX_ROW)
                 {
-                    position_component.pose.position.x = position_component.pose.position.x - row_move_count * ROW_MOVE_DISTANCE * sin(yaw_sp);
-                    position_component.pose.position.y = position_component.pose.position.y + row_move_count * ROW_MOVE_DISTANCE * cos(yaw_sp);
-                    position_component.pose.position.z = position_component.pose.position.z;
+                    position_observe.pose.position.x = position_component.pose.position.x - row_move_count * ROW_MOVE_DISTANCE * sin(yaw_sp);
+                    position_observe.pose.position.y = position_component.pose.position.y + row_move_count * ROW_MOVE_DISTANCE * cos(yaw_sp);
+                    position_observe.pose.position.z = position_component.pose.position.z;
                     row_move_count++;
                     line_move_count = 1;
-                    current_pos_state = component_go;
+                    current_pos_state = observe_go;
                     last_time = ros::Time::now();
                 }
                 else if (line_move_count == BOX_LINE && row_move_count == BOX_ROW)
                 {
-                    position_component.pose.position.x = position_component.pose.position.x;
-                    position_component.pose.position.y = position_component.pose.position.y;
-                    position_component.pose.position.z = position_component.pose.position.z;
+                    position_observe.pose.position.x = position_component.pose.position.x;
+                    position_observe.pose.position.y = position_component.pose.position.y;
+                    position_observe.pose.position.z = position_component.pose.position.z;
                     row_move_count = 1;
                     line_move_count = 1;
                     current_pos_state = land;
