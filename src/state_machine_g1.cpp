@@ -44,7 +44,7 @@ float wrap_pi(float angle_rad);
 
 /*************************constant definition***************************/
 
-#define MAX_MISSION_TIME        360
+#define MAX_MISSION_TIME        200
 #define HOME_HEIGHT             5.5
 #define OBSERVE_HEIGET          6.5
 #define CONSTRUCT_HEIGET        5.5
@@ -1232,8 +1232,8 @@ void state_machine_fun(void)
             {
                 if (line_move_count < BOX_LINE)
                 {
-                    position_observe.pose.position.x = position_component.pose.position.x + line_move_count * LINE_MOVE_DISTANCE * cos(yaw_sp);
-                    position_observe.pose.position.y = position_component.pose.position.y + line_move_count * LINE_MOVE_DISTANCE * sin(yaw_sp);
+                    position_observe.pose.position.x = position_component.pose.position.x + line_move_count * LINE_MOVE_DISTANCE * cos(yaw_sp) - (row_move_count -1 ) * ROW_MOVE_DISTANCE * sin(yaw_sp);
+                    position_observe.pose.position.y = position_component.pose.position.y + line_move_count * LINE_MOVE_DISTANCE * sin(yaw_sp) + (row_move_count -1 ) * ROW_MOVE_DISTANCE * cos(yaw_sp);
                     position_observe.pose.position.z = position_component.pose.position.z;
                     line_move_count++;
                 }
