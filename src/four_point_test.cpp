@@ -166,9 +166,9 @@ void fixed_target_position_p2m_cb(const state_machine::FIXED_TARGET_POSITION_P2M
     position_construction.pose.position.y = fix_target_position.construction_x;
     position_construction.pose.position.z = CONSTRUCT_HEIGET - fix_target_position.construction_z;
     
-    position_observe.pose.position.x = position_component.construction_x;
-    position_observe.pose.position.y = position_component.construction_y;
-    position_observe.pose.position.z = position_component.construction_z;
+    position_observe.pose.position.x = position_component.pose.position.x;
+    position_observe.pose.position.y = position_component.pose.position.y;
+    position_observe.pose.position.z = position_component.pose.position.z;
     
     // //adjust angular,face north
     yaw_sp = wrap_pi(M_PI_2 - fix_target_return.component_yaw_sp * M_PI/180);
@@ -351,7 +351,7 @@ void state_machine_fun(void)
         case observe_go:
         {
             local_pos_pub.publish(position_observe);
-            pose_pub = observe_go;
+            pose_pub = position_observe;
             if (Distance_of_Two(current_position.pose.position.x,position_observe.pose.position.x,
                                 current_position.pose.position.y,position_observe.pose.position.y,
                                 current_position.pose.position.z,position_observe.pose.position.z) < LOCATE_ACCURACY)
@@ -363,8 +363,8 @@ void state_machine_fun(void)
         break;
         case hover2:
         {
-            local_pos_pub.publish(observe_go);
-            pose_pub = observe_go;
+            local_pos_pub.publish(position_observe);
+            pose_pub = position_observe;
             if(ros::Time::now() - last_time > ros::Duration(4.0))
             {
                 if (line_move_count < BOX_LINE)
