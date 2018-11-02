@@ -89,8 +89,8 @@ int row_move_count = 1;
 #define OBSERVE_HEIGET         5
 #define CONSTRUCT_HEIGET       5
 #define LOCATE_ACCURACY        0.8
-#define LINE_MOVE_DISTANCE     3.0
-#define ROW_MOVE_DISTANCE      3.0
+#define LINE_MOVE_DISTANCE     5.0
+#define ROW_MOVE_DISTANCE      5.0
 #define BOX_LINE               2
 #define BOX_ROW                2
 
