@@ -1248,11 +1248,9 @@ void state_machine_fun(void)
                 }
                 else if (line_move_count == BOX_LINE && row_move_count == BOX_ROW)
                 {
-                    position_observe.pose.position.x = position_component.pose.position.x;
-                    position_observe.pose.position.y = position_component.pose.position.y;
+                    position_observe.pose.position.x = position_component.pose.position.x + 0.5 * LINE_MOVE_DISTANCE * cos(yaw_sp) - 0.5 * ROW_MOVE_DISTANCE * sin(yaw_sp);
+                    position_observe.pose.position.y = position_component.pose.position.y + 0.5 * LINE_MOVE_DISTANCE * sin(yaw_sp) + 0.5 * ROW_MOVE_DISTANCE * cos(yaw_sp);
                     position_observe.pose.position.z = position_component.pose.position.z;
-                    row_move_count = 1;
-                    line_move_count = 1;
                 }
 
                 current_mission_state = position_observe_go;
