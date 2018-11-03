@@ -1160,7 +1160,7 @@ void state_machine_fun(void)
             if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && place_count > 0)
             {
                 place_count++;
-                if(place_count > 30)
+                if(place_count > 50)
                 {
                     place_count = 0;
                     current_mission_state = construction_leave;
@@ -1190,7 +1190,7 @@ void state_machine_fun(void)
             //distance_measure.measure_enable = 1;
             pose_pub = position_safe;
             local_pos_pub.publish(position_safe);
-            if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && place_judge_count == 0)
+            if(ros::Time::now() - mission_last_time > ros::Duration(4.0) && place_judge_count == 0)
             {
                 place_judge_count++;
             }
