@@ -52,8 +52,8 @@ float wrap_pi(float angle_rad);
 #define ASCEND_VELOCITY_CON     0.5
 #define ASCEND_VELOCITY_COM     0.7
 #define TAKE_OFF_VELOCITY       1.5
-#define BOX_HEIGET              0.25
-#define PLACE_HEIGET            2.5//0.25
+#define BOX_HEIGET              0.0//0.25
+#define PLACE_HEIGET            5.0//2.5//0.25
 #define BIAS_ZED_FOOT           0.01
 #define GRAB_HEIGHT_MARGIN      0.01//0.01//0.30//0.05
 #define LOCATE_ACCURACY_HIGH    0.4
@@ -69,7 +69,7 @@ float wrap_pi(float angle_rad);
 #define OBSERVE_HEIGHT_MAX      7.0
 #define BEST_RECOGNIZE_HEIGHT   1.8
 #define SEARCH_TIME_SINGLE      6.0
-#define JUDGE_HEIGHT            5.0
+#define JUDGE_HEIGHT            4.5//5.0
 #define JUDGE_DIATANCE          2.0
 #define VISION_ROUGH_FRAME      1
 #define VISION_ACCURACY_FRAME   2
@@ -527,7 +527,8 @@ int main(int argc, char **argv)
             if(ros::Time::now() - mission_start_time > ros::Duration(MAX_MISSION_TIME) && force_home_enable == true)
             {
                 if (current_mission_state != position_construction_go && current_mission_state != position_construction_hover &&
-                    current_mission_state != place_point_get_close && current_mission_state != place_point_adjust)
+                    current_mission_state != place_point_get_close && current_mission_state != place_point_adjust && 
+                    current_mission_state != box_leave && current_mission_state != grab_status_judge)
                 {
                     force_home_enable = false;
 
@@ -1096,7 +1097,7 @@ void state_machine_fun(void)
             local_pos_pub.publish(position_place);
             if (Distance_of_Two(current_position.pose.position.x,position_place.pose.position.x,
                                 current_position.pose.position.y,position_place.pose.position.y,
-                                current_position.pose.position.z,position_place.pose.position.z) < LOCATE_ACCURACY_HIGH
+                                current_position.pose.position.z,position_place.pose.position.z) < LOCATE_ACCURACY_ROUGH
                 || ros::Time::now() - mission_last_time > ros::Duration(10.0))
             {
                 current_mission_state = place_point_adjust;
@@ -1160,7 +1161,7 @@ void state_machine_fun(void)
             if(ros::Time::now() - mission_last_time > ros::Duration(0.5) && place_count > 0)
             {
                 place_count++;
-                if(place_count > 50)
+                if(place_count > 10)
                 {
                     place_count = 0;
                     current_mission_state = construction_leave;
@@ -1190,7 +1191,7 @@ void state_machine_fun(void)
             //distance_measure.measure_enable = 1;
             pose_pub = position_safe;
             local_pos_pub.publish(position_safe);
-            if(ros::Time::now() - mission_last_time > ros::Duration(4.0) && place_judge_count == 0)
+            if(ros::Time::now() - mission_last_time > ros::Duration(2.0) && place_judge_count == 0)
             {
                 place_judge_count++;
             }
