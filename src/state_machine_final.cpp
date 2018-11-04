@@ -75,7 +75,7 @@ float wrap_pi(float angle_rad);
 #define VISION_ACCURACY_FRAME   2
 #define VISION_LOST_MAX         40
 #define GRAB_LOST_ADJUST        0.04
-#define DISTANCE_TO_GROUND_MIN  0.4//1.1//0.4//0.9
+#define DISTANCE_TO_GROUND_MIN  1.1//0.4//1.1//0.4//0.9
 #define BOX_REGION_LIMIT_ROUGH  4.0
 #define BOX_REGION_LIMIT_ACCUR  2.0
 #define DISTANCE_FROM_BOX_TOP   0.20
