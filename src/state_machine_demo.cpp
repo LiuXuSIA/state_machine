@@ -54,6 +54,9 @@ int current_pos_state = takeoff;
 //time
 ros::Time last_time;
 
+//velocity send
+bool velocity_control_enable = true;
+
 //land
 state_machine::CommandTOL landing_cmd;
 ros::ServiceClient land_client;
@@ -110,8 +113,8 @@ int main(int argc, char **argv)
     position_C.pose.position.y = 5;
     position_C.pose.position.z = 5;
     
-    //adjust angular,face north
-    float yaw_sp=M_PI_2;
+    //adjust angular,face north  //just face east is OK
+    float yaw_sp=0;
     //A
     position_A.pose.orientation.x = 0;
     position_A.pose.orientation.y = 0;
@@ -162,9 +165,20 @@ int main(int argc, char **argv)
 
     while(ros::ok())
     {
-        state_machine_fun();
-        ROS_INFO("current_pos_state:%d",current_pos_state);
-
+        if(current_state.mode == "OFFBOARD" && current_state.armed)
+        {
+            state_machine_fun();
+            ROS_INFO("current_pos_state:%d",current_pos_state);
+        }
+        else if(velocity_control_enable == true)
+        {
+            local_vel_pub.publish(vel_take_off);
+            if(display_flag == true)
+            {
+                ROS_INFO("Wait for switch to offboard...");
+                display_flag = false;
+            }
+        }
         ros::spinOnce();
         rate.sleep();
     }
@@ -179,6 +193,7 @@ void state_machine_fun(void)
     {
         case takeoff:
         {
+            velocity_control_enable = false;
             pose_pub = position_A;
             local_vel_pub.publish(vel_pub);
             if(current_position.pose.position.z > 4)
