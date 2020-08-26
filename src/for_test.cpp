@@ -217,7 +217,7 @@ int main(int argc, char **argv)
 
   //       yaw_sp_pub.publish(yaw_sp_calculated);
         local_pos_pub.publish(pose_pub);
-        ROS_INFO("testing...")
+        ROS_INFO("testing...");
         ros::spinOnce();
         rate.sleep();
 
