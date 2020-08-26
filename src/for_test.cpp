@@ -189,7 +189,7 @@ int main(int argc, char **argv)
     ROS_INFO("Initialization finished");
  //    #endif
 
-	while(ros::ok())
+	while(ros::ok() && current_state.connected)
 	{     
   //       while(receive_flag == false)
   //       {
@@ -217,6 +217,7 @@ int main(int argc, char **argv)
 
   //       yaw_sp_pub.publish(yaw_sp_calculated);
         local_pos_pub.publish(pose_pub);
+        ROS_INFO("testing...")
         ros::spinOnce();
         rate.sleep();
 
