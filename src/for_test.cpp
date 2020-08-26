@@ -166,7 +166,7 @@ int main(int argc, char **argv)
     ros::Publisher vision_position_pub = nh.advertise<state_machine::VISION_POSITION_GET_M2P>("mavros/vision_position_get_m2p",10);
     ros::Publisher yaw_sp_pub = nh.advertise<state_machine::YAW_SP_CALCULATED_M2P>("mavros/yaw_sp_calculated_m2p",10);
     
-    ros::Rate rate(10.0);
+    ros::Rate rate(20.0);
 
     while(ros::ok() && !current_state.connected)
     {
@@ -216,6 +216,7 @@ int main(int argc, char **argv)
   //       rate.sleep();
 
   //       yaw_sp_pub.publish(yaw_sp_calculated);
+        local_pos_pub.publish(pose_pub);
         ros::spinOnce();
         rate.sleep();
 
