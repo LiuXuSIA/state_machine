@@ -165,6 +165,8 @@ int main(int argc, char **argv)
 
     while(ros::ok())
     {
+        static bool display_flag = true;
+        
         if(current_state.mode == "OFFBOARD" && current_state.armed)
         {
             state_machine_fun();
@@ -172,7 +174,7 @@ int main(int argc, char **argv)
         }
         else if(velocity_control_enable == true)
         {
-            local_vel_pub.publish(vel_take_off);
+            local_vel_pub.publish(vel_pub);
             if(display_flag == true)
             {
                 ROS_INFO("Wait for switch to offboard...");
