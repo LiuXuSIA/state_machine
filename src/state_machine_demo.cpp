@@ -166,7 +166,7 @@ int main(int argc, char **argv)
     while(ros::ok())
     {
         static bool display_flag = true;
-        
+
         if(current_state.mode == "OFFBOARD" && current_state.armed)
         {
             state_machine_fun();
