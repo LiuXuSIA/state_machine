@@ -98,7 +98,7 @@ add_dependencies(state_machine_final            state_machine_generate_messages_
 ## Specify libraries to link a library or executable target against
 target_link_libraries(state_machine_demo       ${catkin_LIBRARIES})
 target_link_libraries(for_test       ${catkin_LIBRARIES})
-target_link_libraries(vision_test             ${catkin_LIBRARIES}))
+target_link_libraries(vision_test             ${catkin_LIBRARIES})
 target_link_libraries(vision_process_test             ${catkin_LIBRARIES})
 target_link_libraries(state_machine_g1              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_g2              ${catkin_LIBRARIES})
