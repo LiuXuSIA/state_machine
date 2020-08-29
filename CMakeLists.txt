@@ -41,6 +41,10 @@ add_message_files(
   Distance_Measure_Enable.msg
   Task_Status_to_Vision.msg
   Vision_Position_Multiple.msg
+
+  #add for 2020 uavcomp
+  takeOffCommand_L2F.msg
+  takeOffStatus_F2L.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -84,6 +88,8 @@ add_executable(vision_process_test              src/vision_process_test.cpp)
 add_executable(state_machine_g1             src/state_machine_g1.cpp)
 add_executable(state_machine_g2             src/state_machine_g2.cpp)
 add_executable(state_machine_final             src/state_machine_final.cpp)
+add_executable(state_machine_leader             src/state_machine_leader.cpp)
+add_executable(state_machine_follower             src/state_machine_follower.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -94,6 +100,8 @@ add_dependencies(vision_process_test            state_machine_generate_messages_
 add_dependencies(state_machine_g1            state_machine_generate_messages_cpp)
 add_dependencies(state_machine_g2            state_machine_generate_messages_cpp)
 add_dependencies(state_machine_final            state_machine_generate_messages_cpp)
+add_dependencies(state_machine_leader            state_machine_generate_messages_cpp)
+add_dependencies(state_machine_follower            state_machine_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(state_machine_demo       ${catkin_LIBRARIES})
@@ -103,4 +111,5 @@ target_link_libraries(vision_process_test             ${catkin_LIBRARIES})
 target_link_libraries(state_machine_g1              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_g2              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_final              ${catkin_LIBRARIES})
-
+target_link_libraries(state_machine_leader              ${catkin_LIBRARIES})
+target_link_libraries(state_machine_follower              ${catkin_LIBRARIES})
