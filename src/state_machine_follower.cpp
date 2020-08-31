@@ -32,8 +32,6 @@ geometry_msgs::PoseStamped position_C;
 
 geometry_msgs::PoseStamped pose_pub;  //ENU
 geometry_msgs::TwistStamped vel_pub;
-vel_pub.twist.linear.x = 0.0f;
-vel_pub.twist.linear.y = 0.0f;
 
 //for take off
 ros::Publisher local_pos_pub;
@@ -103,24 +101,29 @@ void velo_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
 }
 
 state_machine::takeOffCommand_L2F takeOffCommand;
+bool receiveTakeOffCommand_enable = true;
 void takeOffCommand_cb(const state_machine::takeOffCommand_L2F::ConstPtr& msg)
 {
-    takeOffCommand = *msg;
-    takeOffStatus.value = takeOffCommand.value;
+    if(receiveTakeOffCommand_enable == true)
+    {
+        takeOffCommand = *msg;
+        ROS_INFO("received the take off command!!");
+        receiveTakeOffCommand_enable = false;
+    } 
 }
 
 /*****************************main function*****************************/
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "offboard_node");
+    ros::init(argc, argv, "offboard_node_follower_1");
     ros::NodeHandle nh;
 
     takeOffStatus.UAV_index = 0;
     takeOffStatus.value = 0;
 
     //takeoff velocity
-    // vel_pub.twist.linear.x = 0.0f;
-    // vel_pub.twist.linear.y = 0.0f;
+    vel_pub.twist.linear.x = 0.0f;
+    vel_pub.twist.linear.y = 0.0f;
     vel_pub.twist.linear.z = ASCEND_VELOCITY;
     vel_pub.twist.angular.x = 0.0f;
     vel_pub.twist.angular.y = 0.0f;
@@ -194,7 +197,7 @@ int main(int argc, char **argv)
     {
         static bool display_flag = true;
 
-        if(takeOffStatus.value ==1 && current_state.mode != "OFFBOARD" && (ros::Time::now() - last_request > ros::Duration(5.0)))
+        if(takeOffCommand.value == 1 && current_state.mode != "OFFBOARD" && (ros::Time::now() - last_request > ros::Duration(5.0)))
         {
             if( set_mode_client.call(offb_set_mode) && offb_set_mode.response.success) //old version was success, new version is mode_sent
             {
@@ -204,11 +207,13 @@ int main(int argc, char **argv)
         }
         else 
         {
-            if(takeOffStatus.value ==1 && !current_state.armed && (ros::Time::now() - last_request > ros::Duration(5.0)))
+            if(takeOffCommand.value == 1 && !current_state.armed && (ros::Time::now() - last_request > ros::Duration(5.0)))
             {
                 if( arming_client.call(arm_cmd) && arm_cmd.response.success)
                 {
                     ROS_INFO("Vehicle armed");
+                    takeOffCommand.value = 0;
+                    takeOffStatus.value = 1;
                     takeOffStatus_pub.publish(takeOffStatus);
                 }
                 last_request = ros::Time::now();

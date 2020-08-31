@@ -73,6 +73,9 @@ ros::Time landing_last_request;
 #define ASCEND_VELOCITY     2.0
 #define LOCATE_ACCURACY     0.5
 
+/*************************simulation test******************************/
+#define SIMULATION 1
+
 
 /***************************callback function definition***************/
 state_machine::State current_state;
@@ -97,14 +100,16 @@ state_machine::takeOffStatus_F2L takeoffStatus_uav1;
 void takeOff_uav1_cb(const state_machine::takeOffStatus_F2L::ConstPtr& msg)
 {
     takeoffStatus_uav1 = *msg;
+    ROS_INFO("uav1 switched to offboard successfully!!");
 }
 
 /*****************************main function*****************************/
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "offboard_node");
+    ros::init(argc, argv, "offboard_node_leader");
     ros::NodeHandle nh;
-
+    
+    takeOffCommand.value = 1;
     //takeoff velocity
     vel_pub.twist.linear.x = 0.0f;
     vel_pub.twist.linear.y = 0.0f;
@@ -155,7 +160,6 @@ int main(int argc, char **argv)
     local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("mavros/setpoint_velocity/cmd_vel",10);
 
     takeOffCommand_pub = nh.advertise<state_machine::takeOffCommand_L2F>("takeOffCommand",10);
-    takeOffCommand.value = 1;
 
     land_client = nh.serviceClient<state_machine::CommandTOL>("mavros/cmd/land");
     landing_cmd.request.min_pitch = 1.0;
@@ -163,6 +167,7 @@ int main(int argc, char **argv)
 
     ros::Rate rate(10.0);
 
+    #if SIMULATION == 0
     while(ros::ok() && !current_state.connected)
     {
         ros::spinOnce();
@@ -170,6 +175,7 @@ int main(int argc, char **argv)
     }
 
     ROS_INFO("Connect successfully!!");
+    #endif
 
     ROS_INFO("send setpoint before takeoff,please wait");
 
@@ -186,6 +192,13 @@ int main(int argc, char **argv)
     {
         static bool display_flag = true;
 
+        #if SIMULATION
+        if(takeoffStatus_uav1.value != 1)
+        {
+            takeOffCommand_pub.publish(takeOffCommand);
+            ROS_INFO("send the take off command!!");
+        }
+        #else
         if(current_state.mode == "OFFBOARD" && current_state.armed)
         {
             state_machine_fun();
@@ -222,6 +235,7 @@ int main(int argc, char **argv)
                     landing_last_request = ros::Time::now();
                 }
         }
+        #endif
 
         ros::spinOnce();
         rate.sleep();
