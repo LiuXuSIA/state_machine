@@ -265,7 +265,7 @@ int main(int argc, char **argv)
         {
             state_machine_fun();
             ROS_INFO("current_pos_state:%d",current_pos_state);
-            // ROS_INFO("current_mode:%s",current_state.mode.c_str());
+            ROS_INFO("current_mode:%s",current_state.mode.c_str());
         }
         else if(velocity_control_enable == true)
         {
@@ -320,7 +320,6 @@ int main(int argc, char **argv)
                     landing_last_request = ros::Time::now();
                 }
         }
-        ROS_INFO("current_mode:%s",current_state.mode.c_str());
 
         ros::spinOnce();
         rate.sleep();

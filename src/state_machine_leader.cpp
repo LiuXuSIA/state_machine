@@ -79,7 +79,7 @@ ros::Time last_request;
 
 /*************************constant defunition***************************/
 
-#define ASCEND_VELOCITY     2.0
+#define ASCEND_VELOCITY     1.5
 #define LOCATE_ACCURACY     0.5
 
 /*************************simulation test******************************/

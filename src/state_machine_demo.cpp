@@ -57,6 +57,9 @@ ros::Time last_time;
 //velocity send
 bool velocity_control_enable = true;
 
+//get the home position before takeoff
+bool get_home_position_enable = false;
+
 //land
 state_machine::CommandTOL landing_cmd;
 ros::ServiceClient land_client;
@@ -79,6 +82,28 @@ geometry_msgs::PoseStamped current_position;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_position = *msg;
+    if(get_home_position_enable == true)
+    {
+        //position of A
+        position_A.pose.position.x = current_position.pose.position.x;
+        position_A.pose.position.y = current_position.pose.position.y;
+        position_A.pose.position.z = current_position.pose.position.z+5;
+        //position of B
+        position_B.pose.position.x = position_A.pose.position.x;
+        position_B.pose.position.y = position_A.pose.position.y+5;
+        position_B.pose.position.z = position_A.pose.position.z;
+        //position of C
+        position_C.pose.position.x = position_A.pose.position.x+5;
+        position_C.pose.position.y = position_A.pose.position.y+5;
+        position_C.pose.position.z = position_A.pose.position.z;
+
+        ROS_INFO("gotten the home position.");
+        ROS_INFO("the x of home:%f", position_A.pose.position.x);
+        ROS_INFO("the y of home:%f", position_A.pose.position.y);
+        ROS_INFO("the z of home:%f", position_A.pose.position.z);
+
+        get_home_position_enable = false;
+    }
 }
 
 geometry_msgs::TwistStamped current_velocity;
@@ -166,6 +191,15 @@ int main(int argc, char **argv)
     while(ros::ok())
     {
         static bool display_flag = true;
+        static bool get_home_position_flag = true;
+
+        if(current_state.mode != "OFFBOARD" && current_state.armed && get_home_position_flag == true)
+        {
+            // add without gs
+            get_home_position_enable = true;
+            get_home_position_flag = false;
+            ROS_INFO("get home position enable.");
+        }
 
         if(current_state.mode == "OFFBOARD" && current_state.armed)
         {
