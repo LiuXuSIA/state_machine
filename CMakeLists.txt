@@ -89,7 +89,10 @@ add_executable(state_machine_g1             src/state_machine_g1.cpp)
 add_executable(state_machine_g2             src/state_machine_g2.cpp)
 add_executable(state_machine_final             src/state_machine_final.cpp)
 add_executable(state_machine_leader             src/state_machine_leader.cpp)
-add_executable(state_machine_follower             src/state_machine_follower.cpp)
+add_executable(state_machine_follower_1             src/state_machine_follower_1.cpp)
+add_executable(state_machine_follower_2             src/state_machine_follower_2.cpp)
+add_executable(state_machine_follower_3             src/state_machine_follower_3.cpp)
+add_executable(state_machine_follower_4             src/state_machine_follower_4.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -101,7 +104,10 @@ add_dependencies(state_machine_g1            state_machine_generate_messages_cpp
 add_dependencies(state_machine_g2            state_machine_generate_messages_cpp)
 add_dependencies(state_machine_final            state_machine_generate_messages_cpp)
 add_dependencies(state_machine_leader            state_machine_generate_messages_cpp)
-add_dependencies(state_machine_follower            state_machine_generate_messages_cpp)
+add_dependencies(state_machine_follower_1            state_machine_generate_messages_cpp)
+add_dependencies(state_machine_follower_2            state_machine_generate_messages_cpp)
+add_dependencies(state_machine_follower_3            state_machine_generate_messages_cpp)
+add_dependencies(state_machine_follower_4            state_machine_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(state_machine_demo       ${catkin_LIBRARIES})
@@ -112,4 +118,7 @@ target_link_libraries(state_machine_g1              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_g2              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_final              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_leader              ${catkin_LIBRARIES})
-target_link_libraries(state_machine_follower              ${catkin_LIBRARIES})
+target_link_libraries(state_machine_follower_1              ${catkin_LIBRARIES})
+target_link_libraries(state_machine_follower_2              ${catkin_LIBRARIES})
+target_link_libraries(state_machine_follower_3              ${catkin_LIBRARIES})
+target_link_libraries(state_machine_follower_4              ${catkin_LIBRARIES})
