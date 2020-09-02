@@ -13,8 +13,8 @@
 #include <state_machine/CommandTOL.h>
 #include <state_machine/CommandBool.h>
 #include <state_machine/State.h>
-#include <state_machine/takeOffStatus_F2L.h>
-#include <state_machine/takeOffCommand_L2F.h>
+#include <state_machine/attributeStatus_F2L.h>
+#include <state_machine/requestCommand_L2F.h>
 #include <state_machine/SetMode.h>
 #include "math.h"
 
@@ -37,8 +37,11 @@ geometry_msgs::TwistStamped vel_pub;
 ros::Publisher local_pos_pub;
 ros::Publisher local_vel_pub;
 ros::Publisher takeOffStatus_pub;
+ros::Publisher communication_result_pub;
+ros::Publisher current_position_pub;
 
-state_machine::takeOffStatus_F2L takeOffStatus;
+state_machine::attributeStatus_F2L takeOffStatus;
+state_machine::attributeStatus_F2L communicationStatus;
 // takeOffStatus.UAV_index = 0;
 // takeOffStatus.value = 0;
 //bool velocity_control_enable = true;
@@ -98,6 +101,7 @@ geometry_msgs::PoseStamped current_position;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_position = *msg;
+    current_position_pub.publish(current_position);
     if(get_home_position_enable == true)
     {
         //position of A
@@ -128,16 +132,24 @@ void velo_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
     current_velocity = *msg;
 }
 
-state_machine::takeOffCommand_L2F takeOffCommand;
+state_machine::requestCommand_L2F takeOffCommand;
 bool receiveTakeOffCommand_enable = true;
-void takeOffCommand_cb(const state_machine::takeOffCommand_L2F::ConstPtr& msg)
+void takeOffCommand_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
 {
     if(receiveTakeOffCommand_enable == true)
     {
         takeOffCommand = *msg;
-        ROS_INFO("received the take off command!!");
+        ROS_INFO("uav1 received the take off command!!");
         receiveTakeOffCommand_enable = false;
     } 
+}
+
+state_machine::requestCommand_L2F communication_command;
+void communication_test_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
+{
+    communication_command = *msg;
+    communication_result_pub.publish(communicationStatus);
+    ROS_INFO("uav1 receive the communication request.");
 }
 
 /*****************************main function*****************************/
@@ -146,8 +158,11 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "offboard_node_follower_1");
     ros::NodeHandle nh;
 
-    takeOffStatus.UAV_index = 0;
-    takeOffStatus.value = 0;
+    takeOffStatus.UAV_index = 1;
+    takeOffStatus.value = 1;
+
+    communicationStatus.UAV_index = 1;
+    communicationStatus.value = 1;
 
     //takeoff velocity
     vel_pub.twist.linear.x = 0.0f;
@@ -187,31 +202,34 @@ int main(int argc, char **argv)
     position_C.pose.orientation.z = sin(yaw_sp/2);
     position_C.pose.orientation.w = cos(yaw_sp/2);
 
-    ros::Subscriber state_sub = nh.subscribe<state_machine::State>("follower1/mavros/state",10,state_cb);
-    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("follower1/mavros/local_position/pose",10,pose_cb);
-    ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("follower1/mavros/local_position/velocity",10,velo_cb);
-    ros::Subscriber takeOffCommand_sub = nh.subscribe<>("takeOffCommand",10,takeOffCommand_cb);
+    ros::Subscriber state_sub = nh.subscribe<state_machine::State>("uav1/mavros/state",10,state_cb);
+    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav1/mavros/local_position/pose",10,pose_cb);
+    ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("uav1/mavros/local_position/velocity",10,velo_cb);
+    ros::Subscriber takeOffCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("takeOffCommand",10,takeOffCommand_cb);
+    ros::Subscriber communication_test_sub = nh.subscribe<state_machine::requestCommand_L2F>("communication_test",10,communication_test_cb);
 
-    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("follower1/mavros/setpoint_position/local",10);
-    local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("follower1/mavros/setpoint_velocity/cmd_vel",10);
-    takeOffStatus_pub = nh.advertise<state_machine::takeOffStatus_F2L>("takeOffStatus_follower1",10);
+    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1/mavros/setpoint_position/local",10);
+    local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("uav1/mavros/setpoint_velocity/cmd_vel",10);
+    takeOffStatus_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_take_off_status",10);
+    communication_result_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_communication_test_reult",10);
+    current_position_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1_current_position",10);
  
-    land_client = nh.serviceClient<state_machine::CommandTOL>("follower1/mavros/cmd/land");
+    land_client = nh.serviceClient<state_machine::CommandTOL>("uav1/mavros/cmd/land");
     state_machine::CommandTOL landing_cmd;
     landing_cmd.request.min_pitch = 1.0;
     landing_last_request = ros::Time::now();
 
-    set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>("follower1/mavros/set_mode");
+    set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>("uav1/mavros/set_mode");
     state_machine::SetMode offb_set_mode;
 	offb_set_mode.request.custom_mode = "OFFBOARD";
     last_request = ros::Time::now();
 
-    set_mode_client_posctl = nh.serviceClient<state_machine::SetMode>("follower1/mavros/set_mode");
+    set_mode_client_posctl = nh.serviceClient<state_machine::SetMode>("uav1/mavros/set_mode");
     state_machine::SetMode posc_set_mode;
 	posc_set_mode.request.custom_mode = "POSCTL";
     last_request = ros::Time::now();
 
-    arming_client = nh.serviceClient<state_machine::CommandBool>("follower1/mavros/cmd/arming");
+    arming_client = nh.serviceClient<state_machine::CommandBool>("uav1/mavros/cmd/arming");
 	state_machine::CommandBool arm_cmd;
 	arm_cmd.request.value = true;
     landing_last_request = ros::Time::now();
@@ -244,18 +262,6 @@ int main(int argc, char **argv)
         ros::spinOnce();
         rate.sleep();
     }
-
-   //keep send data stream before switch to offboard mode
-    ROS_INFO("send setpoint before takeoff,please wait");
-
-    for(int i =100; ros::ok() && i > 0; i--)
-    {
-        local_vel_pub.publish(vel_pub);
-        ros::spinOnce();
-        rate.sleep();
-    }
-
-    ROS_INFO("Initialization finished");
 
     while(ros::ok() && current_state.connected)
     {
@@ -293,7 +299,6 @@ int main(int argc, char **argv)
                 {
                     ROS_INFO("Vehicle armed");
                     takeOffCommand.value = 0;
-                    takeOffStatus.value = 1;
                     takeOffStatus_pub.publish(takeOffStatus);
                     // // add without gs
                     // get_home_position_enable = true;

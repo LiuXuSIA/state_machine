@@ -43,8 +43,8 @@ add_message_files(
   Vision_Position_Multiple.msg
 
   #add for 2020 uavcomp
-  takeOffCommand_L2F.msg
-  takeOffStatus_F2L.msg
+  requestCommand_L2F.msg
+  attributeStatus_F2L.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -93,6 +93,7 @@ add_executable(state_machine_follower_1             src/state_machine_follower_1
 add_executable(state_machine_follower_2             src/state_machine_follower_2.cpp)
 add_executable(state_machine_follower_3             src/state_machine_follower_3.cpp)
 add_executable(state_machine_follower_4             src/state_machine_follower_4.cpp)
+add_executable(state_machine_commander             src/state_machine_commander.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -108,6 +109,7 @@ add_dependencies(state_machine_follower_1            state_machine_generate_mess
 add_dependencies(state_machine_follower_2            state_machine_generate_messages_cpp)
 add_dependencies(state_machine_follower_3            state_machine_generate_messages_cpp)
 add_dependencies(state_machine_follower_4            state_machine_generate_messages_cpp)
+add_dependencies(state_machine_commander            state_machine_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(state_machine_demo       ${catkin_LIBRARIES})
@@ -122,3 +124,4 @@ target_link_libraries(state_machine_follower_1              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_follower_2              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_follower_3              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_follower_4              ${catkin_LIBRARIES})
+target_link_libraries(state_machine_commander              ${catkin_LIBRARIES})

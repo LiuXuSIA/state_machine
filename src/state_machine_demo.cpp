@@ -82,6 +82,7 @@ geometry_msgs::PoseStamped current_position;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_position = *msg;
+    
     if(get_home_position_enable == true)
     {
         //position of A
