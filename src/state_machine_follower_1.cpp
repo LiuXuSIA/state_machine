@@ -298,6 +298,8 @@ int main(int argc, char **argv)
         rate.sleep();
     }
 
+    ROS_INFO("all of the other uavs have gotten the home position.");
+
     while(ros::ok() && current_state.connected)
     {
         static bool display_flag = true;

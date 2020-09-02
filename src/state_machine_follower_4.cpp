@@ -170,11 +170,15 @@ void uav1_current_position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
 geometry_msgs::PoseStamped uav1_home_position;
 bool uav1_home_position_gotten = false;
+bool uav1_home_position_display = true;
 void uav1_home_position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
-{
-    uav1_home_position = *msg;
-    uav1_home_position_gotten = true;
-    ROS_INFO("get uav1 home position.");
+{   
+    if(uav1_home_position_display == true)
+    {
+        uav1_home_position = *msg;
+        uav1_home_position_gotten = true;
+        ROS_INFO("get uav1 home position.");
+    }
 }
 
 
