@@ -43,9 +43,11 @@ ros::Publisher local_pos_pub;
 ros::Publisher local_vel_pub;
 ros::Publisher takeOffStatus_pub;
 ros::Publisher communication_result_pub;
+ros::Publisher uav1_home_position_get_pub;
 
 state_machine::attributeStatus_F2L takeOffStatus;
 state_machine::attributeStatus_F2L communicationStatus;
+state_machine::attributeStatus_F2L home_position_get;
 // takeOffStatus.UAV_index = 0;
 // takeOffStatus.value = 0;
 //bool velocity_control_enable = true;
@@ -180,6 +182,7 @@ void uav1_home_position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
         uav1_home_position_display = false;
         ROS_INFO("get uav1 home position.");
     }
+    uav1_home_position_get_pub.publish(home_position_get);
 }
 
 /*****************************main function*****************************/
@@ -244,6 +247,7 @@ int main(int argc, char **argv)
     local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("uav2/mavros/setpoint_velocity/cmd_vel",10);
     takeOffStatus_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav2_take_off_status",10);
     communication_result_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav2_communication_test_reult",10);
+    uav1_home_position_get_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav3_home_get",10);
  
     land_client = nh.serviceClient<state_machine::CommandTOL>("uav2/mavros/cmd/land");
     state_machine::CommandTOL landing_cmd;
