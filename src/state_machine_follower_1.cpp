@@ -88,7 +88,7 @@ ros::Time last_request;
 #define ASCEND_VELOCITY     2.0
 #define LOCATE_ACCURACY     0.5
 
-#define TAKEOFF_LAND_TEST   1
+#define TAKEOFF_LAND_TEST   0
 
 
 /***************************callback function definition***************/
