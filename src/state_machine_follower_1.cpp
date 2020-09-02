@@ -99,6 +99,7 @@ void state_cb(const state_machine::State::ConstPtr& msg)
 }
 
 geometry_msgs::PoseStamped current_position;
+bool home_position_gotten = false;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_position = *msg;
@@ -123,8 +124,8 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
         ROS_INFO("the y of home:%f", position_A.pose.position.y);
         ROS_INFO("the z of home:%f", position_A.pose.position.z);
         
-        uv1_home_position_pub.publish(position_A);
         get_home_position_enable = false;
+        home_position_gotten = true;
     }
 }
 
@@ -154,6 +155,23 @@ void communication_test_cb(const state_machine::requestCommand_L2F::ConstPtr& ms
     ROS_INFO("uav1 receive the communication request.");
 }
 
+state_machine::attributeStatus_F2L uav2_home_get;
+void uav2_home_get_cb(const state_machine::attributeStatus_F2L::ConstPtr& msg)
+{
+    uav2_home_get = *msg;
+}
+
+state_machine::attributeStatus_F2L uav3_home_get;
+void uav3_home_get_cb(const state_machine::attributeStatus_F2L::ConstPtr& msg)
+{
+    uav3_home_get = *msg;
+}
+
+state_machine::attributeStatus_F2L uav4_home_get;
+void uav4_home_get_cb(const state_machine::attributeStatus_F2L::ConstPtr& msg)
+{
+    uav4_home_get = *msg;
+}
 /*****************************main function*****************************/
 int main(int argc, char **argv)
 {
@@ -210,6 +228,10 @@ int main(int argc, char **argv)
     ros::Subscriber takeOffCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("take_off_command",10,takeOffCommand_cb);
     ros::Subscriber communication_test_sub = nh.subscribe<state_machine::requestCommand_L2F>("communication_test",10,communication_test_cb);
 
+    ros::Subscriber uav2_home_get_sub = nh.subscribe<state_machine::attributeStatus_F2L>("uav2_home_get",10,uav2_home_get_cb);
+    ros::Subscriber uav3_home_get_sub = nh.subscribe<state_machine::attributeStatus_F2L>("uav3_home_get",10,uav3_home_get_cb);
+    ros::Subscriber uav4_home_get_sub = nh.subscribe<state_machine::attributeStatus_F2L>("uav4_home_get",10,uav4_home_get_cb);
+
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1/mavros/setpoint_position/local",10);
     local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("uav1/mavros/setpoint_velocity/cmd_vel",10);
     takeOffStatus_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_take_off_status",10);
@@ -262,6 +284,16 @@ int main(int argc, char **argv)
             last_request = ros::Time::now();
         }
         
+        ros::spinOnce();
+        rate.sleep();
+    }
+
+    while(!uav2_home_get.value || !uav3_home_get.value || !uav4_home_get.value)
+    {
+        if(home_position_gotten == true)
+        {
+            uv1_home_position_pub.publish(position_A);
+        }
         ros::spinOnce();
         rate.sleep();
     }
