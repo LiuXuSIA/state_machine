@@ -155,7 +155,7 @@ void communication_test_cb(const state_machine::requestCommand_L2F::ConstPtr& ms
 /*****************************main function*****************************/
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "offboard_node_follower_1");
+    ros::init(argc, argv, "offboard_node_uav_1");
     ros::NodeHandle nh;
 
     takeOffStatus.UAV_index = 1;

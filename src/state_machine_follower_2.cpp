@@ -160,7 +160,7 @@ void uav1_current_position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 /*****************************main function*****************************/
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "offboard_node_follower_1");
+    ros::init(argc, argv, "offboard_node_uav_2");
     ros::NodeHandle nh;
 
     takeOffStatus.UAV_index = 2;
