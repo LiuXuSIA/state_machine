@@ -39,6 +39,7 @@ ros::Publisher local_vel_pub;
 ros::Publisher takeOffStatus_pub;
 ros::Publisher communication_result_pub;
 ros::Publisher current_position_pub;
+ros::Publisher uv1_home_position_pub;
 
 state_machine::attributeStatus_F2L takeOffStatus;
 state_machine::attributeStatus_F2L communicationStatus;
@@ -121,7 +122,8 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
         ROS_INFO("the x of home:%f", position_A.pose.position.x);
         ROS_INFO("the y of home:%f", position_A.pose.position.y);
         ROS_INFO("the z of home:%f", position_A.pose.position.z);
-
+        
+        uv1_home_position_pub.publish(position_A);
         get_home_position_enable = false;
     }
 }
@@ -213,6 +215,7 @@ int main(int argc, char **argv)
     takeOffStatus_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_take_off_status",10);
     communication_result_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_communication_test_reult",10);
     current_position_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1_current_position",10);
+    uv1_home_position_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1_home_position",10);
  
     land_client = nh.serviceClient<state_machine::CommandTOL>("uav1/mavros/cmd/land");
     state_machine::CommandTOL landing_cmd;

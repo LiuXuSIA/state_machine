@@ -29,6 +29,11 @@ double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, do
 geometry_msgs::PoseStamped position_A;
 geometry_msgs::PoseStamped position_B;
 geometry_msgs::PoseStamped position_C;
+geometry_msgs::PoseStamped position_tracking;
+
+float x_delta;
+float y_delta;
+float z_delta;
 
 geometry_msgs::PoseStamped pose_pub;  //ENU
 geometry_msgs::TwistStamped vel_pub;
@@ -52,12 +57,13 @@ state_machine::attributeStatus_F2L communicationStatus;
 static const int takeoff = 1;
 static const int position_A_go = 2;
 static const int position_A_hover = 3;
-static const int position_B_go = 4;
-static const int position_B_hover = 5;
-static const int position_C_go = 6;
-static const int position_C_hover = 7;
-static const int return_home = 8;
-static const int land = 9;
+static const int position_tracking_uav1 = 4;
+static const int position_B_go = 5;
+static const int position_B_hover = 6;
+static const int position_C_go = 7;
+static const int position_C_hover = 8;
+static const int return_home = 9;
+static const int land = 10;
 
 //mission 
 int loop = 0;
@@ -86,7 +92,8 @@ ros::Time last_request;
 #define ASCEND_VELOCITY     2.0
 #define LOCATE_ACCURACY     0.5
 
-#define TAKEOFF_LAND_TEST   1
+#define TAKEOFF_LAND_TEST   0
+#define POSITION_TRACK      1
 
 
 /***************************callback function definition***************/
@@ -97,6 +104,7 @@ void state_cb(const state_machine::State::ConstPtr& msg)
 }
 
 geometry_msgs::PoseStamped current_position;
+bool home_position_gotten = false;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_position = *msg;
@@ -121,6 +129,7 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
         ROS_INFO("the z of home:%f", position_A.pose.position.z);
 
         get_home_position_enable = false;
+        home_position_gotten = true;
     }
 }
 
@@ -154,8 +163,19 @@ geometry_msgs::PoseStamped uav1_current_position;
 void uav1_current_position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     uav1_current_position = *msg;
+    position_tracking.pose.position.x = uav1_current_position.pose.position.x - x_delta;
+    position_tracking.pose.position.y = uav1_current_position.pose.position.y - y_delta;
+    position_tracking.pose.position.z = uav1_current_position.pose.position.z - z_delta;
 }
 
+geometry_msgs::PoseStamped uav1_home_position;
+bool uav1_home_position_gotten = false;
+void uav1_home_position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
+    uav1_home_position = *msg;
+    uav1_home_position_gotten = true;
+    ROS_INFO("get uav1 home position.");
+}
 
 /*****************************main function*****************************/
 int main(int argc, char **argv)
@@ -213,6 +233,7 @@ int main(int argc, char **argv)
     ros::Subscriber takeOffCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("take_off_command",10,takeOffCommand_cb);
     ros::Subscriber communication_test_sub = nh.subscribe<state_machine::requestCommand_L2F>("communication_test",10,communication_test_cb);
     ros::Subscriber uav1_current_position_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav1_current_position",10,uav1_current_position_cb);
+    ros::Subscriber uav1_home_position_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav1_home_position",10,uav1_home_position_cb);
 
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("uav2/mavros/setpoint_position/local",10);
     local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("uav2/mavros/setpoint_velocity/cmd_vel",10);
@@ -267,6 +288,16 @@ int main(int argc, char **argv)
         ros::spinOnce();
         rate.sleep();
     }
+    
+    while(uav1_home_position_gotten == false || home_position_gotten == false)
+    {
+        ros::spinOnce();
+        rate.sleep();
+    }
+
+    x_delta = uav1_home_position.pose.position.x - position_A.pose.position.x;
+    y_delta = uav1_home_position.pose.position.y - position_A.pose.position.y;
+    z_delta = uav1_home_position.pose.position.z - position_A.pose.position.z;
 
     while(ros::ok() && current_state.connected)
     {
@@ -374,13 +405,21 @@ void state_machine_fun(void)
             local_pos_pub.publish(position_A);
             if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
-                #if TAKEOFF_LAND_TEST == 0
-                current_pos_state = position_B_go;
-                #else
+                #if TAKEOFF_LAND_TEST
                 current_pos_state = land;
+                #elif POSITION_TRACK
+                current_pos_state = position_tracking_uav1;
+                #else
+                current_pos_state = position_B_go;
                 #endif
                 last_time = ros::Time::now();
             }
+        }
+        break;
+        case position_tracking_uav1:
+        {
+            pose_pub = position_tracking;
+            local_pos_pub.publish(position_tracking);
         }
         break;
         case position_B_go:
