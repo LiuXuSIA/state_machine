@@ -205,7 +205,7 @@ int main(int argc, char **argv)
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("uav1/mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav1/mavros/local_position/pose",10,pose_cb);
     ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("uav1/mavros/local_position/velocity",10,velo_cb);
-    ros::Subscriber takeOffCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("takeOffCommand",10,takeOffCommand_cb);
+    ros::Subscriber takeOffCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("take_off_command",10,takeOffCommand_cb);
     ros::Subscriber communication_test_sub = nh.subscribe<state_machine::requestCommand_L2F>("communication_test",10,communication_test_cb);
 
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1/mavros/setpoint_position/local",10);
