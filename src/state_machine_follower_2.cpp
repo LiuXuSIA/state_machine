@@ -197,6 +197,9 @@ int main(int argc, char **argv)
     communicationStatus.UAV_index = 2;
     communicationStatus.value = 1;
 
+    home_position_get.UAV_index = 2;
+    home_position_get.value = 1;
+
     //takeoff velocity
     vel_pub.twist.linear.x = 0.0f;
     vel_pub.twist.linear.y = 0.0f;
