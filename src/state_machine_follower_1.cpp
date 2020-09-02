@@ -404,7 +404,7 @@ void state_machine_fun(void)
         {
             pose_pub = position_A;
             local_pos_pub.publish(position_A);
-            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            if(ros::Time::now() - last_time > ros::Duration(10.0))
             {
                 #if TAKEOFF_LAND_TEST == 0
                 current_pos_state = position_B_go;
