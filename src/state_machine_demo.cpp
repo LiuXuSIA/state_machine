@@ -88,7 +88,7 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
         //position of A
         position_A.pose.position.x = current_position.pose.position.x;
         position_A.pose.position.y = current_position.pose.position.y;
-        position_A.pose.position.z = current_position.pose.position.z+5;
+        position_A.pose.position.z = current_position.pose.position.z+8;
         //position of B
         position_B.pose.position.x = position_A.pose.position.x;
         position_B.pose.position.y = position_A.pose.position.y+5;
@@ -247,7 +247,7 @@ void state_machine_fun(void)
             velocity_control_enable = false;
             pose_pub = position_A;
             local_vel_pub.publish(vel_pub);
-            if(current_position.pose.position.z > 4)
+            if(current_position.pose.position.z > 6)
             {
                 current_pos_state = position_A_go;
                 last_time = ros::Time::now();
