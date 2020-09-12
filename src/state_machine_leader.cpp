@@ -14,8 +14,8 @@
 #include <state_machine/CommandBool.h>
 #include <state_machine/State.h>
 #include <state_machine/SetMode.h>
-#include <state_machine/takeOffCommand_L2F.h>
-#include <state_machine/takeOffStatus_F2L.h>
+#include <state_machine/requestCommand_L2F.h>
+#include <state_machine/attributeStatus_F2L.h>
 #include "math.h"
 
 
@@ -39,7 +39,7 @@ ros::Publisher local_vel_pub;
 ros::Publisher takeOffCommand_pub;
 
 //to other uavs
-state_machine::takeOffCommand_L2F takeOffCommand;
+state_machine::requestCommand_L2F takeOffCommand;
 
 //bool velocity_control_enable = true;
 
@@ -128,8 +128,8 @@ void velo_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
     current_velocity = *msg;
 }
 
-state_machine::takeOffStatus_F2L takeoffStatus_follower1;
-void takeOff_follower1_cb(const state_machine::takeOffStatus_F2L::ConstPtr& msg)
+state_machine::attributeStatus_F2L takeoffStatus_follower1;
+void takeOff_follower1_cb(const state_machine::attributeStatus_F2L::ConstPtr& msg)
 {
     takeoffStatus_follower1 = *msg;
     ROS_INFO("follower1 switched to offboard successfully!!");
@@ -183,7 +183,7 @@ int main(int argc, char **argv)
     ros::Subscriber state_sub = nh.subscribe<state_machine::State>("leader/mavros/state",10,state_cb);
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("leader/mavros/local_position/pose",10,pose_cb);
     ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("leader/mavros/local_position/velocity",10,velo_cb);
-    ros::Subscriber takeOffStatus_follower1_sub = nh.subscribe<state_machine::takeOffStatus_F2L>("takeOffStatus_follower1",10,takeOff_follower1_cb);
+    ros::Subscriber takeOffStatus_follower1_sub = nh.subscribe<state_machine::attributeStatus_F2L>("takeOffStatus_follower1",10,takeOff_follower1_cb);
     // ros::Subscriber takeOffStatus_uav2_sub = nh.subscribe<state_machine::takeOffStatus_F2L>("takeOffStatus_uav2",10,takeOff_uav2_cb);
     // ros::Subscriber takeOffStatus_uav3_sub = nh.subscribe<state_machine::takeOffStatus_F2L>("takeOffStatus_uav3",10,takeOff_uav3_cb);
     // ros::Subscriber takeOffStatus_uav4_sub = nh.subscribe<state_machine::takeOffStatus_F2L>("takeOffStatus_uav4",10,takeOff_uav4_cb);
@@ -191,7 +191,7 @@ int main(int argc, char **argv)
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("leader/mavros/setpoint_position/local",10);
     local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("leader/mavros/setpoint_velocity/cmd_vel",10);
 
-    takeOffCommand_pub = nh.advertise<state_machine::takeOffCommand_L2F>("takeOffCommand",10);
+    takeOffCommand_pub = nh.advertise<state_machine::requestCommand_L2F>("takeOffCommand",10);
 
     #if SIMULATION
     set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>("leader/mavros/set_mode");
