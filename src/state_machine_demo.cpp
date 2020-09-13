@@ -56,6 +56,7 @@ ros::Time last_time;
 
 //velocity send
 bool velocity_control_enable = true;
+double take_off_height;
 
 //get the home position before takeoff
 bool get_home_position_enable = false;
@@ -97,6 +98,8 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
         position_C.pose.position.x = position_A.pose.position.x+5;
         position_C.pose.position.y = position_A.pose.position.y+5;
         position_C.pose.position.z = position_A.pose.position.z;
+
+        take_off_height = position_A.pose.position.z-2;
 
         ROS_INFO("gotten the home position.");
         ROS_INFO("the x of home:%f", position_A.pose.position.x);
@@ -247,7 +250,7 @@ void state_machine_fun(void)
             velocity_control_enable = false;
             pose_pub = position_A;
             local_vel_pub.publish(vel_pub);
-            if(current_position.pose.position.z > 6)
+            if(current_position.pose.position.z > take_off_height)
             {
                 current_pos_state = position_A_go;
                 last_time = ros::Time::now();
