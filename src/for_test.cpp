@@ -8,6 +8,7 @@
 
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TwistStamped.h>
 #include <state_machine/State.h>
 #include <state_machine/FIXED_TARGET_POSITION_P2M.h>
 #include <state_machine/FIXED_TARGET_RETURN_M2P.h>
@@ -16,6 +17,9 @@
 #include <state_machine/TASK_STATUS_MONITOR_M2P.h>
 #include <state_machine/VISION_POSITION_GET_M2P.h>
 #include <state_machine/YAW_SP_CALCULATED_M2P.h>
+#include <state_machine/CommandTOL.h>
+#include <state_machine/CommandBool.h>
+#include <state_machine/SetMode.h>
 #include "math.h"
 
 #include <state_machine/Distance.h> 
@@ -36,6 +40,7 @@ int state = initial;
 ros::Time last_time;
 
 geometry_msgs::PoseStamped pose_pub;  //ENU
+geometry_msgs::TwistStamped vel_pub;
 bool receive_flag = false;
 
 state_machine::FIXED_TARGET_RETURN_M2P fix_target_return;
@@ -46,6 +51,10 @@ state_machine::YAW_SP_CALCULATED_M2P yaw_sp_calculated;
 
 bool display_enable = false;
 bool initial_enable = false;
+
+ros::ServiceClient arming_client;
+ros::ServiceClient set_mode_client_offboard;
+ros::Time last_request;
 
 /***************************callback function definition***************/
 state_machine::State current_state;
@@ -58,7 +67,7 @@ geometry_msgs::PoseStamped current_position;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_position = *msg;
-    
+    /*
     ROS_INFO("current_position.x:%f",current_position.pose.position.x);
     ROS_INFO("current_position.y:%f",current_position.pose.position.y);
     ROS_INFO("current_position.z:%f",current_position.pose.position.z);
@@ -66,7 +75,7 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
     ROS_INFO("current_position.y:%f",current_position.pose.orientation.y);
     ROS_INFO("current_position.z:%f",current_position.pose.orientation.z);
     ROS_INFO("current_position.w:%f",current_position.pose.orientation.w);
-    
+    */
 }
 
 state_machine::FIXED_TARGET_POSITION_P2M fix_target_position;
@@ -126,6 +135,13 @@ int main(int argc, char **argv)
     
     //adjust angular,face north
     //float yaw_sp=M_PI_2;
+    //takeoff velocity
+    vel_pub.twist.linear.x = 0.0f;
+    vel_pub.twist.linear.y = 0.0f;
+    vel_pub.twist.linear.z = 2;
+    vel_pub.twist.angular.x = 0.0f;
+    vel_pub.twist.angular.y = 0.0f;
+    vel_pub.twist.angular.z = 0.0f;
 
     pose_pub.pose.position.x = 1;
     pose_pub.pose.position.y = 1;
@@ -160,12 +176,23 @@ int main(int argc, char **argv)
 
     //publish
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
+    ros::Publisher local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("mavros/setpoint_velocity/cmd_vel",10);
     ros::Publisher fixed_target_pub = nh.advertise<state_machine::FIXED_TARGET_RETURN_M2P>("mavros/fixed_target_return_m2p",10);
     ros::Publisher grab_status_pub = nh.advertise<state_machine::GRAB_STATUS_M2P>("mavros/grab_status_m2p",10);
     ros::Publisher task_status_pub = nh.advertise<state_machine::TASK_STATUS_MONITOR_M2P>("mavros/task_status_monitor_m2p",10);
     ros::Publisher vision_position_pub = nh.advertise<state_machine::VISION_POSITION_GET_M2P>("mavros/vision_position_get_m2p",10);
     ros::Publisher yaw_sp_pub = nh.advertise<state_machine::YAW_SP_CALCULATED_M2P>("mavros/yaw_sp_calculated_m2p",10);
-    
+
+    set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>("mavros/set_mode");
+    state_machine::SetMode offb_set_mode;
+	offb_set_mode.request.custom_mode = "OFFBOARD";
+    last_request = ros::Time::now();
+
+    arming_client = nh.serviceClient<state_machine::CommandBool>("mavros/cmd/arming");
+	state_machine::CommandBool arm_cmd;
+	arm_cmd.request.value = true;
+    last_request = ros::Time::now();
+
     ros::Rate rate(20.0);
 
     while(ros::ok() && !current_state.connected)
@@ -187,46 +214,63 @@ int main(int argc, char **argv)
 	}
 
     ROS_INFO("Initialization finished");
- //    #endif
 
-	while(ros::ok() && current_state.connected)
+	while(ros::ok())// && current_state.connected)
 	{     
-  //       while(receive_flag == false)
-  //       {
+        static bool display_flag = true;
 
-            // task_status_pub.publish(task_status_monitor);
-            // ros::spinOnce();
-            // rate.sleep();
-  //       }
+        if(current_state.mode == "OFFBOARD" && current_state.armed)
+        {
+            if(display_flag == true)
+            {
+                ROS_INFO("switched to offoard!!");
+                display_flag = false;
+            }
+        }
 
-  //       fixed_target_pub.publish(fix_target_return);
-		// ros::spinOnce();
-		// rate.sleep();
+        local_vel_pub.publish(vel_pub);
 
-  //       grab_status_pub.publish(grab_status);
-  //       ros::spinOnce();
-  //       rate.sleep();
-
-  //       task_status_pub.publish(task_status_monitor);
-  //       ros::spinOnce();
-  //       rate.sleep();
-
-  //       vision_position_pub.publish(vision_position_get);
-  //       ros::spinOnce();
-  //       rate.sleep();
-
-  //       yaw_sp_pub.publish(yaw_sp_calculated);
-        local_pos_pub.publish(pose_pub);
-        ROS_INFO("testing...");
+        /*
+        if(current_state.mode != "OFFBOARD" && (ros::Time::now() - last_request > ros::Duration(5.0)))
+        {
+            if( set_mode_client_offboard.call(offb_set_mode) && offb_set_mode.response.success) //old version was success, new version is mode_sent
+            {
+                ROS_INFO("Offboard enabled");
+            }
+            last_request = ros::Time::now();
+        }
+        else 
+        {
+            if(!current_state.armed && (ros::Time::now() - last_request > ros::Duration(5.0)))
+            {
+                if( arming_client.call(arm_cmd) && arm_cmd.response.success)
+                {
+                    ROS_INFO("Vehicle armed");
+                }
+                last_request = ros::Time::now();
+            }
+        }
+        */
+        if(!current_state.armed && (ros::Time::now() - last_request > ros::Duration(5.0)))
+        {
+            ROS_INFO("arming...");
+            if(arming_client.call(arm_cmd) && arm_cmd.response.success) //old version was success, new version is mode_sent
+            {
+                ROS_INFO("Vehicle armed");
+            }
+            last_request = ros::Time::now();
+        }
+        if(current_state.armed && current_state.mode != "OFFBOARD" && (ros::Time::now() - last_request > ros::Duration(5.0)))
+        {
+            ROS_INFO("offboarding ...");
+            if(set_mode_client_offboard.call(offb_set_mode) && offb_set_mode.response.success)
+            {
+                ROS_INFO("Offboard enabled");
+            }
+            last_request = ros::Time::now(); 
+        }
         ros::spinOnce();
         rate.sleep();
-
-  //       receive_flag = false;
-
-        //break;
-        //state_machine_fun();
-        // ros::spinOnce();
-        //rate.sleep();
     }
 }
 

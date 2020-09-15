@@ -77,6 +77,8 @@ ros::Time last_time;
 //velocity send
 bool velocity_control_enable = true;
 
+double take_off_height;
+
 //get the home position before takeoff
 bool get_home_position_enable = false;
 
@@ -91,7 +93,7 @@ ros::Time last_request;
 
 /*************************constant defunition***************************/
 
-#define ASCEND_VELOCITY     2.0
+#define ASCEND_VELOCITY     1.0
 #define LOCATE_ACCURACY     0.5
 
 #define TAKEOFF_LAND_TEST   0
@@ -115,7 +117,7 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
         //position of A
         position_A.pose.position.x = current_position.pose.position.x;
         position_A.pose.position.y = current_position.pose.position.y;
-        position_A.pose.position.z = current_position.pose.position.z+5;
+        position_A.pose.position.z = current_position.pose.position.z+8;
         //position of B
         position_B.pose.position.x = position_A.pose.position.x;
         position_B.pose.position.y = position_A.pose.position.y+5;
@@ -124,6 +126,8 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
         position_C.pose.position.x = position_A.pose.position.x+5;
         position_C.pose.position.y = position_A.pose.position.y+5;
         position_C.pose.position.z = position_A.pose.position.z;
+
+        take_off_height = position_A.pose.position.z-2;
 
         ROS_INFO("gotten the home position.");
         ROS_INFO("the x of home:%f", position_A.pose.position.x);
@@ -167,7 +171,13 @@ void uav1_current_position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
     uav1_current_position = *msg;
     position_tracking.pose.position.x = uav1_current_position.pose.position.x - x_delta;
     position_tracking.pose.position.y = uav1_current_position.pose.position.y - y_delta;
-    position_tracking.pose.position.z = uav1_current_position.pose.position.z - z_delta;
+    position_tracking.pose.position.z = position_A.pose.position.z;
+}
+
+state_machine::State uav1_current_state;
+void uav1_current_state_cb(const state_machine::State::ConstPtr& msg)
+{
+    uav1_current_state = *msg;
 }
 
 geometry_msgs::PoseStamped uav1_home_position;
@@ -238,41 +248,42 @@ int main(int argc, char **argv)
     position_C.pose.orientation.z = sin(yaw_sp/2);
     position_C.pose.orientation.w = cos(yaw_sp/2);
 
-    ros::Subscriber state_sub = nh.subscribe<state_machine::State>("uav2/mavros/state",10,state_cb);
-    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav2/mavros/local_position/pose",10,pose_cb);
-    ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("uav2/mavros/local_position/velocity",10,velo_cb);
+    ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
+    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
+    ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity",10,velo_cb);
     ros::Subscriber takeOffCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("take_off_command",10,takeOffCommand_cb);
     ros::Subscriber communication_test_sub = nh.subscribe<state_machine::requestCommand_L2F>("communication_test",10,communication_test_cb);
     ros::Subscriber uav1_current_position_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav1_current_position",10,uav1_current_position_cb);
     ros::Subscriber uav1_home_position_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav1_home_position",10,uav1_home_position_cb);
+    ros::Subscriber uav1_current_state_sub = nh.subscribe<state_machine::State>("uav1_current_state",10,uav1_current_state_cb);
 
-    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("uav2/mavros/setpoint_position/local",10);
-    local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("uav2/mavros/setpoint_velocity/cmd_vel",10);
+    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
+    local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("mavros/setpoint_velocity/cmd_vel",10);
     takeOffStatus_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav2_take_off_status",10);
     communication_result_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav2_communication_test_reult",10);
     uav1_home_position_get_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav2_home_get",10);
  
-    land_client = nh.serviceClient<state_machine::CommandTOL>("uav2/mavros/cmd/land");
+    land_client = nh.serviceClient<state_machine::CommandTOL>("mavros/cmd/land");
     state_machine::CommandTOL landing_cmd;
     landing_cmd.request.min_pitch = 1.0;
     landing_last_request = ros::Time::now();
 
-    set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>("uav2/mavros/set_mode");
+    set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>("mavros/set_mode");
     state_machine::SetMode offb_set_mode;
 	offb_set_mode.request.custom_mode = "OFFBOARD";
     last_request = ros::Time::now();
 
-    set_mode_client_posctl = nh.serviceClient<state_machine::SetMode>("uav2/mavros/set_mode");
+    set_mode_client_posctl = nh.serviceClient<state_machine::SetMode>("mavros/set_mode");
     state_machine::SetMode posc_set_mode;
 	posc_set_mode.request.custom_mode = "POSCTL";
     last_request = ros::Time::now();
 
-    arming_client = nh.serviceClient<state_machine::CommandBool>("uav2/mavros/cmd/arming");
+    arming_client = nh.serviceClient<state_machine::CommandBool>("mavros/cmd/arming");
 	state_machine::CommandBool arm_cmd;
 	arm_cmd.request.value = true;
     landing_last_request = ros::Time::now();
 
-    ros::Rate rate(10.0);
+    ros::Rate rate(20.0);
 
     while(ros::ok() && !current_state.connected)
     {
@@ -281,9 +292,6 @@ int main(int argc, char **argv)
     }
 
     ROS_INFO("Connect successfully!!");
-
-    // add without gs
-    get_home_position_enable = true;
 
     //firstly switch to position control mode before switch to offboard mode
     while(ros::ok() && current_state.connected && current_state.mode != "POSCTL")
@@ -300,16 +308,6 @@ int main(int argc, char **argv)
         ros::spinOnce();
         rate.sleep();
     }
-    
-    while(uav1_home_position_gotten == false || home_position_gotten == false)
-    {
-        ros::spinOnce();
-        rate.sleep();
-    }
-
-    x_delta = uav1_home_position.pose.position.x - position_A.pose.position.x;
-    y_delta = uav1_home_position.pose.position.y - position_A.pose.position.y;
-    z_delta = uav1_home_position.pose.position.z - position_A.pose.position.z;
 
     while(ros::ok() && current_state.connected)
     {
@@ -331,34 +329,32 @@ int main(int argc, char **argv)
             }
         }
 
-        if(takeOffCommand.value == 1 && current_state.mode != "OFFBOARD" && (ros::Time::now() - last_request > ros::Duration(5.0)))
+        if(takeOffCommand.value == 1 && !current_state.armed && (ros::Time::now() - last_request > ros::Duration(5.0)))
+        {
+            if( arming_client.call(arm_cmd) && arm_cmd.response.success)
+            {
+                ROS_INFO("Vehicle armed");
+                get_home_position_enable = true;
+                while(uav1_home_position_gotten == false || home_position_gotten == false)
+                {
+                    ros::spinOnce();
+                    rate.sleep();
+                }
+                x_delta = uav1_home_position.pose.position.x - position_A.pose.position.x;
+                y_delta = uav1_home_position.pose.position.y - position_A.pose.position.y;
+            }
+            last_request = ros::Time::now();
+        }
+
+        if(takeOffCommand.value && current_state.armed && current_state.mode != "OFFBOARD" && (ros::Time::now() - last_request > ros::Duration(5.0)))
         {
             if( set_mode_client_offboard.call(offb_set_mode) && offb_set_mode.response.success) //old version was success, new version is mode_sent
             {
                 ROS_INFO("Offboard enabled");
+                takeOffCommand.value = 0;
+                takeOffStatus_pub.publish(takeOffStatus);
             }
             last_request = ros::Time::now();
-        }
-        else 
-        {
-            if(takeOffCommand.value == 1 && !current_state.armed && (ros::Time::now() - last_request > ros::Duration(5.0)))
-            {
-                if( arming_client.call(arm_cmd) && arm_cmd.response.success)
-                {
-                    ROS_INFO("Vehicle armed");
-                    takeOffCommand.value = 0;
-                    takeOffStatus_pub.publish(takeOffStatus);
-                    // // add without gs
-                    // get_home_position_enable = true;
-                    // while(get_home_position_enable == true)
-                    // {
-                    //     ROS_INFO("getting the home postion...");
-                    //     ros::spinOnce();
-                    //     rate.sleep();                   
-                    // }
-                }
-                last_request = ros::Time::now();
-            }
         }
         
         if(current_state.armed && current_pos_state == land)
@@ -391,7 +387,7 @@ void state_machine_fun(void)
             velocity_control_enable = false;
             pose_pub = position_A;
             local_vel_pub.publish(vel_pub);
-            if(current_position.pose.position.z > 3)
+            if(current_position.pose.position.z > take_off_height)
             {
                 current_pos_state = position_A_go;
                 last_time = ros::Time::now();
@@ -432,6 +428,11 @@ void state_machine_fun(void)
         {
             pose_pub = position_tracking;
             local_pos_pub.publish(position_tracking);
+            if(uav1_current_state.mode == "AUTO.LAND")
+            {
+                current_pos_state = return_home;
+                last_time = ros::Time::now();
+            }
         }
         break;
         case position_B_go:

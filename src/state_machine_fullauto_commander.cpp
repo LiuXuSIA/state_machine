@@ -105,7 +105,7 @@ int main(int argc, char **argv)
                 communication_display = false;
             }
             communication_test_pub.publish(communication_test_request);
-            if(communication_status_uav1.value && communication_status_uav2.value)// && communication_status_uav3.value && communication_status_uav4.value)
+            if(communication_status_uav1.value)// && communication_status_uav3.value && communication_status_uav4.value)
             {
                 ROS_INFO("all of the communication test successfully.");
                 communication_test_request.value = 0;
@@ -122,7 +122,7 @@ int main(int argc, char **argv)
                 takeoff_display = false;
             }
             take_off_command_pub.publish(takeOff_command);
-            if(takeOff_status_uav1.value && takeOff_status_uav2.value)// && takeOff_status_uav3.value && takeOff_status_uav4.value)
+            if(takeOff_status_uav1.value)// && takeOff_status_uav3.value && takeOff_status_uav4.value)
             {
                 ROS_INFO("all of the uavs have been taken off.");
                 takeOff_command.value = 0;

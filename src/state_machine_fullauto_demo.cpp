@@ -319,16 +319,12 @@ int main(int argc, char **argv)
                 ROS_INFO("Vehicle armed");
                 get_home_position_enable = true;
                 //get the home position after arming and send them to other uav
-                while(!uav2_home_get.value)// || !uav3_home_get.value || !uav4_home_get.value) //send uav1 position change for multi uav
+                while(home_position_gotten == false)// || !uav3_home_get.value || !uav4_home_get.value) //send uav1 position change for multi uav
                 {
-                    if(home_position_gotten == true)
-                    {
-                        uv1_home_position_pub.publish(position_A);
-                    }
                     ros::spinOnce();
                     rate.sleep();
                 }
-                ROS_INFO("all of the other uavs have gotten the home position.");
+                ROS_INFO("uav1 have gotten the home position.");
             }
             last_request = ros::Time::now();
         }

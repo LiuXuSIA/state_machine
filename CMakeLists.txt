@@ -94,6 +94,8 @@ add_executable(state_machine_follower_2             src/state_machine_follower_2
 add_executable(state_machine_follower_3             src/state_machine_follower_3.cpp)
 add_executable(state_machine_follower_4             src/state_machine_follower_4.cpp)
 add_executable(state_machine_commander             src/state_machine_commander.cpp)
+add_executable(state_machine_fullauto_commander             src/state_machine_fullauto_commander.cpp)
+add_executable(state_machine_fullauto_demo            src/state_machine_fullato_demo.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -110,6 +112,8 @@ add_dependencies(state_machine_follower_2            state_machine_generate_mess
 add_dependencies(state_machine_follower_3            state_machine_generate_messages_cpp)
 add_dependencies(state_machine_follower_4            state_machine_generate_messages_cpp)
 add_dependencies(state_machine_commander            state_machine_generate_messages_cpp)
+add_dependencies(state_machine_fullauto_commander            state_machine_generate_messages_cpp)
+add_dependencies(state_machine_fullauto_demo            state_machine_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(state_machine_demo       ${catkin_LIBRARIES})
@@ -125,3 +129,5 @@ target_link_libraries(state_machine_follower_2              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_follower_3              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_follower_4              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_commander              ${catkin_LIBRARIES})
+target_link_libraries(state_machine_fullauto_commander              ${catkin_LIBRARIES})
+target_link_libraries(state_machine_fullauto_demo              ${catkin_LIBRARIES})
