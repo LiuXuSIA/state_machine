@@ -88,7 +88,7 @@ ros::Time last_request;
 
 /*************************constant defunition***************************/
 
-#define ASCEND_VELOCITY     1.0
+#define ASCEND_VELOCITY     2.0
 #define LOCATE_ACCURACY     0.5
 
 #define TAKEOFF_LAND_TEST   0
@@ -228,9 +228,9 @@ int main(int argc, char **argv)
     position_C.pose.orientation.z = sin(yaw_sp/2);
     position_C.pose.orientation.w = cos(yaw_sp/2);
 
-    ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
-    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
-    ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity",10,velo_cb);
+    ros::Subscriber state_sub = nh.subscribe<state_machine::State>("uav1/mavros/state",10,state_cb);
+    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav1/mavros/local_position/pose",10,pose_cb);
+    ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("uav1/mavros/local_position/velocity",10,velo_cb);
     ros::Subscriber takeOffCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("take_off_command",10,takeOffCommand_cb);
     ros::Subscriber communication_test_sub = nh.subscribe<state_machine::requestCommand_L2F>("communication_test",10,communication_test_cb);
 
@@ -238,30 +238,30 @@ int main(int argc, char **argv)
     ros::Subscriber uav3_home_get_sub = nh.subscribe<state_machine::attributeStatus_F2L>("uav3_home_get",10,uav3_home_get_cb);
     ros::Subscriber uav4_home_get_sub = nh.subscribe<state_machine::attributeStatus_F2L>("uav4_home_get",10,uav4_home_get_cb);
 
-    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
-    local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("mavros/setpoint_velocity/cmd_vel",10);
+    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1/mavros/setpoint_position/local",10);
+    local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("uav1/mavros/setpoint_velocity/cmd_vel",10);
     takeOffStatus_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_take_off_status",10);
     communication_result_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_communication_test_reult",10);
     current_position_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1_current_position",10);
     current_state_pub = nh.advertise<state_machine::State>("uav1_current_state",10);
     uv1_home_position_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1_home_position",10);
  
-    land_client = nh.serviceClient<state_machine::CommandTOL>("mavros/cmd/land");
+    land_client = nh.serviceClient<state_machine::CommandTOL>("uav1/mavros/cmd/land");
     state_machine::CommandTOL landing_cmd;
     landing_cmd.request.min_pitch = 1.0;
     landing_last_request = ros::Time::now();
 
-    set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>("mavros/set_mode");
+    set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>("uav1/mavros/set_mode");
     state_machine::SetMode offb_set_mode;
 	offb_set_mode.request.custom_mode = "OFFBOARD";
     last_request = ros::Time::now();
 
-    set_mode_client_posctl = nh.serviceClient<state_machine::SetMode>("mavros/set_mode");
+    set_mode_client_posctl = nh.serviceClient<state_machine::SetMode>("uav1/mavros/set_mode");
     state_machine::SetMode posc_set_mode;
 	posc_set_mode.request.custom_mode = "POSCTL";
     last_request = ros::Time::now();
 
-    arming_client = nh.serviceClient<state_machine::CommandBool>("mavros/cmd/arming");
+    arming_client = nh.serviceClient<state_machine::CommandBool>("uav1/mavros/cmd/arming");
 	state_machine::CommandBool arm_cmd;
 	arm_cmd.request.value = true;
     landing_last_request = ros::Time::now();

@@ -95,7 +95,7 @@ add_executable(state_machine_follower_3             src/state_machine_follower_3
 add_executable(state_machine_follower_4             src/state_machine_follower_4.cpp)
 add_executable(state_machine_commander             src/state_machine_commander.cpp)
 add_executable(state_machine_fullauto_commander             src/state_machine_fullauto_commander.cpp)
-add_executable(state_machine_fullauto_demo            src/state_machine_fullato_demo.cpp)
+add_executable(state_machine_fullauto_demo            src/state_machine_fullauto_demo.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
