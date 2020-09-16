@@ -33,17 +33,21 @@ geometry_msgs::PoseStamped position_C;
 geometry_msgs::PoseStamped pose_pub;  //ENU
 geometry_msgs::TwistStamped vel_pub;
 
+geometry_msgs::PoseStamped hover_position;
+
 //for take off
 ros::Publisher local_pos_pub;
 ros::Publisher local_vel_pub;
 ros::Publisher takeOffStatus_pub;
 ros::Publisher communication_result_pub;
+ros::Publisher emergency_status_pub;
 ros::Publisher current_position_pub;
 ros::Publisher uv1_home_position_pub;
 ros::Publisher current_state_pub;
 
 state_machine::attributeStatus_F2L takeOffStatus;
 state_machine::attributeStatus_F2L communicationStatus;
+state_machine::attributeStatus_F2L emergencyStatus;
 // takeOffStatus.UAV_index = 0;
 // takeOffStatus.value = 0;
 //bool velocity_control_enable = true;
@@ -61,6 +65,7 @@ static const int position_C_go = 6;
 static const int position_C_hover = 7;
 static const int return_home = 8;
 static const int land = 9;
+static const int current_position_hover = 10;
 
 //mission 
 int loop = 0;
@@ -153,6 +158,18 @@ void takeOffCommand_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
     } 
 }
 
+state_machine::requestCommand_L2F emergencyCommand;
+bool receiveEmergencyCommand_enable = true;
+void emergencyCommand_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
+{
+    if(receiveEmergencyCommand_enable == true)
+    {
+        emergencyCommand = *msg;
+        ROS_INFO("uav1 received the emergency command!!");
+        receiveEmergencyCommand_enable = false;
+    } 
+}
+
 state_machine::requestCommand_L2F communication_command;
 void communication_test_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
 {
@@ -189,6 +206,9 @@ int main(int argc, char **argv)
 
     communicationStatus.UAV_index = 1;
     communicationStatus.value = 1;
+    
+    emergencyStatus.UAV_index = 1;
+    emergencyStatus.value = 1;
 
     //takeoff velocity
     vel_pub.twist.linear.x = 0.0f;
@@ -233,6 +253,7 @@ int main(int argc, char **argv)
     ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("uav1/mavros/local_position/velocity",10,velo_cb);
     ros::Subscriber takeOffCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("take_off_command",10,takeOffCommand_cb);
     ros::Subscriber communication_test_sub = nh.subscribe<state_machine::requestCommand_L2F>("communication_test",10,communication_test_cb);
+    ros::Subscriber emergency_sub = nh.subscribe<state_machine::requestCommand_L2F>("emergency_command",10,emergencyCommand_cb);
 
     ros::Subscriber uav2_home_get_sub = nh.subscribe<state_machine::attributeStatus_F2L>("uav2_home_get",10,uav2_home_get_cb);
     ros::Subscriber uav3_home_get_sub = nh.subscribe<state_machine::attributeStatus_F2L>("uav3_home_get",10,uav3_home_get_cb);
@@ -245,6 +266,7 @@ int main(int argc, char **argv)
     current_position_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1_current_position",10);
     current_state_pub = nh.advertise<state_machine::State>("uav1_current_state",10);
     uv1_home_position_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1_home_position",10);
+    emergency_status_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_emergency_status",10);
  
     land_client = nh.serviceClient<state_machine::CommandTOL>("uav1/mavros/cmd/land");
     state_machine::CommandTOL landing_cmd;
@@ -357,6 +379,14 @@ int main(int argc, char **argv)
                 }
         }
 
+        if(emergencyCommand.value)
+        {
+            current_pos_state = current_position_hover;
+            hover_position = current_position;
+            emergency_status_pub.publish(emergencyStatus);
+            emergencyCommand.value = 0;
+        }
+
         ros::spinOnce();
         rate.sleep();
     }
@@ -464,6 +494,17 @@ void state_machine_fun(void)
             if (Distance_of_Two(current_position.pose.position.x,position_A.pose.position.x,
                                 current_position.pose.position.y,position_A.pose.position.y,
                                 current_position.pose.position.z,position_A.pose.position.z) < LOCATE_ACCURACY )
+            {
+                current_pos_state = land;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case current_position_hover:
+        {
+            pose_pub = hover_position;
+            local_pos_pub.publish(hover_position);
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_pos_state = land;
                 last_time = ros::Time::now();
