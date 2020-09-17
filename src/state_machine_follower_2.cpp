@@ -272,11 +272,12 @@ int main(int argc, char **argv)
     ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("uav2/mavros/local_position/velocity",10,velo_cb);
     ros::Subscriber takeOffCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("take_off_command",10,takeOffCommand_cb);
     ros::Subscriber communication_test_sub = nh.subscribe<state_machine::requestCommand_L2F>("communication_test",10,communication_test_cb);
-    ros::Subscriber uav1_current_position_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav1_current_position",10,uav1_current_position_cb);
     ros::Subscriber uav1_home_position_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav1_home_position",10,uav1_home_position_cb);
-    ros::Subscriber uav1_current_state_sub = nh.subscribe<state_machine::State>("uav1_current_state",10,uav1_current_state_cb);
     ros::Subscriber emergency_sub = nh.subscribe<state_machine::requestCommand_L2F>("emergency_command",10,emergencyCommand_cb);
 
+    ros::Subscriber state_sub_uav1 = nh.subscribe<state_machine::State>("uav1/mavros/state",10,uav1_current_state_cb);
+    ros::Subscriber pose_sub_uav1 = nh.subscribe<geometry_msgs::PoseStamped>("uav1/mavros/local_position/pose",10,uav1_current_position_cb); 
+     
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("uav2/mavros/setpoint_position/local",10);
     local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("uav2/mavros/setpoint_velocity/cmd_vel",10);
     takeOffStatus_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav2_take_off_status",10);

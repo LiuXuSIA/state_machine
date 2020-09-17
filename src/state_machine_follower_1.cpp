@@ -41,9 +41,7 @@ ros::Publisher local_vel_pub;
 ros::Publisher takeOffStatus_pub;
 ros::Publisher communication_result_pub;
 ros::Publisher emergency_status_pub;
-ros::Publisher current_position_pub;
 ros::Publisher uv1_home_position_pub;
-ros::Publisher current_state_pub;
 
 state_machine::attributeStatus_F2L takeOffStatus;
 state_machine::attributeStatus_F2L communicationStatus;
@@ -104,7 +102,6 @@ state_machine::State current_state;
 void state_cb(const state_machine::State::ConstPtr& msg)
 {
     current_state = *msg;
-    current_state_pub.publish(current_state);
 }
 
 geometry_msgs::PoseStamped current_position;
@@ -112,7 +109,6 @@ bool home_position_gotten = false;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_position = *msg;
-    current_position_pub.publish(current_position);
     if(get_home_position_enable == true)
     {
         //position of A
@@ -263,8 +259,6 @@ int main(int argc, char **argv)
     local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("uav1/mavros/setpoint_velocity/cmd_vel",10);
     takeOffStatus_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_take_off_status",10);
     communication_result_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_communication_test_reult",10);
-    current_position_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1_current_position",10);
-    current_state_pub = nh.advertise<state_machine::State>("uav1_current_state",10);
     uv1_home_position_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1_home_position",10);
     emergency_status_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_emergency_status",10);
  
