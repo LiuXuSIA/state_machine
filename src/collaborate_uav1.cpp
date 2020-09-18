@@ -110,7 +110,7 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
         //position of A
         position_A.pose.position.x = current_position.pose.position.x;
         position_A.pose.position.y = current_position.pose.position.y;
-        position_A.pose.position.z = current_position.pose.position.z+8;
+        position_A.pose.position.z = current_position.pose.position.z+5;
         //position of B
         position_B.pose.position.x = position_A.pose.position.x;
         position_B.pose.position.y = position_A.pose.position.y+5;
@@ -150,6 +150,12 @@ void takeOffCommand_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
     } 
 }
 
+state_machine::requestCommand_L2F landCommand;
+void landCommand_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
+{
+    landCommand = *msg;
+}
+
 state_machine::requestCommand_L2F emergencyCommand;
 bool receiveEmergencyCommand_enable = true;
 void emergencyCommand_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
@@ -176,6 +182,7 @@ void position_delta_cb(const state_machine::positionXY::ConstPtr& msg)
     position_delta = *msg; 
     position_next.pose.position.x =  position_A.pose.position.x + position_delta.x;
     position_next.pose.position.y =  position_A.pose.position.y + position_delta.y;
+    position_next.pose.position.z =  position_A.pose.position.z;
 }
 
 /*****************************main function*****************************/
@@ -235,6 +242,7 @@ int main(int argc, char **argv)
     ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav1/mavros/local_position/pose",10,pose_cb);
     ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("uav1/mavros/local_position/velocity",10,velo_cb);
     ros::Subscriber takeOffCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("take_off_command",10,takeOffCommand_cb);
+    ros::Subscriber landCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("land_command",10,landCommand_cb);
     ros::Subscriber communication_test_sub = nh.subscribe<state_machine::requestCommand_L2F>("communication_test",10,communication_test_cb);
     ros::Subscriber emergency_sub = nh.subscribe<state_machine::requestCommand_L2F>("emergency_command",10,emergencyCommand_cb);
     ros::Subscriber position_delta_sub = nh.subscribe<state_machine::positionXY>("position_delta",10,position_delta_cb);
@@ -430,7 +438,11 @@ void state_machine_fun(void)
                                 current_position.pose.position.y,position_A.pose.position.y,
                                 current_position.pose.position.z,position_A.pose.position.z) < LOCATE_ACCURACY && return_flag)
             {
-                current_position_state.data = "position_end_hover";
+                current_position_state.data = "position_end_hover";  
+            }
+
+            if(landCommand.value)
+            {
                 current_pos_state = land;
                 last_time = ros::Time::now();
             }

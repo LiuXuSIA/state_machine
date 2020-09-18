@@ -18,9 +18,11 @@
 ros::Publisher communication_test_pub;
 ros::Publisher take_off_command_pub;
 ros::Publisher position_delta_pub;
+ros::Publisher land_command_pub;
 
 state_machine::requestCommand_L2F takeOff_command;
 state_machine::requestCommand_L2F communication_test_request;
+state_machine::requestCommand_L2F land_command;
 
 ros::Time in_place_A_time;
 ros::Time in_place_B_time;
@@ -126,6 +128,7 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     takeOff_command.value = 1;
+    land_command.value = 1;
     communication_test_request.value = 1;
  
     positionDelta.x = 0.0;
@@ -147,6 +150,7 @@ int main(int argc, char **argv)
     ros::Subscriber current_position_state_sub4 = nh.subscribe<std_msgs::String>("uav4_current_position_state",10,uav4_cps_rb);
 
     take_off_command_pub = nh.advertise<state_machine::requestCommand_L2F>("take_off_command",10);
+    land_command_pub = nh.advertise<state_machine::requestCommand_L2F>("land_command",10);
     communication_test_pub = nh.advertise<state_machine::requestCommand_L2F>("communication_test",10);
     position_delta_pub = nh.advertise<state_machine::positionXY>("position_delta",10);
 
@@ -231,7 +235,7 @@ void position_lead_function()
         {
             if(ros::Time::now() - in_place_A_time > ros::Duration(5.0))
             {
-                if(positionDelta.y != 5)
+                if(positionDelta.y < 5.0)
                 {
                     positionDelta.x += 0.0;
                     positionDelta.y += 0.05;
@@ -254,8 +258,9 @@ void position_lead_function()
         {
             if(ros::Time::now() - in_place_B_time > ros::Duration(5.0)) 
             {
-                if(positionDelta.x != 5)
+                if(positionDelta.x < 5.0)
                 {
+                    // ROS_INFO("positionDelta.x %f:", positionDelta.x);
                     positionDelta.x += 0.05;
                     positionDelta.y += 0.0;
                 }
@@ -277,7 +282,7 @@ void position_lead_function()
         {
             if(ros::Time::now() - in_place_C_time > ros::Duration(5.0)) 
             {
-                if(positionDelta.x != 0)
+                if(positionDelta.x > 0 && positionDelta.y > 0)
                 {
                     positionDelta.x -= 0.05;
                     positionDelta.y -= 0.05;
@@ -291,14 +296,19 @@ void position_lead_function()
                     ROS_INFO("all the uavs have been arrived in position END.");
                     current_start_point = position_end;
                     in_END_place_display = false;
-                    in_place_C_time = ros::Time::now();
+                    in_place_end_time = ros::Time::now();
                 }
             }
         }
         break;
         case position_end:
         {
-            position_lead = false;
+            if(ros::Time::now() - in_place_end_time > ros::Duration(5.0)) 
+            {
+                ROS_INFO("send land command.");
+                land_command_pub.publish(land_command);
+                position_lead = false;
+            }
         }
         break;
     }
