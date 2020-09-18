@@ -45,6 +45,7 @@ add_message_files(
   #add for 2020 uavcomp
   requestCommand_L2F.msg
   attributeStatus_F2L.msg
+  positionXY.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -97,6 +98,8 @@ add_executable(state_machine_commander             src/state_machine_commander.c
 add_executable(state_machine_fullauto_commander             src/state_machine_fullauto_commander.cpp)
 add_executable(state_machine_fullauto_demo            src/state_machine_fullauto_demo.cpp)
 add_executable(emergency            src/emergency.cpp)
+add_executable(collaborate_uav1            src/collaborate_uav1.cpp)
+add_executable(collaborate_uav2            src/collaborate_uav2.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -116,6 +119,8 @@ add_dependencies(state_machine_commander            state_machine_generate_messa
 add_dependencies(state_machine_fullauto_commander            state_machine_generate_messages_cpp)
 add_dependencies(state_machine_fullauto_demo            state_machine_generate_messages_cpp)
 add_dependencies(emergency            state_machine_generate_messages_cpp)
+add_dependencies(collaborate_uav1            state_machine_generate_messages_cpp)
+add_dependencies(collaborate_uav2            state_machine_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(state_machine_demo       ${catkin_LIBRARIES})
@@ -134,3 +139,5 @@ target_link_libraries(state_machine_commander              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_fullauto_commander              ${catkin_LIBRARIES})
 target_link_libraries(state_machine_fullauto_demo              ${catkin_LIBRARIES})
 target_link_libraries(emergency              ${catkin_LIBRARIES})
+target_link_libraries(collaborate_uav1              ${catkin_LIBRARIES})
+target_link_libraries(collaborate_uav2              ${catkin_LIBRARIES})
