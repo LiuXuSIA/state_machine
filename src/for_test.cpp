@@ -20,9 +20,16 @@
 #include <state_machine/CommandTOL.h>
 #include <state_machine/CommandBool.h>
 #include <state_machine/SetMode.h>
+#include <state_machine/Attitude.h>
+#include <state_machine/GPS_Status.h>
+#include <state_machine/BatteryStatus.h>
+#include <sensor_msgs/BatteryState.h>
 #include "math.h"
+#include "string"
 
 #include <state_machine/Distance.h> 
+
+using namespace std;
 
 /***************************function declare****************************/
 void state_machine_fun(void);
@@ -114,11 +121,11 @@ void task_status_change_p2m_cb(const state_machine::TASK_STATUS_CHANGE_P2M::Cons
     ROS_INFO("task_status_change.loop_value:%d",task_status_change.loop_value);
 }
 
-state_machine::Distance distance;
+state_machine::Distance current_distance;
 void distance_cb(const state_machine::Distance::ConstPtr& msg)
 {
-    distance = *msg;
-    ROS_INFO("distance:%f",distance.distance);
+    current_distance = *msg;
+    ROS_INFO("distance:%f",current_distance.distance);
     if(display_enable == true)
     {
         //ROS_INFO("distance:%f",distance.distance);
@@ -126,6 +133,35 @@ void distance_cb(const state_machine::Distance::ConstPtr& msg)
     } 
 }
 
+state_machine::Attitude current_attitude;
+void attitude_cb(const state_machine::Attitude::ConstPtr& msg)
+{
+    current_attitude = *msg;
+    // ROS_INFO("yaw: %f", current_attitude.yaw);
+    // ROS_INFO("pitch: %f", current_attitude.pitch);
+    // ROS_INFO("roll: %f", current_attitude.roll);
+}
+
+state_machine::GPS_Status gps_status;
+void gps_status_cb(const state_machine::GPS_Status::ConstPtr& msg)
+{
+    gps_status = *msg;
+    ROS_INFO("fix_type: %d", gps_status.fix_type);
+    ROS_INFO("satellites_num: %d", gps_status.satellites_num);
+}
+
+sensor_msgs::BatteryState battery_state;
+void battery_cb(const sensor_msgs::BatteryState::ConstPtr& msg)
+{
+    battery_state = *msg;
+    ROS_INFO("voltage: %f", battery_state.voltage);
+    ROS_INFO("current: %f", battery_state.current);
+    ROS_INFO("remaining: %f", battery_state.percentage);
+}
+
+/*****************************************************************/
+
+#define NS                  "uav1"
 
 /*****************************main function*****************************/
 int main(int argc, char **argv)
@@ -168,27 +204,30 @@ int main(int argc, char **argv)
 
 
     //subscribe
-    ros::Subscriber state_sub = nh.subscribe<state_machine::State>("mavros/state",10,state_cb);
-    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose",10,pose_cb);
-    ros::Subscriber fixed_target_sub = nh.subscribe<state_machine::FIXED_TARGET_POSITION_P2M>("mavros/fixed_target_position_p2m",10,fixed_target_position_p2m_cb);
-    ros::Subscriber task_status_sub = nh.subscribe<state_machine::TASK_STATUS_CHANGE_P2M>("mavros/task_status_change_p2m",10,task_status_change_p2m_cb);
+    ros::Subscriber state_sub = nh.subscribe<state_machine::State>(string(NS)+"/mavros/state",10,state_cb);
+    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>(string(NS)+"/mavros/local_position/pose",10,pose_cb);
+    ros::Subscriber fixed_target_sub = nh.subscribe<state_machine::FIXED_TARGET_POSITION_P2M>(string(NS)+"/mavros/fixed_target_position_p2m",10,fixed_target_position_p2m_cb);
+    ros::Subscriber task_status_sub = nh.subscribe<state_machine::TASK_STATUS_CHANGE_P2M>(string(NS)+"/mavros/task_status_change_p2m",10,task_status_change_p2m_cb);
     ros::Subscriber distance_sub = nh.subscribe<state_machine::Distance>("distance",10,distance_cb);
+    ros::Subscriber attitude_sub = nh.subscribe<state_machine::Attitude>(string(NS)+"/mavros/attitude",10,attitude_cb);
+    ros::Subscriber gps_staus_sub = nh.subscribe<state_machine::GPS_Status>(string(NS)+"/mavros/gps_status",10,gps_status_cb);
+    ros::Subscriber battery_staus_sub = nh.subscribe<sensor_msgs::BatteryState>(string(NS)+"/mavros/battery",10,battery_cb);
 
     //publish
-    ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local",10);
-    ros::Publisher local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("mavros/setpoint_velocity/cmd_vel",10);
-    ros::Publisher fixed_target_pub = nh.advertise<state_machine::FIXED_TARGET_RETURN_M2P>("mavros/fixed_target_return_m2p",10);
-    ros::Publisher grab_status_pub = nh.advertise<state_machine::GRAB_STATUS_M2P>("mavros/grab_status_m2p",10);
-    ros::Publisher task_status_pub = nh.advertise<state_machine::TASK_STATUS_MONITOR_M2P>("mavros/task_status_monitor_m2p",10);
-    ros::Publisher vision_position_pub = nh.advertise<state_machine::VISION_POSITION_GET_M2P>("mavros/vision_position_get_m2p",10);
-    ros::Publisher yaw_sp_pub = nh.advertise<state_machine::YAW_SP_CALCULATED_M2P>("mavros/yaw_sp_calculated_m2p",10);
+    ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>(string(NS)+"/mavros/setpoint_position/local",10);
+    ros::Publisher local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>(string(NS)+"/mavros/setpoint_velocity/cmd_vel",10);
+    ros::Publisher fixed_target_pub = nh.advertise<state_machine::FIXED_TARGET_RETURN_M2P>(string(NS)+"/mavros/fixed_target_return_m2p",10);
+    ros::Publisher grab_status_pub = nh.advertise<state_machine::GRAB_STATUS_M2P>(string(NS)+"/mavros/grab_status_m2p",10);
+    ros::Publisher task_status_pub = nh.advertise<state_machine::TASK_STATUS_MONITOR_M2P>(string(NS)+"/mavros/task_status_monitor_m2p",10);
+    ros::Publisher vision_position_pub = nh.advertise<state_machine::VISION_POSITION_GET_M2P>(string(NS)+"/mavros/vision_position_get_m2p",10);
+    ros::Publisher yaw_sp_pub = nh.advertise<state_machine::YAW_SP_CALCULATED_M2P>(string(NS)+"/mavros/yaw_sp_calculated_m2p",10);
 
-    set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>("mavros/set_mode");
+    set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>(string(NS)+"/mavros/set_mode");
     state_machine::SetMode offb_set_mode;
 	offb_set_mode.request.custom_mode = "OFFBOARD";
     last_request = ros::Time::now();
 
-    arming_client = nh.serviceClient<state_machine::CommandBool>("mavros/cmd/arming");
+    arming_client = nh.serviceClient<state_machine::CommandBool>(string(NS)+"/mavros/cmd/arming");
 	state_machine::CommandBool arm_cmd;
 	arm_cmd.request.value = true;
     last_request = ros::Time::now();
@@ -302,7 +341,7 @@ void state_machine_fun()
             if(ros::Time::now() - last_time > ros::Duration(0.5) && vision_count1 < 10)
             {
                 ros::spinOnce();
-                position_x_aver = (position_x_aver * vision_count1 + distance.distance)/(vision_count1 + 1);
+                position_x_aver = (position_x_aver * vision_count1 + current_distance.distance)/(vision_count1 + 1);
                 //position_y_aver = (position_y_aver * vision_count1 + vision_position_get.component_position_y)/(vision_count1 + 1);
                //position_z_aver = (position_z_aver * vision_count1 + vision_position_get.component_position_z)/(vision_count1 + 1);
                 // current_pos_state = component_locate;   //need change Z place to component_locate
@@ -328,5 +367,4 @@ void state_machine_fun()
         }
         break;
     }
-    
 }
