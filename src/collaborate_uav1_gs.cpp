@@ -62,8 +62,6 @@ ros::Publisher tracked_car_pub;
 ros::Publisher task_status_pub;
 ros::Publisher car_position_pub;
 ros::Publisher car_num_pub;
-ros::Publisher current_position_state_pub;
-
 
 //subscibed topic
 ros::Subscriber state_sub;
@@ -95,25 +93,26 @@ std_msgs::Int8 car_number;
 //state_machine mission state
 //every state need target position
 
-static const int takeoff = 0;
-static const int position_A_go = 1;
-static const int position_A_hover = 2;
-static const int position_B_go = 3;
-static const int position_B_hover = 4;
-static const int position_C_go = 5;
-static const int position_C_hover = 6;
-static const int return_home = 7;
-static const int land = 8;
+static const int wait_TF = 0;
+static const int takeoff = 1;
+static const int position_A_go = 2;
+static const int position_A_hover = 3;
+static const int position_B_go = 4;
+static const int position_B_hover = 5;
+static const int position_C_go = 6;
+static const int position_C_hover = 7;
+static const int return_home = 8;
+static const int land = 9;
 
-static const int current_position_hover = 9;
-static const int land_after_hover = 10;
+static const int current_position_hover = 10;
+static const int land_after_hover = 11;
 
-static string mission_status[11] = {"take_off", "go_A", "hover_A", "go_B", "hover_B", "go_C", "hover_C", 
+static string mission_status[12] = {"wait_TF", "take_off", "go_A", "hover_A", "go_B", "hover_B", "go_C", "hover_C", 
                                     "return_H", "land", "hover", "L_hover"};
 
 //mission 
 int loop = 0;
-int current_mission_state = takeoff;
+int current_mission_state = wait_TF;
 state_machine::taskStatusMonitor task_status_monitor;
 
 //time
@@ -201,6 +200,10 @@ std_msgs::Int8 takeOffCommand;
 void takeOffCommand_cb(const std_msgs::Int8::ConstPtr& msg)
 {
     takeOffCommand = *msg;
+    current_mission_state = takeoff;
+    sm_control_mode = true;
+    velocity_control_enable = true;
+    takeOffStatus.data = 1;
     takeOffStatus_pub.publish(takeOffStatus);
     ROS_INFO("received the take off command!!");
 }
@@ -211,6 +214,7 @@ void landCommand_cb(const std_msgs::Int8::ConstPtr& msg)
     landCommand = *msg;
     current_mission_state = land_after_hover;
     hover_position = current_position;
+    landStatus.data = 1;
     land_status_pub.publish(landStatus);
     ROS_INFO("received the land command!!");
 }
@@ -221,6 +225,7 @@ void hoverCommand_cb(const std_msgs::Int8::ConstPtr& msg)
     hoverCommand = *msg;
     current_mission_state = current_position_hover;
     hover_position = current_position;
+    hoverStatus.data = 1;
     hover_status_pub.publish(hoverStatus);
     ROS_INFO("received the hover command!!");
 }
@@ -229,6 +234,7 @@ std_msgs::Int8 communication_command;
 void communication_test_cb(const std_msgs::Int8::ConstPtr& msg)
 {
     communication_command = *msg;
+    communicationStatus.data = 1;
     communication_result_pub.publish(communicationStatus);
     ROS_INFO("receive the communication request.");
 }
@@ -238,10 +244,22 @@ geometry_msgs::PoseStamped local_pose_G2M;
 void control_request_cb(const std_msgs::Int8::ConstPtr& msg)
 {
     control_request = *msg;
-    local_pose_G2M = current_position;
-    sm_control_mode = false;
-    remote_control_status_pub.publish(remoteControlStatus);
-    ROS_INFO("receive the control request.");
+    if(control_request.data == 1)
+    {
+        local_pose_G2M = current_position;
+        sm_control_mode = false;
+        remoteControlStatus.data = 1;
+        remote_control_status_pub.publish(remoteControlStatus);
+        ROS_INFO("receive the control request.");
+    }
+    else if(control_request.data == 0)
+    {
+        current_mission_state = current_position_hover;
+        sm_control_mode = true;
+        remoteControlStatus.data = 2;
+        remote_control_status_pub.publish(remoteControlStatus);
+        ROS_INFO("exit the control request.");
+    }
 }
 
 void local_position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -301,12 +319,6 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "collborate_"+string(NS));
     ros::NodeHandle nh;
-
-    takeOffStatus.data = 1;
-    hoverStatus.data = 1;
-    landStatus.data = 1;
-    communicationStatus.data = 1;
-    remoteControlStatus.data = 1;
 
     //takeoff velocity
     vel_pub.twist.linear.x = 0.0f;
@@ -451,12 +463,6 @@ int main(int argc, char **argv)
                 ROS_INFO("current_mission_state:%d",current_mission_state);
                 ROS_INFO("current_mission_state:%s",mission_status[current_mission_state].c_str());
                 ROS_INFO("current_mode:%s",current_state.mode.c_str());
-
-                task_status_monitor.task_status = mission_status[current_mission_state];
-                task_status_monitor.target_x = pose_pub.pose.position.y;
-                task_status_monitor.target_y = pose_pub.pose.position.x;
-                task_status_monitor.target_z = pose_pub.pose.position.z;
-                task_status_pub.publish(task_status_monitor);
             }
             else
             {
@@ -510,6 +516,13 @@ int main(int argc, char **argv)
                     landing_last_request = ros::Time::now();
                 }
         }
+        
+        //send mission state
+        task_status_monitor.task_status = mission_status[current_mission_state];
+        task_status_monitor.target_x = pose_pub.pose.position.y;
+        task_status_monitor.target_y = pose_pub.pose.position.x;
+        task_status_monitor.target_z = pose_pub.pose.position.z;
+        task_status_pub.publish(task_status_monitor);
 
         ros::spinOnce();
         rate.sleep();
@@ -614,6 +627,24 @@ void state_machine_fun(void)
             if (Distance_of_Two(current_position.pose.position.x,position_A.pose.position.x,
                                 current_position.pose.position.y,position_A.pose.position.y,
                                 current_position.pose.position.z,position_A.pose.position.z) < LOCATE_ACCURACY )
+            {
+                current_mission_state = land;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case current_position_hover:
+        {
+            pose_pub = hover_position;
+            local_pos_pub.publish(hover_position);
+            last_time = ros::Time::now();
+        }
+        break;
+        case land_after_hover:
+        {
+            pose_pub = hover_position;
+            local_pos_pub.publish(hover_position);
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
                 current_mission_state = land;
                 last_time = ros::Time::now();

@@ -48,6 +48,8 @@ add_message_files(
   GPS_Status.msg
   BatteryStatus.msg
   taskStatusMonitor.msg
+  VisionCarBoardPos.msg
+  HeadBoardYaw.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -108,6 +110,7 @@ add_executable(collaborate_uav3_gs            src/collaborate_uav3_gs.cpp)
 add_executable(collaborate_uav4_gs            src/collaborate_uav4_gs.cpp)
 add_executable(collaborate_uav5_gs            src/collaborate_uav5_gs.cpp)
 add_executable(vision_simu            src/vision_simu.cpp)
+add_executable(collaborate_track_car_1            src/collaborate_track_car_1.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -135,6 +138,7 @@ add_dependencies(collaborate_uav3_gs            state_machine_generate_messages_
 add_dependencies(collaborate_uav4_gs            state_machine_generate_messages_cpp)
 add_dependencies(collaborate_uav5_gs            state_machine_generate_messages_cpp)
 add_dependencies(vision_simu            state_machine_generate_messages_cpp)
+add_dependencies(collaborate_track_car_1            state_machine_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(state_machine_demo       ${catkin_LIBRARIES})
@@ -161,3 +165,4 @@ target_link_libraries(collaborate_uav3_gs              ${catkin_LIBRARIES})
 target_link_libraries(collaborate_uav4_gs              ${catkin_LIBRARIES})
 target_link_libraries(collaborate_uav5_gs              ${catkin_LIBRARIES})
 target_link_libraries(vision_simu              ${catkin_LIBRARIES})
+target_link_libraries(collaborate_track_car_1              ${catkin_LIBRARIES})

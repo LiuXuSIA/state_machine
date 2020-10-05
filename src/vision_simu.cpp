@@ -63,7 +63,7 @@ int main(int argc, char **argv)
     {   
         car1_num_pub.publish(car1_num);
         car2_num_pub.publish(car2_num);
-        car3_num_pub.publish(car2_num);
+        car3_num_pub.publish(car3_num);
 
         car1_position_pub.publish(car1_position);
         car2_position_pub.publish(car2_position);
