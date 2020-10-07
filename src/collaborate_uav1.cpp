@@ -19,6 +19,10 @@
 #include <state_machine/positionXY.h>
 #include <state_machine/SetMode.h>
 #include "math.h"
+#include <state_machine/Attitude.h>
+#include <state_machine/GPS_Status.h>
+#include <sensor_msgs/BatteryState.h>
+#include <state_machine/taskStatusMonitor.h>
 
 
 /***************************function declare****************************/
@@ -44,6 +48,13 @@ ros::Publisher takeOffStatus_pub;
 ros::Publisher communication_result_pub;
 ros::Publisher emergency_status_pub;
 ros::Publisher current_position_pub;
+//added for gs
+ros::Publisher current_pose_pub;
+ros::Publisher current_attitude_pub;
+ros::Publisher battery_staus_pub;
+ros::Publisher current_mode_pub;
+ros::Publisher current_gps_status_pub;
+ros::Publisher task_status_pub;
 
 state_machine::attributeStatus_F2L takeOffStatus;
 state_machine::attributeStatus_F2L communicationStatus;
@@ -67,6 +78,7 @@ static const int land = 6;
 int loop = 0;
 int current_pos_state = takeoff;
 std_msgs::String current_position_state;
+state_machine::taskStatusMonitor task_status_monitor;
 
 //time
 ros::Time last_time;
@@ -95,9 +107,12 @@ ros::Time last_request;
 
 /***************************callback function definition***************/
 state_machine::State current_state;
+std_msgs::String current_mode;
 void state_cb(const state_machine::State::ConstPtr& msg)
 {
     current_state = *msg;
+    current_mode.data = current_state.mode;
+    current_mode_pub.publish(current_mode);
 }
 
 geometry_msgs::PoseStamped current_position;
@@ -105,6 +120,7 @@ bool home_position_gotten = false;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     current_position = *msg;
+    current_pose_pub.publish(current_position);
     if(get_home_position_enable == true)
     {
         //position of A
@@ -145,7 +161,7 @@ void takeOffCommand_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
     if(receiveTakeOffCommand_enable == true)
     {
         takeOffCommand = *msg;
-        ROS_INFO("uav1 received the take off command!!");
+        ROS_INFO("received the take off command!!");
         receiveTakeOffCommand_enable = false;
     } 
 }
@@ -163,7 +179,7 @@ void emergencyCommand_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
     if(receiveEmergencyCommand_enable == true)
     {
         emergencyCommand = *msg;
-        ROS_INFO("uav1 received the emergency command!!");
+        ROS_INFO("received the emergency command!!");
         receiveEmergencyCommand_enable = false;
     } 
 }
@@ -173,7 +189,7 @@ void communication_test_cb(const state_machine::requestCommand_L2F::ConstPtr& ms
 {
     communication_command = *msg;
     communication_result_pub.publish(communicationStatus);
-    ROS_INFO("uav1 receive the communication request.");
+    ROS_INFO("receive the communication request.");
 }
 
 state_machine::positionXY position_delta;
@@ -183,6 +199,36 @@ void position_delta_cb(const state_machine::positionXY::ConstPtr& msg)
     position_next.pose.position.x =  position_A.pose.position.x + position_delta.x;
     position_next.pose.position.y =  position_A.pose.position.y + position_delta.y;
     position_next.pose.position.z =  position_A.pose.position.z;
+}
+
+state_machine::Attitude current_attitude;
+void attitude_cb(const state_machine::Attitude::ConstPtr& msg)
+{
+    current_attitude = *msg;
+    current_attitude_pub.publish(current_attitude);
+
+    // ROS_INFO("yaw: %f", current_attitude.yaw);
+    // ROS_INFO("pitch: %f", current_attitude.pitch);
+    // ROS_INFO("roll: %f", current_attitude.roll);
+}
+
+state_machine::GPS_Status gps_status;
+void gps_status_cb(const state_machine::GPS_Status::ConstPtr& msg)
+{
+    gps_status = *msg; //0-1: no fix, 2: 2D fix, 3: 3D fix, 4: DGPS, 5: RTK.
+    current_gps_status_pub.publish(gps_status); 
+    // ROS_INFO("fix_type: %d", gps_status.fix_type);
+    // ROS_INFO("satellites_num: %d", gps_status.satellites_num);
+}
+
+sensor_msgs::BatteryState battery_state;
+void battery_cb(const sensor_msgs::BatteryState::ConstPtr& msg)
+{
+    battery_state = *msg;
+    battery_staus_pub.publish(battery_state);
+    // ROS_INFO("voltage: %f", battery_state.voltage);
+    // ROS_INFO("current: %f", battery_state.current);
+    // ROS_INFO("remaining: %f", battery_state.percentage);
 }
 
 /*****************************main function*****************************/
@@ -246,6 +292,10 @@ int main(int argc, char **argv)
     ros::Subscriber communication_test_sub = nh.subscribe<state_machine::requestCommand_L2F>("communication_test",10,communication_test_cb);
     ros::Subscriber emergency_sub = nh.subscribe<state_machine::requestCommand_L2F>("emergency_command",10,emergencyCommand_cb);
     ros::Subscriber position_delta_sub = nh.subscribe<state_machine::positionXY>("position_delta",10,position_delta_cb);
+    //added for gs
+    ros::Subscriber attitude_sub = nh.subscribe<state_machine::Attitude>("uav1/mavros/attitude",10,attitude_cb);
+    ros::Subscriber gps_staus_sub = nh.subscribe<state_machine::GPS_Status>("uav1/mavros/gps_status",10,gps_status_cb);
+    ros::Subscriber battery_staus_sub = nh.subscribe<sensor_msgs::BatteryState>("uav1/mavros/battery",10,battery_cb);
 
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1/mavros/setpoint_position/local",10);
     local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("uav1/mavros/setpoint_velocity/cmd_vel",10);
@@ -253,6 +303,13 @@ int main(int argc, char **argv)
     communication_result_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_communication_test_reult",10);
     emergency_status_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_emergency_status",10);
     current_position_pub = nh.advertise<std_msgs::String>("uav1_current_position_state",10);
+    //added
+    current_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1_local_pose",10);
+    current_attitude_pub = nh.advertise<state_machine::Attitude>("uav1_local_attitude",10);
+    battery_staus_pub = nh.advertise<sensor_msgs::BatteryState>("uav1_battery_status",10);
+    current_mode_pub = nh.advertise<std_msgs::String>("uav1_current_mode",10);
+    current_gps_status_pub = nh.advertise<state_machine::GPS_Status>("uav1_current_gps_status",10);
+    task_status_pub = nh.advertise<state_machine::taskStatusMonitor>("uav1_current_mission_state",10);
  
     land_client = nh.serviceClient<state_machine::CommandTOL>("uav1/mavros/cmd/land");
     state_machine::CommandTOL landing_cmd;
@@ -367,6 +424,13 @@ int main(int argc, char **argv)
             emergency_status_pub.publish(emergencyStatus);
             emergencyCommand.value = 0;
         }
+
+        //send mission state
+        task_status_monitor.task_status = current_position_state.data;
+        task_status_monitor.target_x = pose_pub.pose.position.y;
+        task_status_monitor.target_y = pose_pub.pose.position.x;
+        task_status_monitor.target_z = pose_pub.pose.position.z;
+        task_status_pub.publish(task_status_monitor);
 
         ros::spinOnce();
         rate.sleep();

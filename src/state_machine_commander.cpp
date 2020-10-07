@@ -170,7 +170,7 @@ int main(int argc, char **argv)
                 communication_display = false;
             }
             communication_test_pub.publish(communication_test_request);
-            if(communication_status_uav1.value && communication_status_uav2.value)// && communication_status_uav3.value && communication_status_uav4.value)
+            if(communication_status_uav1.value && communication_status_uav2.value && communication_status_uav3.value && communication_status_uav4.value)
             {
                 ROS_INFO("all of the communication test successfully.");
                 communication_test_request.value = 0;
@@ -187,7 +187,7 @@ int main(int argc, char **argv)
                 takeoff_display = false;
             }
             take_off_command_pub.publish(takeOff_command);
-            if(takeOff_status_uav1.value && takeOff_status_uav2.value)// && takeOff_status_uav3.value && takeOff_status_uav4.value)
+            if(takeOff_status_uav1.value && takeOff_status_uav2.value && takeOff_status_uav3.value && takeOff_status_uav4.value)
             {
                 ROS_INFO("all of the uavs have been taken off.");
                 takeOff_command.value = 0;
@@ -198,8 +198,8 @@ int main(int argc, char **argv)
         
         if( current_position_state_uav1.data == "position_A_hover" && 
             current_position_state_uav2.data == "position_A_hover" && 
-            // current_position_state_uav3.data == "position_A_hover" && 
-            // current_position_state_uav4.data == "position_A_hover" && 
+            current_position_state_uav3.data == "position_A_hover" && 
+            current_position_state_uav4.data == "position_A_hover" && 
             in_A_place_display)
         {
             ROS_INFO("all the uavs have been arrived in position A.");
@@ -242,8 +242,8 @@ void position_lead_function()
                 } 
                 if (current_position_state_uav1.data == "position_B_hover" && 
                     current_position_state_uav2.data == "position_B_hover" && 
-                    // current_position_state_uav3.data == "position_B_hover" &&
-                    // current_position_state_uav4.data == "position_B_hover" &&
+                    current_position_state_uav3.data == "position_B_hover" &&
+                    current_position_state_uav4.data == "position_B_hover" &&
                     in_B_place_display) 
                 {
                     ROS_INFO("all the uavs have been arrived in position B.");
@@ -266,8 +266,8 @@ void position_lead_function()
                 }
                 if (current_position_state_uav1.data == "position_C_hover" &&
                     current_position_state_uav2.data == "position_C_hover" &&
-                    // current_position_state_uav3.data == "position_C_hover" &&
-                    // current_position_state_uav4.data == "position_C_hover" && 
+                    current_position_state_uav3.data == "position_C_hover" &&
+                    current_position_state_uav4.data == "position_C_hover" && 
                     in_C_place_display) 
                 {
                     ROS_INFO("all the uavs have been arrived in position C.");
@@ -289,8 +289,8 @@ void position_lead_function()
                 }
                 if( current_position_state_uav1.data == "position_end_hover" && 
                     current_position_state_uav2.data == "position_end_hover" && 
-                    // current_position_state_uav3.data == "position_end_hover" && 
-                    // current_position_state_uav4.data == "position_end_hover" && 
+                    current_position_state_uav3.data == "position_end_hover" && 
+                    current_position_state_uav4.data == "position_end_hover" && 
                     in_END_place_display) 
                 {
                     ROS_INFO("all the uavs have been arrived in position END.");

@@ -234,7 +234,7 @@ void battery_cb(const sensor_msgs::BatteryState::ConstPtr& msg)
 /*****************************main function*****************************/
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "collborate_uav_2");
+    ros::init(argc, argv, "collborate_uav_3");
     ros::NodeHandle nh;
 
     takeOffStatus.UAV_index = 2;
@@ -284,50 +284,50 @@ int main(int argc, char **argv)
     position_C.pose.orientation.z = sin(yaw_sp/2);
     position_C.pose.orientation.w = cos(yaw_sp/2);
 
-    ros::Subscriber state_sub = nh.subscribe<state_machine::State>("uav2/mavros/state",10,state_cb);
-    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav2/mavros/local_position/pose",10,pose_cb);
-    ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("uav2/mavros/local_position/velocity",10,velo_cb);
+    ros::Subscriber state_sub = nh.subscribe<state_machine::State>("uav3/mavros/state",10,state_cb);
+    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav3/mavros/local_position/pose",10,pose_cb);
+    ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("uav3/mavros/local_position/velocity",10,velo_cb);
     ros::Subscriber takeOffCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("take_off_command",10,takeOffCommand_cb);
     ros::Subscriber landCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("land_command",10,landCommand_cb);
     ros::Subscriber communication_test_sub = nh.subscribe<state_machine::requestCommand_L2F>("communication_test",10,communication_test_cb);
     ros::Subscriber emergency_sub = nh.subscribe<state_machine::requestCommand_L2F>("emergency_command",10,emergencyCommand_cb);
     ros::Subscriber position_delta_sub = nh.subscribe<state_machine::positionXY>("position_delta",10,position_delta_cb);
     //added for gs
-    ros::Subscriber attitude_sub = nh.subscribe<state_machine::Attitude>("uav2/mavros/attitude",10,attitude_cb);
-    ros::Subscriber gps_staus_sub = nh.subscribe<state_machine::GPS_Status>("uav2/mavros/gps_status",10,gps_status_cb);
-    ros::Subscriber battery_staus_sub = nh.subscribe<sensor_msgs::BatteryState>("uav2/mavros/battery",10,battery_cb);
+    ros::Subscriber attitude_sub = nh.subscribe<state_machine::Attitude>("uav3/mavros/attitude",10,attitude_cb);
+    ros::Subscriber gps_staus_sub = nh.subscribe<state_machine::GPS_Status>("uav3/mavros/gps_status",10,gps_status_cb);
+    ros::Subscriber battery_staus_sub = nh.subscribe<sensor_msgs::BatteryState>("uav3/mavros/battery",10,battery_cb);
 
-    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("uav2/mavros/setpoint_position/local",10);
-    local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("uav2/mavros/setpoint_velocity/cmd_vel",10);
-    takeOffStatus_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav2_take_off_status",10);
-    communication_result_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav2_communication_test_reult",10);
-    emergency_status_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav2_emergency_status",10);
-    current_position_pub = nh.advertise<std_msgs::String>("uav2_current_position_state",10);
+    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("uav3/mavros/setpoint_position/local",10);
+    local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("uav3/mavros/setpoint_velocity/cmd_vel",10);
+    takeOffStatus_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav3_take_off_status",10);
+    communication_result_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav3_communication_test_reult",10);
+    emergency_status_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav3_emergency_status",10);
+    current_position_pub = nh.advertise<std_msgs::String>("uav3_current_position_state",10);
 
     //added
-    current_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("uav2_local_pose",10);
-    current_attitude_pub = nh.advertise<state_machine::Attitude>("uav2_local_attitude",10);
-    battery_staus_pub = nh.advertise<sensor_msgs::BatteryState>("uav2_battery_status",10);
-    current_mode_pub = nh.advertise<std_msgs::String>("uav2_current_mode",10);
-    current_gps_status_pub = nh.advertise<state_machine::GPS_Status>("uav2_current_gps_status",10);
-    task_status_pub = nh.advertise<state_machine::taskStatusMonitor>("uav2_current_mission_state",10);
+    current_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("uav3_local_pose",10);
+    current_attitude_pub = nh.advertise<state_machine::Attitude>("uav3_local_attitude",10);
+    battery_staus_pub = nh.advertise<sensor_msgs::BatteryState>("uav3_battery_status",10);
+    current_mode_pub = nh.advertise<std_msgs::String>("uav3_current_mode",10);
+    current_gps_status_pub = nh.advertise<state_machine::GPS_Status>("uav3_current_gps_status",10);
+    task_status_pub = nh.advertise<state_machine::taskStatusMonitor>("uav3_current_mission_state",10);
  
-    land_client = nh.serviceClient<state_machine::CommandTOL>("uav2/mavros/cmd/land");
+    land_client = nh.serviceClient<state_machine::CommandTOL>("uav3/mavros/cmd/land");
     state_machine::CommandTOL landing_cmd;
     landing_cmd.request.min_pitch = 1.0;
     landing_last_request = ros::Time::now();
 
-    set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>("uav2/mavros/set_mode");
+    set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>("uav3/mavros/set_mode");
     state_machine::SetMode offb_set_mode;
 	offb_set_mode.request.custom_mode = "OFFBOARD";
     last_request = ros::Time::now();
 
-    set_mode_client_posctl = nh.serviceClient<state_machine::SetMode>("uav2/mavros/set_mode");
+    set_mode_client_posctl = nh.serviceClient<state_machine::SetMode>("uav3/mavros/set_mode");
     state_machine::SetMode posc_set_mode;
 	posc_set_mode.request.custom_mode = "POSCTL";
     last_request = ros::Time::now();
 
-    arming_client = nh.serviceClient<state_machine::CommandBool>("uav2/mavros/cmd/arming");
+    arming_client = nh.serviceClient<state_machine::CommandBool>("uav3/mavros/cmd/arming");
 	state_machine::CommandBool arm_cmd;
 	arm_cmd.request.value = true;
     landing_last_request = ros::Time::now();
@@ -503,7 +503,7 @@ void state_machine_fun(void)
                                 current_position.pose.position.y,position_A.pose.position.y,
                                 current_position.pose.position.z,position_A.pose.position.z) < LOCATE_ACCURACY && return_flag)
             {
-                current_position_state.data = "position_end_hover";
+                current_position_state.data = "position_end_hover";  
             }
 
             if(landCommand.value)

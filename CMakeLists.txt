@@ -40,6 +40,7 @@ add_message_files(
   Distance_Measure_Enable.msg
   Task_Status_to_Vision.msg
   Vision_Position_Multiple.msg
+  TASK_STATUS_MONITOR_M2P.msg
 
   #add for 2020 uavcomp
   requestCommand_L2F.msg
@@ -104,6 +105,8 @@ add_executable(state_machine_fullauto_demo            src/state_machine_fullauto
 add_executable(emergency            src/emergency.cpp)
 add_executable(collaborate_uav1            src/collaborate_uav1.cpp)
 add_executable(collaborate_uav2            src/collaborate_uav2.cpp)
+add_executable(collaborate_uav3            src/collaborate_uav3.cpp)
+add_executable(collaborate_uav4            src/collaborate_uav4.cpp)
 add_executable(collaborate_uav1_gs            src/collaborate_uav1_gs.cpp)
 add_executable(collaborate_uav2_gs            src/collaborate_uav2_gs.cpp)
 add_executable(collaborate_uav3_gs            src/collaborate_uav3_gs.cpp)
@@ -111,6 +114,7 @@ add_executable(collaborate_uav4_gs            src/collaborate_uav4_gs.cpp)
 add_executable(collaborate_uav5_gs            src/collaborate_uav5_gs.cpp)
 add_executable(vision_simu            src/vision_simu.cpp)
 add_executable(collaborate_track_car_1            src/collaborate_track_car_1.cpp)
+add_executable(state_machine_single            src/state_machine_single.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -132,6 +136,8 @@ add_dependencies(state_machine_fullauto_demo            state_machine_generate_m
 add_dependencies(emergency            state_machine_generate_messages_cpp)
 add_dependencies(collaborate_uav1            state_machine_generate_messages_cpp)
 add_dependencies(collaborate_uav2            state_machine_generate_messages_cpp)
+add_dependencies(collaborate_uav3            state_machine_generate_messages_cpp)
+add_dependencies(collaborate_uav4            state_machine_generate_messages_cpp)
 add_dependencies(collaborate_uav1_gs            state_machine_generate_messages_cpp)
 add_dependencies(collaborate_uav2_gs            state_machine_generate_messages_cpp)
 add_dependencies(collaborate_uav3_gs            state_machine_generate_messages_cpp)
@@ -139,6 +145,7 @@ add_dependencies(collaborate_uav4_gs            state_machine_generate_messages_
 add_dependencies(collaborate_uav5_gs            state_machine_generate_messages_cpp)
 add_dependencies(vision_simu            state_machine_generate_messages_cpp)
 add_dependencies(collaborate_track_car_1            state_machine_generate_messages_cpp)
+add_dependencies(state_machine_single            state_machine_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(state_machine_demo       ${catkin_LIBRARIES})
@@ -159,6 +166,8 @@ target_link_libraries(state_machine_fullauto_demo              ${catkin_LIBRARIE
 target_link_libraries(emergency              ${catkin_LIBRARIES})
 target_link_libraries(collaborate_uav1              ${catkin_LIBRARIES})
 target_link_libraries(collaborate_uav2              ${catkin_LIBRARIES})
+target_link_libraries(collaborate_uav3              ${catkin_LIBRARIES})
+target_link_libraries(collaborate_uav4              ${catkin_LIBRARIES})
 target_link_libraries(collaborate_uav1_gs              ${catkin_LIBRARIES})
 target_link_libraries(collaborate_uav2_gs              ${catkin_LIBRARIES})
 target_link_libraries(collaborate_uav3_gs              ${catkin_LIBRARIES})
@@ -166,3 +175,4 @@ target_link_libraries(collaborate_uav4_gs              ${catkin_LIBRARIES})
 target_link_libraries(collaborate_uav5_gs              ${catkin_LIBRARIES})
 target_link_libraries(vision_simu              ${catkin_LIBRARIES})
 target_link_libraries(collaborate_track_car_1              ${catkin_LIBRARIES})
+target_link_libraries(state_machine_single              ${catkin_LIBRARIES})
