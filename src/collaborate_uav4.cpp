@@ -136,6 +136,8 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
         position_C.pose.position.y = position_A.pose.position.y+5;
         position_C.pose.position.z = position_A.pose.position.z;
 
+        position_next = position_A;
+
         take_off_height = position_A.pose.position.z-2;
 
         ROS_INFO("gotten the home position.");
