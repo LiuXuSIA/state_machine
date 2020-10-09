@@ -65,7 +65,6 @@ ros::Publisher car_position_pub;
 ros::Publisher car_num_pub;
 ros::Publisher car_yaw_pub;
 
-
 //subscibed topic
 ros::Subscriber state_sub;
 ros::Subscriber pose_sub;
@@ -136,6 +135,13 @@ bool sm_control_mode = true;
 //get the home position before takeoff
 bool get_home_position_enable = false;
 
+//velocity update according to vision information
+bool velocity_update_enable = true;
+ros::Time vel_cal_start_time;
+ros::Time vel_cal_end_time;
+geometry_msgs::Point vel_cal_start_pos;
+geometry_msgs::Point vel_cal_end_pos;
+
 //land
 ros::ServiceClient land_client;
 ros::Time landing_last_request;
@@ -145,13 +151,22 @@ ros::ServiceClient set_mode_client_offboard;
 ros::ServiceClient set_mode_client_posctl;
 ros::Time last_request;
 
-/*************************constant definition***************************/
-
-#define NS                  "uav1"
-#define NS_CAR              "car1"
-#define FIXED               1
-#define ASCEND_VELOCITY     2.0
-#define LOCATE_ACCURACY     0.5
+/*************************macro definition***************************/
+//conditional compilation
+#define VISION_SERVO            0
+#define VEL_TRACKING            0
+#define POS_TRACKING            1
+#define VEL_CALCULATION         1
+#define FIXED                   1
+//contants definition
+#define NS                      "uav1"
+#define NS_CAR                  "car1"
+#define ASCEND_VELOCITY         2.0
+#define LOCATE_ACCURACY         0.5
+#define HORI_DIS_TO_CAR         4.0
+#define VERT_DIS_TO_CAR         1.5
+#define VEL_CAL_TIME_INTERVEL   0.5
+#define POS_PREDICT_VEL_TIMES   1.0
 
 /***************************callback function definition***************/
 state_machine::State current_state;
@@ -319,23 +334,25 @@ state_machine::HeadBoardYaw headBoardYaw_ms;
 geometry_msgs::PoseStamped car_pose;
 geometry_msgs::PoseStamped tracked_position, last_tracked_position;
 geometry_msgs::Point body_car, body_board, body_head, body_tracked, local_position_car, local_position_board, local_position_head, local_position_tracked;
-float delta_y, delta_x, yaw_calculated, last_yaw, yaw_sp;;
+float delta_y, delta_x, yaw_calculated, yaw_sp;
+float velocity_car;
 std_msgs::Int8 board_num;
 int head_lost, board_lost, car_lost;
 void car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
 {
     vision_ms = *msg;
 
-    /*****for test******/
-    vision_ms.car.x = 1;
-    vision_ms.car.y = 0.8;
-    vision_ms.car.z = 1;
+    /*****for test vision location accuration******/
+    // vision_ms.car.x = 1;
+    // vision_ms.car.y = 0.8;
+    // vision_ms.car.z = 1;
 
     ROS_INFO("body_car:x%f y%f z%f", vision_ms.car.x, vision_ms.car.y, vision_ms.car.z);
     ROS_INFO("body_board:x%f y%f z%f", vision_ms.board.x, vision_ms.board.y, vision_ms.board.z);
     ROS_INFO("body_head:x%f y%f z%f", vision_ms.head.x, vision_ms.head.y, vision_ms.head.z);
     ROS_INFO("board_num:%d", vision_ms.boardNum);
 
+    //coordiante tranform from vision to uav body
     if(vision_ms.car.z == 10000)
     {
         car_lost++;
@@ -371,17 +388,20 @@ void car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
         body_head.x = vision_ms.head.z;
         body_head.y = vision_ms.head.x;
         body_head.z = vision_ms.head.y;
-
-        body_tracked.x = vision_ms.head.z-5;
-        body_tracked.y = vision_ms.head.x;
-        body_tracked.z = vision_ms.head.y;
+        //important: calculate the next expect point with respect to the UAV body
+        body_tracked.x = vision_ms.head.z - HORI_DIS_TO_CAR;
+        body_tracked.y = (velocity_car * POS_PREDICT_VEL_TIMES) * cos(current_attitude.roll);
+        body_tracked.z = (vision_ms.head.y + vision_ms.head.x * sin(current_attitude.roll) - VERT_DIS_TO_CAR) * cos(current_attitude.roll);
     }
 
+    //vision information lost handle
     if((board_lost > 3 || head_lost > 3) && current_mission_state == car_tracking)
     {
+        ROS_INFO("lose the board or car_head continuouslly, the will be land");
         current_mission_state = land_after_hover;
     }
 
+    //coordiante transform from uav body to local NED
     local_position_car.x = (R[0][0] * body_car.x + R[0][1] * body_car.y + R[0][2] * body_car.z) + current_position.pose.position.y;
     local_position_car.y = (R[1][0] * body_car.x + R[1][1] * body_car.y + R[1][2] * body_car.z) + current_position.pose.position.x;
     local_position_car.z = (R[2][0] * body_car.x + R[2][1] * body_car.y + R[2][2] * body_car.z) - current_position.pose.position.z;
@@ -397,26 +417,21 @@ void car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
     local_position_tracked.x = (R[0][0] * body_tracked.x + R[0][1] * body_tracked.y + R[0][2] * body_tracked.z) + current_position.pose.position.y;
     local_position_tracked.y = (R[1][0] * body_tracked.x + R[1][1] * body_tracked.y + R[1][2] * body_tracked.z) + current_position.pose.position.x;
     local_position_tracked.z = (R[2][0] * body_tracked.x + R[2][1] * body_tracked.y + R[2][2] * body_tracked.z) - current_position.pose.position.z;
-
+    
+    //calculate the head angle of the car in local NED
     delta_y = local_position_head.y - local_position_board.y;
     delta_x = local_position_head.x - local_position_board.x;
 
     yaw_calculated = atan2(delta_y,delta_x);
-    yaw_sp = wrap_pi(M_PI_2 - yaw_calculated * M_PI/180);
+    yaw_sp = wrap_pi(M_PI_2 - yaw_calculated);
+    static float last_yaw = yaw_sp;
     if((yaw_sp - last_yaw) > 1)
     {
        yaw_sp = last_yaw;
     } 
     last_yaw = yaw_sp;
 
-    tracked_position.pose.position.x = local_position_tracked.y;
-    tracked_position.pose.position.y = local_position_tracked.x;
-    tracked_position.pose.position.z = -local_position_tracked.z;
-    tracked_position.pose.orientation.x = 0;
-    tracked_position.pose.orientation.y = 0;
-    tracked_position.pose.orientation.z = sin(yaw_sp/2);
-    tracked_position.pose.orientation.w = cos(yaw_sp/2);
-
+    //coordinate transform from local NED used by uav to local ENU used in mavros
     car_pose.pose.position.x = local_position_car.y;
     car_pose.pose.position.y = local_position_car.x;
     car_pose.pose.position.z = -local_position_car.z;
@@ -427,6 +442,36 @@ void car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
     headBoardYaw_ms.head.y = local_position_head.x;
     headBoardYaw_ms.head.z = -local_position_head.z;
     headBoardYaw_ms.car_yaw = yaw_sp;
+
+    //calculate the velocity of the car accoring to two continuous positions
+    #if VEL_CALCULATION
+    if(velocity_update_enable == true)
+    {   
+        vel_cal_start_time = ros::Time::now();
+        vel_cal_start_pos = local_position_board;
+        velocity_update_enable = false; 
+    }
+    else if((ros::Time::now()-vel_cal_start_time) > ros::Duration(VEL_CAL_TIME_INTERVEL))
+    {
+        vel_cal_end_time = ros::Time::now();
+        vel_cal_end_pos = local_position_board;
+        velocity_car = Distance_of_Two(vel_cal_start_pos.x, vel_cal_end_pos.x,
+                                       vel_cal_start_pos.y, vel_cal_end_pos.y,
+                                       vel_cal_start_pos.z, vel_cal_end_pos.z) / (vel_cal_end_time - vel_cal_start_time)
+        velocity_update_enable = true;
+        ROS_INFO("velocity_car:%f",velocity_car);
+    }
+    #endif
+ 
+    #if POS_TRACKING 
+    tracked_position.pose.position.x = local_position_tracked.y;
+    tracked_position.pose.position.y = local_position_tracked.x;
+    tracked_position.pose.position.z = -local_position_tracked.z;
+    tracked_position.pose.orientation.x = 0;
+    tracked_position.pose.orientation.y = 0;
+    tracked_position.pose.orientation.z = sin(yaw_sp/2);
+    tracked_position.pose.orientation.w = cos(yaw_sp/2);
+    #endif
 
     car_position_pub.publish(car_pose);
     car_num_pub.publish(board_num);
