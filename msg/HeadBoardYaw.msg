@@ -9,3 +9,4 @@
 geometry_msgs/Point board
 geometry_msgs/Point head
 float32 car_yaw
+float32 car_speed
