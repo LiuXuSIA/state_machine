@@ -10,6 +10,7 @@
 #include <ros/ros.h>
 #include <std_msgs/Int8.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <state_machine/VisionCarBoardPos.h>
 
 ros::Publisher car1_num_pub;
 ros::Publisher car2_num_pub;
@@ -19,6 +20,8 @@ ros::Publisher car1_position_pub;
 ros::Publisher car2_position_pub;
 ros::Publisher car3_position_pub;
 
+ros::Publisher vision_information_pub;
+
 std_msgs::Int8 car1_num;
 std_msgs::Int8 car2_num;
 std_msgs::Int8 car3_num;
@@ -26,6 +29,8 @@ std_msgs::Int8 car3_num;
 geometry_msgs::PoseStamped car1_position;
 geometry_msgs::PoseStamped car2_position;
 geometry_msgs::PoseStamped car3_position;
+
+state_machine::VisionCarBoardPos visionSim;
 
 /*****************************main function*****************************/
 int main(int argc, char **argv)
@@ -49,6 +54,20 @@ int main(int argc, char **argv)
     car3_position.pose.position.y = -1;
     car3_position.pose.position.z = -1;
 
+    visionSim.car.x = 2;
+    visionSim.car.y = 2;
+    visionSim.car.z = 2;
+
+    visionSim.board.x = 2;
+    visionSim.board.y = 2;
+    visionSim.board.z = 2;
+
+    visionSim.head.x = 2;
+    visionSim.head.y = 2;
+    visionSim.head.z = 2;
+
+    visionSim.boardNum = 3;
+
     car1_num_pub = nh.advertise<std_msgs::Int8>("car1_num",10);
     car2_num_pub = nh.advertise<std_msgs::Int8>("car2_num",10);
     car3_num_pub = nh.advertise<std_msgs::Int8>("car3_numl",10);
@@ -56,6 +75,8 @@ int main(int argc, char **argv)
     car1_position_pub = nh.advertise<geometry_msgs::PoseStamped>("car1_pos",10);
     car2_position_pub = nh.advertise<geometry_msgs::PoseStamped>("car2_pos",10);
     car3_position_pub = nh.advertise<geometry_msgs::PoseStamped>("car3_pos",10);
+
+    vision_information_pub = nh.advertise<state_machine::VisionCarBoardPos>("car1_vision_information",10);
 
     ros::Rate rate(10.0);
 
@@ -68,6 +89,8 @@ int main(int argc, char **argv)
         car1_position_pub.publish(car1_position);
         car2_position_pub.publish(car2_position);
         car3_position_pub.publish(car3_position);
+
+        vision_information_pub.publish(visionSim);
 
         ros::spinOnce();
         rate.sleep();

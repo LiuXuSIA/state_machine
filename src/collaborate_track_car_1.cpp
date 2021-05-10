@@ -112,7 +112,7 @@ static const int land = 6;
 static const int current_position_hover = 10;
 static const int land_after_hover = 11;
 
-static string mission_status[12] = {"wait_TF", "take_off", "go_A", "hover_A", "go_B", "hover_B", "go_C", "hover_C", 
+static string mission_status[12] = {"wait_TF", "take_off", "go_A", "hover_A", "tracking", "return_h", "land", "hover_C", 
                                     "return_H", "land", "hover", "L_hover"};
 
 //mission 
@@ -128,6 +128,7 @@ bool velocity_control_enable = true;
 
 //takeoff height
 double take_off_height;
+float yaw_sp;
 
 //control mode
 bool sm_control_mode = true;
@@ -158,16 +159,24 @@ ros::Time last_request;
 #define VEL_CALCULATION         1
 #define POS_TRACKING            1
 #define FIXED_TRACKING          1
+#define YAW_UPDATE              1
 //contants definition
 #define NS                      "uav3"
 #define NS_CAR                  "car1"
-#define ASCEND_VELOCITY         2.0
+#define ASCEND_VELOCITY         1.0
 #define LOCATE_ACCURACY         0.5
-#define HORI_DIS_TO_CAR         4.0
+#define HORI_DIS_TO_CAR         7.0
 #define VERT_DIS_TO_CAR         1.5
 #define VEL_CAL_TIME_INTERVEL   0.5
-#define POS_PREDICT_VEL_TIMES   1.0
-#define TAKEOFF_HEIHT           3.0
+#define POS_PREDICT_VEL_TIMES   0.1
+#define TAKEOFF_HEIHT           2.0
+#define FRAME_LOST_NUM          10
+#define DIS_TWO_LIMIT           3.0
+#define YAW_TWO_LIMIT           2
+#define YAW_STEP_LIMIT_MAX      0.8
+#define YAW_STEP_LIMIT_MIN      0.25
+#define YAW_CAL_FRAME           1 
+#define HEAD_BOARD_DIS          2.2 //1.6 true
 
 /***************************callback function definition***************/
 state_machine::State current_state;
@@ -180,6 +189,8 @@ void state_cb(const state_machine::State::ConstPtr& msg)
 }
 
 geometry_msgs::PoseStamped current_position;
+state_machine::Attitude current_attitude;
+state_machine::HeadBoardYaw headBoardYaw_ms;
 bool home_position_gotten = false;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
@@ -192,23 +203,31 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
         position_A.pose.position.y = current_position.pose.position.y;
         position_A.pose.position.z = current_position.pose.position.z+TAKEOFF_HEIHT;
 
+        yaw_sp = current_attitude.yaw;
+
+        position_A.pose.orientation.x = 0;
+        position_A.pose.orientation.y = 0;
+        position_A.pose.orientation.z = sin(yaw_sp/2);
+        position_A.pose.orientation.w = cos(yaw_sp/2);
+
         take_off_height = position_A.pose.position.z-1;
+        headBoardYaw_ms.car_yaw = yaw_sp;
 
         ROS_INFO("gotten the home position.");
         ROS_INFO("the x of home:%f", position_A.pose.position.x);
         ROS_INFO("the y of home:%f", position_A.pose.position.y);
         ROS_INFO("the z of home:%f", position_A.pose.position.z);
+        ROS_INFO("the yaw of home:%f", yaw_sp);
 
         get_home_position_enable = false;
         home_position_gotten = true;
     }
 }
 
-state_machine::Attitude current_attitude;
+float current_attitude_full_angle;
 void attitude_cb(const state_machine::Attitude::ConstPtr& msg)
 {
     current_attitude = *msg;
-    current_attitude_pub.publish(current_attitude);
 
     R[0][0] = cos(current_attitude.pitch) * cos(current_attitude.yaw);
     R[0][1] = sin(current_attitude.roll) * sin(current_attitude.pitch) * cos(current_attitude.yaw) -
@@ -225,6 +244,12 @@ void attitude_cb(const state_machine::Attitude::ConstPtr& msg)
     R[2][0] = -sin(current_attitude.pitch);
     R[2][1] = sin(current_attitude.roll) * cos(current_attitude.pitch);
     R[2][2]= cos(current_attitude.roll) * cos(current_attitude.pitch);
+
+    current_attitude.yaw =  wrap_pi(M_PI_2 - current_attitude.yaw);
+    current_attitude_full_angle = current_attitude.yaw >= 0 ? current_attitude.yaw : (current_attitude.yaw + M_PI*2);
+    //current_attitude.roll =  yaw_expected;
+    //current_attitude.pitch = yaw_average;
+    current_attitude_pub.publish(current_attitude);
 
     // ROS_INFO("yaw: %f", current_attitude.yaw);
     // ROS_INFO("pitch: %f", current_attitude.pitch);
@@ -331,16 +356,18 @@ void battery_cb(const sensor_msgs::BatteryState::ConstPtr& msg)
 
 #if FIXED_TRACKING
 state_machine::VisionCarBoardPos vision_ms;
-state_machine::HeadBoardYaw headBoardYaw_ms;
+//state_machine::HeadBoardYaw headBoardYaw_ms;
 geometry_msgs::PoseStamped car_pose;
 geometry_msgs::PoseStamped tracked_position, last_tracked_position;
 geometry_msgs::Point body_car, body_board, body_head, body_tracked, local_position_car, local_position_board, local_position_head, local_position_tracked;
-float delta_y, delta_x, yaw_calculated, yaw_sp;
+float delta_y, delta_x, yaw_calculated;
 float velocity_car;
 std_msgs::Int8 board_num;
-int head_lost, board_lost, car_lost, board_lost_flag, head_lost_flag;
+int head_lost, board_lost, car_lost, board_lost_flag, head_lost_flag, current_frame = 0;
 bool right_side_flag = false, left_side_flag = false, side_judge_enable = true;
-void car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
+float yaw_expected, yaw_average, yaw_expected_full_angle;
+
+int car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
 {
     vision_ms = *msg;
 
@@ -353,7 +380,7 @@ void car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
     if(vision_ms.car.z == 10000)
     {
         car_lost++;
-        ROS_INFO("car_vision_lost!!");
+        //ROS_INFO("car_vision_lost!!");
     }
     else
     {
@@ -364,13 +391,16 @@ void car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
         local_position_car.x = (R[0][0] * body_car.x + R[0][1] * body_car.y + R[0][2] * body_car.z) + current_position.pose.position.y;
         local_position_car.y = (R[1][0] * body_car.x + R[1][1] * body_car.y + R[1][2] * body_car.z) + current_position.pose.position.x;
         local_position_car.z = (R[2][0] * body_car.x + R[2][1] * body_car.y + R[2][2] * body_car.z) - current_position.pose.position.z;
-        
         //coordinate transform from local NED used by uav to local ENU used in mavros
         car_pose.pose.position.x = local_position_car.y;
-        car_pose.pose.position.y = local_position_car.x;
-        car_pose.pose.position.z = -local_position_car.z;
+        // car_pose.pose.position.y = local_position_car.x;
+        // car_pose.pose.position.z = -local_position_car.z;
+        car_pose.pose.position.y = yaw_average;
+        car_pose.pose.position.z = yaw_expected;
+
+        car_lost = 0;
         
-        ROS_INFO("body_car:x%f y%f z%f", body_car.x, body_car.y, body_car.z);
+        //ROS_INFO("body_car:x%f y%f z%f", body_car.x, body_car.y, body_car.z);
     }
 
     if(vision_ms.board.z == 10000)
@@ -378,7 +408,7 @@ void car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
         board_lost++;
         board_lost_flag=1;
         board_num.data = -1;
-        ROS_INFO("board_vision_lost!!");
+        //ROS_INFO("board_vision_lost!!");
     }
     else
     {
@@ -394,16 +424,18 @@ void car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
         headBoardYaw_ms.board.x = local_position_board.y;
         headBoardYaw_ms.board.y = local_position_board.x;
         headBoardYaw_ms.board.z = -local_position_board.z;
+
+        board_lost = 0;
         
-        ROS_INFO("body_board:x%f y%f z%f", body_board.x, body_board.y, body_board.z);
-        ROS_INFO("board_num:%d", board_num.data);
+        //ROS_INFO("body_board:x%f y%f z%f", body_board.x, body_board.y, body_board.z);
+        //ROS_INFO("board_num:%d", board_num.data);
     }
 
     if(vision_ms.head.z == 10000)
     {
         head_lost++;
-        head_lost_flag=1 ;
-        ROS_INFO("head_vision_lost!!");
+        head_lost_flag=1;
+        //ROS_INFO("head_vision_lost!!");
     }
     else
     {
@@ -418,88 +450,103 @@ void car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
         headBoardYaw_ms.head.x = local_position_head.y;
         headBoardYaw_ms.head.y = local_position_head.x;
         headBoardYaw_ms.head.z = -local_position_head.z;
+
+        head_lost = 0;
         
-        ROS_INFO("local_position_head:x%f y%f z%f", local_position_head.x, local_position_head.y, local_position_head.z);
+        //ROS_INFO("local_position_head:x%f y%f z%f", local_position_head.x, local_position_head.y, local_position_head.z);
         
-        ROS_INFO("body_head:x%f y%f z%f", body_head.x, body_head.y, body_head.z);
+        //ROS_INFO("body_head:x%f y%f z%f", body_head.x, body_head.y, body_head.z);
     }
     
     //To make sure the calculations were done in the same frame
-    if(!head_lost && !board_lost)
+    if(!head_lost_flag && !board_lost_flag)
     {
+        //judge if this frame is OK
+        if(Distance_of_Two(local_position_board.x, local_position_head.x,
+                           local_position_board.y, local_position_head.y,
+                           local_position_board.z, local_position_head.z) > HEAD_BOARD_DIS)
+        {
+            ROS_INFO("This frame is not OK");
+            return 0;
+        }
         //judge the side that the uav lies in corresponding to the car when see from car head to car heil 
         if(side_judge_enable)
         {
             if((vision_ms.head.x - vision_ms.board.x) > 0)
             {
                 left_side_flag = true;
+                ROS_INFO("lies in left side");
             }
             else
             {
                 right_side_flag = true;
+                ROS_INFO("lies in right side");
             }
             side_judge_enable = false; 
         }  
-
         //calculate the head angle of the car in local NED
+        #if YAW_UPDATE
         delta_y = headBoardYaw_ms.head.y - headBoardYaw_ms.board.y;
         delta_x = headBoardYaw_ms.head.x - headBoardYaw_ms.board.x;
-
-        if(left_side_flag)
+        //slide filter for yaw
+        if(current_frame < YAW_CAL_FRAME)
         {
-            ROS_INFO("lies in left side");
             yaw_calculated = atan2(delta_y,delta_x);
-            yaw_sp = wrap_pi(M_PI_2 + yaw_calculated)*57.3;
-            static float last_yaw = yaw_sp;
-            if(abs(yaw_sp - last_yaw) > M_PI_2)
-            {
-            yaw_sp = last_yaw;
-            } 
-            last_yaw = yaw_sp;
-        }
-        else
-        {
-            ROS_INFO("lies in right side");
-            yaw_calculated = atan2(delta_y,delta_x);
-            yaw_sp = wrap_pi(M_PI_2 * 3 + yaw_calculated)*57.3;
-            static float last_yaw = yaw_sp;
-            if(abs(yaw_sp - last_yaw) > M_PI_2)
-            {
-            yaw_sp = last_yaw;
-            } 
-            last_yaw = yaw_sp;
-        }        
-        headBoardYaw_ms.car_yaw = yaw_sp;
-        ROS_INFO("yaw sp:%f",yaw_sp);
+            yaw_average = (yaw_average * current_frame + yaw_calculated) / (current_frame + 1);
+            current_frame++;
+            if(current_frame == YAW_CAL_FRAME)
+            {   
+                yaw_expected = (left_side_flag) ? wrap_pi(M_PI_2 + yaw_average) : wrap_pi(M_PI_2*3 + yaw_average);
+                yaw_expected_full_angle = yaw_expected >=0 ? yaw_expected : (yaw_expected + M_PI*2);
+                if((abs(yaw_expected_full_angle - current_attitude_full_angle) < YAW_STEP_LIMIT_MAX) && 
+                   (abs(yaw_expected_full_angle - current_attitude_full_angle) > YAW_STEP_LIMIT_MIN))
+                {
+                    yaw_sp = yaw_expected;
+                    static float last_yaw = yaw_sp;
+                    if(abs(yaw_sp - last_yaw) > YAW_TWO_LIMIT)
+                    {
+                    yaw_sp = last_yaw;
+                    } 
+                    last_yaw = yaw_sp;
+                    headBoardYaw_ms.car_yaw = yaw_sp;
+                    // ROS_INFO("yaw sp:%f",yaw_sp);
+                }
+                current_frame = 0;
+            }
+        }  
+        #endif
     }
+
     //reset
-    head_lost = 0;
-    board_lost = 0;
+    head_lost_flag = 0;
+    board_lost_flag = 0;
 
     //vision information lost handle
-    if((board_lost > 3 || head_lost > 3) && current_mission_state == car_tracking)
+    if(head_lost > FRAME_LOST_NUM && current_mission_state == car_tracking)
     {
-        ROS_INFO("lose the board or car_head continuouslly, the will be land");
+        ROS_INFO("lose the car_head continuouslly, the will be land");
+        hover_position = current_position;
         current_mission_state = land_after_hover;
     }
+
     //calculate the velocity of the car accoring to two continuous positions
     #if VEL_CALCULATION
     if(velocity_update_enable == true)
     {   
         vel_cal_start_time = ros::Time::now();
-        vel_cal_start_pos = local_position_board;
+        vel_cal_start_pos = local_position_head;
         velocity_update_enable = false; 
     }
     else if((ros::Time::now()-vel_cal_start_time) > ros::Duration(VEL_CAL_TIME_INTERVEL))
     {
         vel_cal_end_time = ros::Time::now();
-        vel_cal_end_pos = local_position_board;
+        vel_cal_end_pos = local_position_head;
         velocity_car = Distance_of_Two(vel_cal_start_pos.x, vel_cal_end_pos.x,
                                        vel_cal_start_pos.y, vel_cal_end_pos.y,
                                        vel_cal_start_pos.z, vel_cal_end_pos.z) / (vel_cal_end_time.toSec() - vel_cal_start_time.toSec());
         velocity_update_enable = true;
         headBoardYaw_ms.car_speed = velocity_car;
-        ROS_INFO("velocity_car:%f",velocity_car);
+        //ROS_INFO("velocity_car:%f",velocity_car);
     }
     #endif
     //important: calculate the next expect point with respect to the UAV body
@@ -522,7 +569,7 @@ void car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
         local_position_tracked.y = (R[1][0] * body_tracked.x + R[1][1] * body_tracked.y + R[1][2] * body_tracked.z) + current_position.pose.position.x;
         local_position_tracked.z = (R[2][0] * body_tracked.x + R[2][1] * body_tracked.y + R[2][2] * body_tracked.z) - current_position.pose.position.z;
         
-        ROS_INFO("body_tracked:x%f y%f z%f", body_tracked.x, body_tracked.y, body_tracked.z);
+        //ROS_INFO("body_tracked:x%f y%f z%f", body_tracked.x, body_tracked.y, body_tracked.z);
     } 
  
     #if POS_TRACKING 
@@ -536,12 +583,13 @@ void car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
     static geometry_msgs::PoseStamped last_tracked_position = tracked_position;
     if(Distance_of_Two(tracked_position.pose.position.x, last_tracked_position.pose.position.x,
                        tracked_position.pose.position.y, last_tracked_position.pose.position.y,
-                       tracked_position.pose.position.z, last_tracked_position.pose.position.z) > 3.0)
+                       tracked_position.pose.position.z, last_tracked_position.pose.position.z) > DIS_TWO_LIMIT)
     {
         tracked_position = last_tracked_position;
+        ROS_INFO("keep last tracked position");
     }
     last_tracked_position = tracked_position;
-    ROS_INFO("tracked_position:x%f y%f z%f", tracked_position.pose.position.x, tracked_position.pose.position.y, tracked_position.pose.position.z);
+    //ROS_INFO("tracked_position:x%f y%f z%f", tracked_position.pose.position.x, tracked_position.pose.position.y, tracked_position.pose.position.z);
     #endif
     //for test:display current tracking point
     pose_pub = tracked_position;
@@ -550,26 +598,6 @@ void car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
     car_num_pub.publish(board_num);
     car_yaw_pub.publish(headBoardYaw_ms);
 }
-
-// geometry_msgs::PoseStamped car1_head_position;
-// void car_head_position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
-// {
-//     car1_head_position = *msg;
-// }
-
-// geometry_msgs::PoseStamped car1_position;
-// void car_position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
-// {
-//     car1_position = *msg;
-//     car_position_pub.publish(car1_position);
-// }
-
-// std_msgs::Int8 car1_num;
-// void car_num_cb(const std_msgs::Int8::ConstPtr& msg)
-// {
-//     car1_num = *msg;
-//     car_num_pub.publish(car1_num);
-// }
 #endif
 
 /*****************************main function*****************************/
@@ -691,7 +719,7 @@ int main(int argc, char **argv)
         rate.sleep();
     }
 
-    while(ros::ok() && current_state.connected)
+    while(ros::ok())
     {
         static bool display_flag = true;
 
