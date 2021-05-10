@@ -1,10 +1,10 @@
 /*************************************************************************
 @file           state_machine_demo.cpp
-@date           2018/08/20 16:25
+@date           2020/09/20 16:25
 @author         liuxu
 @email          liuxu.ccc@gmail.com
-@description    a simple state machine for the drone race in 2018
-                takeoff-->A-->hover-->B-->hover-->C-->hover-->landing
+@description    a state machine to tracking car for the drone race in 2020
+                takeoff-->A-->hover-->recognizing-->tracking--> -->landing
 *************************************************************************/
 
 #include <ros/ros.h>
