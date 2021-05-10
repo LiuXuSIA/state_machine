@@ -104,7 +104,7 @@ add_executable(collaborate_uav2_gs            src/collaborate_uav2_gs.cpp)
 add_executable(collaborate_uav3_gs            src/collaborate_uav3_gs.cpp)
 add_executable(collaborate_uav4_gs            src/collaborate_uav4_gs.cpp)
 add_executable(collaborate_uav5_gs            src/collaborate_uav5_gs.cpp)
-add_executable(collaborate_track_car            src/collaborate_track_car_1.cpp)
+add_executable(collaborate_track_car            src/collaborate_track_car.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
