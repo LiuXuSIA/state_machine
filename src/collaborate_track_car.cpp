@@ -159,9 +159,9 @@ ros::Time last_request;
 #define VEL_CALCULATION         1
 #define POS_TRACKING            1
 #define FIXED_TRACKING          1
-#define YAW_UPDATE              1
+#define YAW_UPDATE              0
 //contants definition
-#define NS                      "uav3"
+#define NS                      "uav1"
 #define NS_CAR                  "car1"
 #define ASCEND_VELOCITY         1.0
 #define LOCATE_ACCURACY         0.5
@@ -176,7 +176,9 @@ ros::Time last_request;
 #define YAW_STEP_LIMIT_MAX      0.8
 #define YAW_STEP_LIMIT_MIN      0.25
 #define YAW_CAL_FRAME           1 
-#define HEAD_BOARD_DIS          2.2 //1.6 true
+#define HEAD_BOARD_DIS_MAX      1.75 //1.6 true
+#define HEAD_BOARD_DIS_MIN      1.55 //1.6 true
+#define SAFE_DIS_TO_CAR         2 //1.6 true
 
 /***************************callback function definition***************/
 state_machine::State current_state;
@@ -245,7 +247,7 @@ void attitude_cb(const state_machine::Attitude::ConstPtr& msg)
     R[2][1] = sin(current_attitude.roll) * cos(current_attitude.pitch);
     R[2][2]= cos(current_attitude.roll) * cos(current_attitude.pitch);
 
-    current_attitude.yaw =  wrap_pi(M_PI_2 - current_attitude.yaw);
+    current_attitude.yaw =  wrap_pi(M_PI_2 - current_attitude.yaw);  //ENU
     current_attitude_full_angle = current_attitude.yaw >= 0 ? current_attitude.yaw : (current_attitude.yaw + M_PI*2);
     //current_attitude.roll =  yaw_expected;
     //current_attitude.pitch = yaw_average;
@@ -366,6 +368,7 @@ std_msgs::Int8 board_num;
 int head_lost, board_lost, car_lost, board_lost_flag, head_lost_flag, current_frame = 0;
 bool right_side_flag = false, left_side_flag = false, side_judge_enable = true;
 float yaw_expected, yaw_average, yaw_expected_full_angle;
+float head_board_dis_cal;
 
 int car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
 {
@@ -392,11 +395,12 @@ int car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
         local_position_car.y = (R[1][0] * body_car.x + R[1][1] * body_car.y + R[1][2] * body_car.z) + current_position.pose.position.x;
         local_position_car.z = (R[2][0] * body_car.x + R[2][1] * body_car.y + R[2][2] * body_car.z) - current_position.pose.position.z;
         //coordinate transform from local NED used by uav to local ENU used in mavros
-        car_pose.pose.position.x = local_position_car.y;
+        // car_pose.pose.position.x = local_position_car.y;
         // car_pose.pose.position.y = local_position_car.x;
         // car_pose.pose.position.z = -local_position_car.z;
-        car_pose.pose.position.y = yaw_average;
-        car_pose.pose.position.z = yaw_expected;
+        car_pose.pose.position.x = head_board_dis_cal;
+        car_pose.pose.position.y = yaw_average;  //
+        car_pose.pose.position.z = yaw_expected; //change for display the yaw
 
         car_lost = 0;
         
@@ -462,9 +466,10 @@ int car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
     if(!head_lost_flag && !board_lost_flag)
     {
         //judge if this frame is OK
-        if(Distance_of_Two(local_position_board.x, local_position_head.x,
-                           local_position_board.y, local_position_head.y,
-                           local_position_board.z, local_position_head.z) > HEAD_BOARD_DIS)
+        head_board_dis_cal = Distance_of_Two(local_position_board.x, local_position_head.x,
+                                             local_position_board.y, local_position_head.y,
+                                             local_position_board.z, local_position_head.z);
+        if((head_board_dis_cal > HEAD_BOARD_DIS_MAX) && (head_board_dis_cal < HEAD_BOARD_DIS_MIN))
         {
             ROS_INFO("This frame is not OK");
             return 0;
@@ -524,7 +529,7 @@ int car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
     //vision information lost handle
     if(head_lost > FRAME_LOST_NUM && current_mission_state == car_tracking)
     {
-        ROS_INFO("lose the car_head continuouslly, the will be land");
+        ROS_INFO("lose the car_head continuouslly, the uav will land");
         hover_position = current_position;
         current_mission_state = land_after_hover;
     }
@@ -586,7 +591,14 @@ int car_information_cb(const state_machine::VisionCarBoardPos::ConstPtr& msg)
                        tracked_position.pose.position.z, last_tracked_position.pose.position.z) > DIS_TWO_LIMIT)
     {
         tracked_position = last_tracked_position;
-        ROS_INFO("keep last tracked position");
+        ROS_INFO("the two continue positions are to far, keep last tracked position");
+    }
+    if(Distance_of_Two(local_position_tracked.x, local_position_car.x,
+                       local_position_tracked.y, local_position_car.y,
+                       local_position_tracked.z, local_position_car.z) < SAFE_DIS_TO_CAR)
+    {
+        tracked_position = last_tracked_position;
+        ROS_INFO("the calculated position is too close to the car, keep last tracked position");
     }
     last_tracked_position = tracked_position;
     //ROS_INFO("tracked_position:x%f y%f z%f", tracked_position.pose.position.x, tracked_position.pose.position.y, tracked_position.pose.position.z);

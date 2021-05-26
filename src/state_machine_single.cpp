@@ -1,9 +1,9 @@
 /*************************************************************************
 @file           state_machine_demo.cpp
-@date           2018/08/20 16:25
+@date           2020/08/31 14:25
 @author         liuxu
 @email          liuxu.ccc@gmail.com
-@description    a simple state machine for the drone race in 2018
+@description    a simple state machine operated by the ground station
                 takeoff-->A-->hover-->B-->hover-->C-->hover-->landing
 *************************************************************************/
 
@@ -16,14 +16,18 @@
 #include <state_machine/attributeStatus_F2L.h>
 #include <state_machine/requestCommand_L2F.h>
 #include <std_msgs/String.h>
+#include <std_msgs/Int8.h>
 #include <state_machine/positionXY.h>
 #include <state_machine/SetMode.h>
-#include "math.h"
 #include <state_machine/Attitude.h>
 #include <state_machine/GPS_Status.h>
 #include <sensor_msgs/BatteryState.h>
 #include <state_machine/taskStatusMonitor.h>
+#include "math.h"
+#include "string"
+#include "vector"
 
+using namespace std;
 
 /***************************function declare****************************/
 
@@ -35,49 +39,80 @@ double Distance_of_Two(double x1, double x2, double y1, double y2, double z1, do
 geometry_msgs::PoseStamped position_A;
 geometry_msgs::PoseStamped position_B;
 geometry_msgs::PoseStamped position_C;
-geometry_msgs::PoseStamped position_next;
 geometry_msgs::PoseStamped hover_position;
 
-geometry_msgs::PoseStamped pose_pub;  //ENU
+//velcity ENU
+geometry_msgs::PoseStamped pose_pub;
 geometry_msgs::TwistStamped vel_pub;
 
-//for take off
+//published topic
 ros::Publisher local_pos_pub;
 ros::Publisher local_vel_pub;
 ros::Publisher takeOffStatus_pub;
+ros::Publisher hover_status_pub;
+ros::Publisher land_status_pub;
 ros::Publisher communication_result_pub;
-ros::Publisher emergency_status_pub;
-ros::Publisher current_position_pub;
-//added for gs
+ros::Publisher remote_control_status_pub;
 ros::Publisher current_pose_pub;
 ros::Publisher current_attitude_pub;
+ros::Publisher current_gps_status_pub;
 ros::Publisher battery_staus_pub;
 ros::Publisher current_mode_pub;
-ros::Publisher current_gps_status_pub;
+ros::Publisher tracked_car_pub;
 ros::Publisher task_status_pub;
+ros::Publisher car_position_pub;
+ros::Publisher car_num_pub;
 
-state_machine::attributeStatus_F2L takeOffStatus;
-state_machine::attributeStatus_F2L communicationStatus;
-state_machine::attributeStatus_F2L emergencyStatus;
-// takeOffStatus.UAV_index = 0;
-// takeOffStatus.value = 0;
-//bool velocity_control_enable = true;
+//subscibed topic
+ros::Subscriber state_sub;
+ros::Subscriber pose_sub;
+ros::Subscriber vel_sub;
+ros::Subscriber takeOffCommand_sub;
+ros::Subscriber landCommand_sub;
+ros::Subscriber hoverCommand_sub;
+ros::Subscriber controlRequest_sub;
+ros::Subscriber communication_test_sub;
+ros::Subscriber local_position_G2M_sub;
+ros::Subscriber attitude_sub;
+ros::Subscriber gps_staus_sub;
+ros::Subscriber battery_staus_sub;
+ros::Subscriber tracked_car_sub;
+ros::Subscriber car_position_sub;
+ros::Subscriber car_num_sub;
 
+//message to gs
+std_msgs::Int8 takeOffStatus;
+std_msgs::Int8 hoverStatus;
+std_msgs::Int8 landStatus;
+std_msgs::Int8 communicationStatus;
+std_msgs::Int8 remoteControlStatus;
+std_msgs::Int8 tracked_car;
+geometry_msgs::PoseStamped car_position;
+std_msgs::Int8 car_number;
 
-//state_machine state
+//state_machine mission state
 //every state need target position
 
+static const int wait_TF = 0;
 static const int takeoff = 1;
 static const int position_A_go = 2;
 static const int position_A_hover = 3;
-static const int position_tracking = 4;
-static const int current_position_hover = 5;
-static const int land = 6;
+static const int position_B_go = 4;
+static const int position_B_hover = 5;
+static const int position_C_go = 6;
+static const int position_C_hover = 7;
+static const int return_home = 8;
+static const int land = 9;
+
+static const int current_position_hover = 10;
+static const int land_after_hover = 11;
+
+static string mission_status[12] = {"wait_TF", "take_off", "go_A", "hover_A", "go_B", "hover_B", "go_C", "hover_C", 
+                                    "return_H", "land", "hover", "L_hover"};
 
 //mission 
 int loop = 0;
-int current_pos_state = takeoff;
-std_msgs::String current_position_state;
+int current_mission_state = wait_TF;
 state_machine::taskStatusMonitor task_status_monitor;
 
 //time
@@ -86,7 +121,11 @@ ros::Time last_time;
 //velocity send
 bool velocity_control_enable = true;
 
+//takeoff height
 double take_off_height;
+
+//control mode
+bool sm_control_mode = true;
 
 //get the home position before takeoff
 bool get_home_position_enable = false;
@@ -100,8 +139,11 @@ ros::ServiceClient set_mode_client_offboard;
 ros::ServiceClient set_mode_client_posctl;
 ros::Time last_request;
 
-/*************************constant defunition***************************/
+/*************************constant definition***************************/
 
+#define NS                  "uav2"
+#define NS_CAR              "car1"
+#define FIXED               0
 #define ASCEND_VELOCITY     1.0
 #define LOCATE_ACCURACY     0.5
 
@@ -136,8 +178,6 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
         position_C.pose.position.y = position_A.pose.position.y+5;
         position_C.pose.position.z = position_A.pose.position.z;
 
-        position_next = position_A;
-
         take_off_height = position_A.pose.position.z-2;
 
         ROS_INFO("gotten the home position.");
@@ -156,51 +196,77 @@ void velo_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
     current_velocity = *msg;
 }
 
-state_machine::requestCommand_L2F takeOffCommand;
-bool receiveTakeOffCommand_enable = true;
-void takeOffCommand_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
+std_msgs::Int8 takeOffCommand;
+void takeOffCommand_cb(const std_msgs::Int8::ConstPtr& msg)
 {
-    if(receiveTakeOffCommand_enable == true)
-    {
-        takeOffCommand = *msg;
-        ROS_INFO("received the take off command!!");
-        receiveTakeOffCommand_enable = false;
-    } 
+    takeOffCommand = *msg;
+    current_mission_state = takeoff;
+    sm_control_mode = true;
+    velocity_control_enable = true;
+    takeOffStatus.data = 1;
+    takeOffStatus_pub.publish(takeOffStatus);
+    ROS_INFO("received the take off command!!");
 }
 
-state_machine::requestCommand_L2F landCommand;
-void landCommand_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
+std_msgs::Int8 landCommand;
+void landCommand_cb(const std_msgs::Int8::ConstPtr& msg)
 {
     landCommand = *msg;
+    current_mission_state = land_after_hover;
+    hover_position = current_position;
+    landStatus.data = 1;
+    land_status_pub.publish(landStatus);
+    ROS_INFO("received the land command!!");
 }
 
-state_machine::requestCommand_L2F emergencyCommand;
-bool receiveEmergencyCommand_enable = true;
-void emergencyCommand_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
+std_msgs::Int8 hoverCommand;
+void hoverCommand_cb(const std_msgs::Int8::ConstPtr& msg)
 {
-    if(receiveEmergencyCommand_enable == true)
-    {
-        emergencyCommand = *msg;
-        ROS_INFO("received the emergency command!!");
-        receiveEmergencyCommand_enable = false;
-    } 
+    hoverCommand = *msg;
+    current_mission_state = current_position_hover;
+    hover_position = current_position;
+    hoverStatus.data = 1;
+    hover_status_pub.publish(hoverStatus);
+    ROS_INFO("received the hover command!!");
 }
 
-state_machine::requestCommand_L2F communication_command;
-void communication_test_cb(const state_machine::requestCommand_L2F::ConstPtr& msg)
+std_msgs::Int8 communication_command;
+void communication_test_cb(const std_msgs::Int8::ConstPtr& msg)
 {
     communication_command = *msg;
+    communicationStatus.data = 1;
     communication_result_pub.publish(communicationStatus);
     ROS_INFO("receive the communication request.");
 }
 
-state_machine::positionXY position_delta;
-void position_delta_cb(const state_machine::positionXY::ConstPtr& msg)
+std_msgs::Int8 control_request;
+geometry_msgs::PoseStamped local_pose_G2M;
+void control_request_cb(const std_msgs::Int8::ConstPtr& msg)
 {
-    position_delta = *msg; 
-    position_next.pose.position.x =  position_A.pose.position.x + position_delta.x;
-    position_next.pose.position.y =  position_A.pose.position.y + position_delta.y;
-    position_next.pose.position.z =  position_A.pose.position.z;
+    control_request = *msg;
+    if(control_request.data == 1)
+    {
+        local_pose_G2M = current_position;
+        sm_control_mode = false;
+        remoteControlStatus.data = 1;
+        remote_control_status_pub.publish(remoteControlStatus);
+        ROS_INFO("receive the control request.");
+    }
+    else if(control_request.data == 0)
+    {
+        current_mission_state = current_position_hover;
+        sm_control_mode = true;
+        remoteControlStatus.data = 2;
+        remote_control_status_pub.publish(remoteControlStatus);
+        ROS_INFO("exit the control request.");
+    }
+}
+
+void local_position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
+    local_pose_G2M = *msg; 
+    ROS_INFO("receive the control position x:%f, y:%f, z:%f",
+    local_pose_G2M.pose.position.x,local_pose_G2M.pose.position.y,local_pose_G2M.pose.position.z);
 }
 
 state_machine::Attitude current_attitude;
@@ -208,7 +274,6 @@ void attitude_cb(const state_machine::Attitude::ConstPtr& msg)
 {
     current_attitude = *msg;
     current_attitude_pub.publish(current_attitude);
-
     // ROS_INFO("yaw: %f", current_attitude.yaw);
     // ROS_INFO("pitch: %f", current_attitude.pitch);
     // ROS_INFO("roll: %f", current_attitude.roll);
@@ -233,20 +298,27 @@ void battery_cb(const sensor_msgs::BatteryState::ConstPtr& msg)
     // ROS_INFO("remaining: %f", battery_state.percentage);
 }
 
+#if FIXED
+geometry_msgs::PoseStamped car1_position;
+void car_position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
+    car1_position = *msg;
+    car_position_pub.publish(car1_position);
+}
+
+std_msgs::Int8 car1_num;
+void car_num_cb(const std_msgs::Int8::ConstPtr& msg)
+{
+    car1_num = *msg;
+    car_num_pub.publish(car1_num);
+}
+#endif
+
 /*****************************main function*****************************/
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "collborate_uav_1");
+    ros::init(argc, argv, "collborate_"+string(NS));
     ros::NodeHandle nh;
-
-    takeOffStatus.UAV_index = 2;
-    takeOffStatus.value = 1;
-
-    communicationStatus.UAV_index = 2;
-    communicationStatus.value = 1;
-    
-    emergencyStatus.UAV_index = 2;
-    emergencyStatus.value = 1;
 
     //takeoff velocity
     vel_pub.twist.linear.x = 0.0f;
@@ -285,50 +357,69 @@ int main(int argc, char **argv)
     position_C.pose.orientation.y = 0;
     position_C.pose.orientation.z = sin(yaw_sp/2);
     position_C.pose.orientation.w = cos(yaw_sp/2);
-
-    ros::Subscriber state_sub = nh.subscribe<state_machine::State>("uav1/mavros/state",10,state_cb);
-    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("uav1/mavros/local_position/pose",10,pose_cb);
-    ros::Subscriber vel_sub = nh.subscribe<geometry_msgs::TwistStamped>("uav1/mavros/local_position/velocity",10,velo_cb);
-    ros::Subscriber takeOffCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("take_off_command",10,takeOffCommand_cb);
-    ros::Subscriber landCommand_sub = nh.subscribe<state_machine::requestCommand_L2F>("land_command",10,landCommand_cb);
-    ros::Subscriber communication_test_sub = nh.subscribe<state_machine::requestCommand_L2F>("communication_test",10,communication_test_cb);
-    ros::Subscriber emergency_sub = nh.subscribe<state_machine::requestCommand_L2F>("emergency_command",10,emergencyCommand_cb);
-    ros::Subscriber position_delta_sub = nh.subscribe<state_machine::positionXY>("position_delta",10,position_delta_cb);
-    //added for gs
-    ros::Subscriber attitude_sub = nh.subscribe<state_machine::Attitude>("uav1/mavros/attitude",10,attitude_cb);
-    ros::Subscriber gps_staus_sub = nh.subscribe<state_machine::GPS_Status>("uav1/mavros/gps_status",10,gps_status_cb);
-    ros::Subscriber battery_staus_sub = nh.subscribe<sensor_msgs::BatteryState>("uav1/mavros/battery",10,battery_cb);
-
-    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1/mavros/setpoint_position/local",10);
-    local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("uav1/mavros/setpoint_velocity/cmd_vel",10);
-    takeOffStatus_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_take_off_status",10);
-    communication_result_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_communication_test_reult",10);
-    emergency_status_pub = nh.advertise<state_machine::attributeStatus_F2L>("uav1_emergency_status",10);
-    current_position_pub = nh.advertise<std_msgs::String>("uav1_current_position_state",10);
-    //added
-    current_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("uav1_local_pose",10);
-    current_attitude_pub = nh.advertise<state_machine::Attitude>("uav1_local_attitude",10);
-    battery_staus_pub = nh.advertise<sensor_msgs::BatteryState>("uav1_battery_status",10);
-    current_mode_pub = nh.advertise<std_msgs::String>("uav1_current_mode",10);
-    current_gps_status_pub = nh.advertise<state_machine::GPS_Status>("uav1_current_gps_status",10);
-    task_status_pub = nh.advertise<state_machine::taskStatusMonitor>("uav1_current_mission_state",10);
- 
-    land_client = nh.serviceClient<state_machine::CommandTOL>("uav1/mavros/cmd/land");
+    
+    //subscribe from pix
+    state_sub = nh.subscribe<state_machine::State>(string(NS)+"/mavros/state",10,state_cb);
+    pose_sub = nh.subscribe<geometry_msgs::PoseStamped>(string(NS)+"/mavros/local_position/pose",10,pose_cb);
+    vel_sub = nh.subscribe<geometry_msgs::TwistStamped>(string(NS)+"/mavros/local_position/velocity",10,velo_cb);
+    attitude_sub = nh.subscribe<state_machine::Attitude>(string(NS)+"/mavros/attitude",10,attitude_cb);
+    gps_staus_sub = nh.subscribe<state_machine::GPS_Status>(string(NS)+"/mavros/gps_status",10,gps_status_cb);
+    battery_staus_sub = nh.subscribe<sensor_msgs::BatteryState>(string(NS)+"/mavros/battery",10,battery_cb);
+    //subscribe from GS
+    communication_test_sub = nh.subscribe<std_msgs::Int8>("communication_test",10,communication_test_cb);
+    takeOffCommand_sub = nh.subscribe<std_msgs::Int8>("take_off_command",10,takeOffCommand_cb);
+    landCommand_sub = nh.subscribe<std_msgs::Int8>("land_command",10,landCommand_cb);
+    hoverCommand_sub = nh.subscribe<std_msgs::Int8>("hover_command",10,hoverCommand_cb);
+    controlRequest_sub = nh.subscribe<std_msgs::Int8>("control_request",10,control_request_cb);
+    local_position_G2M_sub = nh.subscribe<geometry_msgs::PoseStamped>(string(NS)+"_local_position",10,local_position_cb);
+    //subscribe from vision
+    #if FIXED
+    //tracked_car_sub = nh.advertise<std_msgs::Int8>(string(NS)+"_tracked_car",10);
+    car_position_sub = nh.subscribe<geometry_msgs::PoseStamped>(string(NS_CAR)+"_pos",10,car_position_cb);
+    car_num_sub = nh.subscribe<std_msgs::Int8>(string(NS_CAR)+"_num",10,car_num_cb);
+    #endif
+    
+    //publish to pix
+    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>(string(NS)+"/mavros/setpoint_position/local",10);
+    local_vel_pub = nh.advertise<geometry_msgs::TwistStamped>(string(NS)+"/mavros/setpoint_velocity/cmd_vel",10);
+    //publish to GS
+    takeOffStatus_pub = nh.advertise<std_msgs::Int8>(string(NS)+"_take_off_receive",10);
+    hover_status_pub = nh.advertise<std_msgs::Int8>(string(NS)+"_hover_receive",10);
+    land_status_pub = nh.advertise<std_msgs::Int8>(string(NS)+"_land_receive",10);
+    communication_result_pub = nh.advertise<std_msgs::Int8>(string(NS)+"_communication_test_status",10);
+    remote_control_status_pub = nh.advertise<std_msgs::Int8>(string(NS)+"_remote_control_flag",10);
+    current_pose_pub = nh.advertise<geometry_msgs::PoseStamped>(string(NS)+"_local_pose",10);
+    current_attitude_pub = nh.advertise<state_machine::Attitude>(string(NS)+"_local_attitude",10);
+    battery_staus_pub = nh.advertise<sensor_msgs::BatteryState>(string(NS)+"_battery_status",10);
+    current_mode_pub = nh.advertise<std_msgs::String>(string(NS)+"_current_mode",10);
+    current_gps_status_pub = nh.advertise<state_machine::GPS_Status>(string(NS)+"_current_gps_status",10);
+    task_status_pub = nh.advertise<state_machine::taskStatusMonitor>(string(NS)+"_current_mission_state",10);
+    #if FIXED
+    //tracked_car_pub = nh.advertise<std_msgs::Int8>(string(NS)+"_tracked_car",10);
+    car_position_pub = nh.advertise<geometry_msgs::PoseStamped>(string(NS_CAR)+"_position",10);
+    car_num_pub = nh.advertise<std_msgs::Int8>(string(NS_CAR)+"_number",10);
+    #endif
+    
+    //service client:land client
+    land_client = nh.serviceClient<state_machine::CommandTOL>(string(NS)+"/mavros/cmd/land");
     state_machine::CommandTOL landing_cmd;
     landing_cmd.request.min_pitch = 1.0;
     landing_last_request = ros::Time::now();
 
-    set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>("uav1/mavros/set_mode");
+    //service client:switch mode to offboard
+    set_mode_client_offboard = nh.serviceClient<state_machine::SetMode>(string(NS)+"/mavros/set_mode");
     state_machine::SetMode offb_set_mode;
 	offb_set_mode.request.custom_mode = "OFFBOARD";
     last_request = ros::Time::now();
-
-    set_mode_client_posctl = nh.serviceClient<state_machine::SetMode>("uav1/mavros/set_mode");
+    
+    //service client:switch mode to position control
+    set_mode_client_posctl = nh.serviceClient<state_machine::SetMode>(string(NS)+"/mavros/set_mode");
     state_machine::SetMode posc_set_mode;
 	posc_set_mode.request.custom_mode = "POSCTL";
     last_request = ros::Time::now();
-
-    arming_client = nh.serviceClient<state_machine::CommandBool>("uav1/mavros/cmd/arming");
+    
+    //service client:unlock the uav
+    arming_client = nh.serviceClient<state_machine::CommandBool>(string(NS)+"/mavros/cmd/arming");
 	state_machine::CommandBool arm_cmd;
 	arm_cmd.request.value = true;
     landing_last_request = ros::Time::now();
@@ -365,10 +456,18 @@ int main(int argc, char **argv)
 
         if(current_state.mode == "OFFBOARD" && current_state.armed)
         {
-            current_position_pub.publish(current_position_state);
-            state_machine_fun();
-            ROS_INFO("current_pos_state:%d",current_pos_state);
-            ROS_INFO("current_mode:%s",current_state.mode.c_str());
+            if(sm_control_mode == true)
+            {
+                state_machine_fun();
+
+                ROS_INFO("current_mission_state:%d",current_mission_state);
+                ROS_INFO("current_mission_state:%s",mission_status[current_mission_state].c_str());
+                ROS_INFO("current_mode:%s",current_state.mode.c_str());
+            }
+            else
+            {
+                local_pos_pub.publish(local_pose_G2M);
+            }
         }
         else if(velocity_control_enable == true)
         {
@@ -380,7 +479,7 @@ int main(int argc, char **argv)
             }
         }
 
-        if(takeOffCommand.value == 1 && !current_state.armed && (ros::Time::now() - last_request > ros::Duration(5.0)))
+        if(takeOffCommand.data && !current_state.armed && (ros::Time::now() - last_request > ros::Duration(5.0)))
         {
             if( arming_client.call(arm_cmd) && arm_cmd.response.success)
             {
@@ -395,18 +494,17 @@ int main(int argc, char **argv)
             last_request = ros::Time::now();
         }
 
-        if(takeOffCommand.value && current_state.armed && current_state.mode != "OFFBOARD" && (ros::Time::now() - last_request > ros::Duration(5.0)))
+        if(takeOffCommand.data && current_state.armed && current_state.mode != "OFFBOARD" && (ros::Time::now() - last_request > ros::Duration(5.0)))
         {
             if( set_mode_client_offboard.call(offb_set_mode) && offb_set_mode.response.success) //old version was success, new version is mode_sent
             {
                 ROS_INFO("Offboard enabled");
-                takeOffCommand.value = 0;
-                takeOffStatus_pub.publish(takeOffStatus);
+                takeOffCommand.data = 0;
             }
             last_request = ros::Time::now();
         }
         
-        if(current_state.armed && current_pos_state == land)
+        if(current_state.armed && current_mission_state == land)
         {
             if(current_state.mode != "MANUAL" && current_state.mode != "AUTO.LAND" && 
               (ros::Time::now() - landing_last_request > ros::Duration(5.0)))
@@ -418,17 +516,9 @@ int main(int argc, char **argv)
                     landing_last_request = ros::Time::now();
                 }
         }
-
-        if(emergencyCommand.value)
-        {
-            current_pos_state = current_position_hover;
-            hover_position = current_position;
-            emergency_status_pub.publish(emergencyStatus);
-            emergencyCommand.value = 0;
-        }
-
+        
         //send mission state
-        task_status_monitor.task_status = current_position_state.data;
+        task_status_monitor.task_status = mission_status[current_mission_state];
         task_status_monitor.target_x = pose_pub.pose.position.y;
         task_status_monitor.target_y = pose_pub.pose.position.x;
         task_status_monitor.target_z = pose_pub.pose.position.z;
@@ -444,9 +534,7 @@ int main(int argc, char **argv)
 /***********************************state_machine function***********************************/
 void state_machine_fun(void)
 {
-    static bool return_flag = false;
-
-    switch(current_pos_state)
+    switch(current_mission_state)
     {
         case takeoff:
         {
@@ -455,7 +543,7 @@ void state_machine_fun(void)
             local_vel_pub.publish(vel_pub);
             if(current_position.pose.position.z > take_off_height)
             {
-                current_pos_state = position_A_go;
+                current_mission_state = position_A_go;
                 last_time = ros::Time::now();
             }
         }
@@ -468,48 +556,79 @@ void state_machine_fun(void)
                                 current_position.pose.position.y,position_A.pose.position.y,
                                 current_position.pose.position.z,position_A.pose.position.z) < LOCATE_ACCURACY)
             {
-                current_pos_state = position_tracking;
+                current_mission_state = position_A_hover;
                 last_time = ros::Time::now();
             }
         }
         break;
-        case position_tracking:
+        case position_A_hover:
         {
-            pose_pub = position_next;
-            local_pos_pub.publish(position_next);
-
-            if (Distance_of_Two(current_position.pose.position.x,position_A.pose.position.x,
-                                current_position.pose.position.y,position_A.pose.position.y,
-                                current_position.pose.position.z,position_A.pose.position.z) < LOCATE_ACCURACY && !return_flag)
+            pose_pub = position_A;
+            local_pos_pub.publish(position_A);
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
-                current_position_state.data = "position_A_hover";
+                current_mission_state = position_B_go;
+                last_time = ros::Time::now();
             }
-
+        }
+        break;
+        case position_B_go:
+        {
+            pose_pub = position_B;
+            local_pos_pub.publish(position_B);
             if (Distance_of_Two(current_position.pose.position.x,position_B.pose.position.x,
                                 current_position.pose.position.y,position_B.pose.position.y,
                                 current_position.pose.position.z,position_B.pose.position.z) < LOCATE_ACCURACY)
             {
-                current_position_state.data = "position_B_hover";
+                current_mission_state = position_B_hover;
+                last_time = ros::Time::now();
             }
-
+        }
+        break;
+        case position_B_hover:
+        {
+            pose_pub = position_B;
+            local_pos_pub.publish(position_B);
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            {
+                current_mission_state = position_C_go;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case position_C_go:
+        {
+            pose_pub = position_C;
+            local_pos_pub.publish(position_C);
             if (Distance_of_Two(current_position.pose.position.x,position_C.pose.position.x,
                                 current_position.pose.position.y,position_C.pose.position.y,
                                 current_position.pose.position.z,position_C.pose.position.z) < LOCATE_ACCURACY)
             {
-                current_position_state.data = "position_C_hover";
-                return_flag = true;
+                current_mission_state = position_C_hover;
+                last_time = ros::Time::now();
             }
-
+        }
+        break;
+        case position_C_hover:
+        {
+            pose_pub = position_C;
+            local_pos_pub.publish(position_C);
+            if(ros::Time::now() - last_time > ros::Duration(5.0))
+            {
+                current_mission_state = return_home;
+                last_time = ros::Time::now();
+            }
+        }
+        break;
+        case  return_home:
+        {
+            pose_pub = position_A;
+            local_pos_pub.publish(position_A);
             if (Distance_of_Two(current_position.pose.position.x,position_A.pose.position.x,
                                 current_position.pose.position.y,position_A.pose.position.y,
-                                current_position.pose.position.z,position_A.pose.position.z) < LOCATE_ACCURACY && return_flag)
+                                current_position.pose.position.z,position_A.pose.position.z) < LOCATE_ACCURACY )
             {
-                current_position_state.data = "position_end_hover";  
-            }
-
-            if(landCommand.value)
-            {
-                current_pos_state = land;
+                current_mission_state = land;
                 last_time = ros::Time::now();
             }
         }
@@ -518,9 +637,16 @@ void state_machine_fun(void)
         {
             pose_pub = hover_position;
             local_pos_pub.publish(hover_position);
+            last_time = ros::Time::now();
+        }
+        break;
+        case land_after_hover:
+        {
+            pose_pub = hover_position;
+            local_pos_pub.publish(hover_position);
             if(ros::Time::now() - last_time > ros::Duration(5.0))
             {
-                current_pos_state = land;
+                current_mission_state = land;
                 last_time = ros::Time::now();
             }
         }
